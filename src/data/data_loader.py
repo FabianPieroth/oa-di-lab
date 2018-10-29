@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import augmentation
 sys.path.append("..")
 
 
@@ -9,9 +10,11 @@ class PreprocessImages(object):
     train_ratio:    Gives the train and validation split for the model
     """
 
-    def __init__(self, train_ratio):
+    def __init__(self, train_ratio, do_flip = False, do_deform = False):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
+        self.do_flip = do_flip
+        self.do_deform = do_deform
 
         # self.X_train, self.y_train, self.X_test, self.y_test, self.df_complete = self._prepare_data()
 
@@ -34,3 +37,6 @@ class PreprocessImages(object):
         # load the already preprocessed data
         pass
         # return df
+    def augment_data(self):
+        pass
+
