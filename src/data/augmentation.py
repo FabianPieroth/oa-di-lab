@@ -6,7 +6,7 @@ from scipy import interpolate as ipol
 
 
 # deform function
-def elastic_deformation(image, x_coord, y_coord, dx, dy):
+def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
     """ Applies random elastic deformation to the input image
         with given coordinates and displacement values of deformation points.
         Keeps the edge of the image steady by adding a few frame points that get displacement value zero.
@@ -80,7 +80,7 @@ def elastic_deformation(image, x_coord, y_coord, dx, dy):
 
 
 # wrapper function
-def elastic_deform_wrapper(image1, image2, n_points, stdev_displacement, deformation_points_location_fac=0.5):
+def elastic_deform(image1, image2, n_points=1, stdev_displacement=10, deformation_points_location_fac=0.5):
     """ Generates random points and displacements and performs elastic deformation
         on the two input images with these deformation points
         Input: image1, image2: arrays of shape (N,M,C), C being the number of channels
@@ -112,8 +112,8 @@ def elastic_deform_wrapper(image1, image2, n_points, stdev_displacement, deforma
     dy = np.random.randn(n_points) * stdev_displacement
 
     ## perform the elastic deformation
-    deformed_image1 = elastic_deformation(image1, x_coord, y_coord, dx, dy)
-    deformed_image2 = elastic_deformation(image2, x_coord, y_coord, dx, dy)
+    deformed_image1 = elastic_deform_helper(image1, x_coord, y_coord, dx, dy)
+    deformed_image2 = elastic_deform_helper(image2, x_coord, y_coord, dx, dy)
 
     return deformed_image1, deformed_image2
 
