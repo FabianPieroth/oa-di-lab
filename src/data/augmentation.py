@@ -1,4 +1,4 @@
-import numpy as np
+git import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
 
@@ -117,5 +117,24 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
     return deformed_image1, deformed_image2
 
 
+def crop_stretch_helper(in_image, side, crop_size):
+    if side == 1:
+        cropped = in_image.crop((crop_size, 0, in_image.size[0], in_image.size[1] - crop_size))
+        fnew = cropped.resize(in_image.size)
+    if side == 2:
+        cropped = in_image.crop((0, 0, in_image.size[0] - crop_size, in_image.size[1] - crop_size))
+        fnew = cropped.resize(in_image.size)
+
+    return fnew
+
+
+def crop_stretch(in_image1, in_image2, rseed):
+    random.seed(rseed)
+    size = random.randint(25, 40)
+    side = random.randint(1, 2)
+    aug_img = crop_stretch_helper(in_image1, side, size)
+    aug_label = crop_stretch_helper(in_image2, side, size)
+
+    return aug_img, aug_label
 
 
