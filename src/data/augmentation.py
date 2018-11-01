@@ -1,6 +1,7 @@
 git import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
+from skimage.transform import rescale, resize, downscale_local_mean
 
 ##### Elastic Deformation #######
 
@@ -119,13 +120,17 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
 
 def crop_stretch_helper(in_image, side, crop_size):
     if side == 1:
-        cropped = in_image.crop((crop_size, 0, in_image.size[0], in_image.size[1] - crop_size))
-        fnew = cropped.resize(in_image.size)
-    if side == 2:
-        cropped = in_image.crop((0, 0, in_image.size[0] - crop_size, in_image.size[1] - crop_size))
-        fnew = cropped.resize(in_image.size)
+        cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
 
-    return fnew
+        resized = resize(cropped, (in_image.shape),
+                         anti_aliasing=True)
+    if side == 2:
+        cropped = in_image[crop_size:in_image.shape[0], crop_size:in_image.shape[1]]
+
+        resized = resize(cropped, (in_image.shape),
+                         anti_aliasing=True)
+
+    return resized
 
 
 def crop_stretch(in_image1, in_image2, rseed):
@@ -136,5 +141,4 @@ def crop_stretch(in_image1, in_image2, rseed):
     aug_label = crop_stretch_helper(in_image2, side, size)
 
     return aug_img, aug_label
-
 
