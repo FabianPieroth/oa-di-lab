@@ -1,4 +1,4 @@
-gimport sys
+import sys
 import numpy as np
 from pathlib import Path
 import os
