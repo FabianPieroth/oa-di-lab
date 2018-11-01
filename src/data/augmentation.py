@@ -1,4 +1,4 @@
-git import numpy as np
+import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
 import random
