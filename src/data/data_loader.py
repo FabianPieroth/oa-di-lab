@@ -14,11 +14,12 @@ class ProcessData(object):
     process_raw:    Process the raw data in the input folder and load them into processed folder
     """
 
-    def __init__(self, train_ratio, process_raw_data=False, do_flip = False, do_deform = False):
+    def __init__(self, train_ratio, process_raw_data=False, do_flip = False, do_deform = False, do_blur = False):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
         self.do_flip = do_flip
         self.do_deform = do_deform
+        self.do_blur = do_blur
 
         project_root_dir = Path().resolve().parents[1]  # root directory
         self.dir_raw_in = project_root_dir / 'data' / 'raw' / 'new_in'
@@ -98,6 +99,7 @@ class ProcessData(object):
         # load the already preprocessed data
         pass
         # return df
-    def augment_data(self):
+    def augment_data(self, augment_oa = False, augment_us = False):
+
         pass
 
