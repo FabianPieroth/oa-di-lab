@@ -12,13 +12,16 @@ class ProcessData(object):
     TODO: Description of data loader in general; keep it growing
     train_ratio:    Gives the train and validation split for the model
     process_raw:    Process the raw data in the input folder and load them into processed folder
+    image_type:     Either 'US' or 'OA' to select which data should be loaded
     """
 
-    def __init__(self, train_ratio, process_raw_data=False, do_flip = False, do_deform = False):
+    def __init__(self, train_ratio, image_type, process_raw_data=False, do_flip = False, do_deform = False):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
         self.do_flip = do_flip
         self.do_deform = do_deform
+
+        self.image_type = image_type
 
         project_root_dir = Path().resolve().parents[1]  # root directory
         self.dir_raw_in = project_root_dir / 'data' / 'raw' / 'new_in'
@@ -39,6 +42,9 @@ class ProcessData(object):
         if self.process_raw:
             self._process_raw_data()
 
+        X,Y = self._load_processed_data()
+        print(X.shape)
+        print(Y.shape)
         # return X_train, y_train, X_test, y_test, df_complete
 
     def _process_raw_data(self):
@@ -95,9 +101,36 @@ class ProcessData(object):
         # return ...
 
     def _load_processed_data(self):
-        # load the already preprocessed data
-        pass
-        # return df
+        # load the already preprocessed data and store it into X (low) and Y (high)
+        if self.image_type not in ['US','OA']:
+            sys.exit("Error: No valid image_type selected!")
+        else:
+            if(self.image_type=='US'):
+                end_folder = 'ultrasound'
+            else:
+                end_folder = 'optoacoustic'
+            in_files = [s for s in os.listdir(self.dir_processed/end_folder) if '.DS_' not in s]
+            print(self.dir_processed / end_folder)
+            X = np.array(
+                [np.array(self._load_file_to_numpy(folder_name=self.dir_processed / end_folder,
+                                                   file_name=fname,
+                                                   image_sign=self.image_type + '_low')) for fname in in_files])
+            Y = np.array(
+                [np.array(self._load_file_to_numpy(folder_name=self.dir_processed/end_folder,
+                                                   file_name=fname,
+                                                   image_sign=self.image_type + '_high')) for fname in in_files])
+
+        return X, Y
+
+    def _load_file_to_numpy(self,folder_name, file_name, image_sign):
+        # helper function to load and read the data
+        with open(folder_name / file_name, 'rb') as handle:
+            sample = pickle.load(handle)
+
+        sample_array = [value for key, value in sample.items() if image_sign in key][0]
+
+        return sample_array
+
     def augment_data(self):
         pass
 
