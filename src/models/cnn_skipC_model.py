@@ -6,7 +6,10 @@ from torch.nn import ConvTranspose2d
 from torch import nn
 from torch.nn.functional import relu
 
+
+
 class cnn_skipC_model(nn.Module):
+
 
     def __init__(self,
                  criterion=nn.MSELoss(),
@@ -16,7 +19,8 @@ class cnn_skipC_model(nn.Module):
 
         super(AwesomeImageTranslator1000, self).__init__()
         self.conv = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1, padding=2).double()
-        self.deconv = ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1, padding=2).double()
+        self.deconv = ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1,
+                                      padding=2).double()
 
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -32,7 +36,31 @@ class cnn_skipC_model(nn.Module):
         out = relu(out)
         return out
 
-    def train_model(self, X, y, test_in=None, test_target=None, epochs=100):
+    def train_model(self, X, y, test_in=None, test_target=None, current_epoch=None):
+
+        def closure():
+            self.optimizer.zero_grad()
+            out = self.forward(X)
+            loss = self.criterion(out, y)
+            if current_epoch is not None:
+                sys.stdout.write('\r' + str(current_epoch) + str(i) + ' |  loss : ' + str(loss.item()))
+            else:
+                sys.stdout.write('\r |  loss : ' + str(loss.item()))
+            # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
+            self.train_loss.append(loss.item())
+            loss.backward()
+            return loss
+
+        self.optimizer.step(closure)
+        # calculating the test_loss
+        if test_in is not None and test_target is not None:
+            with torch.no_grad():
+                test_out = self.forward(test_in)
+                test_loss = self.criterion(test_out.reshape(-1, self.out_size), test_target)
+                self.test_loss.append(test_loss.item())
+        return
+
+    def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         self.epochs = epochs
         print('start training')
         print('-----------------------------------------')
@@ -56,6 +84,4 @@ class cnn_skipC_model(nn.Module):
                     self.test_loss.append(test_loss.item())
         print('\n-----------------------------------------')
         return
-
-
 
