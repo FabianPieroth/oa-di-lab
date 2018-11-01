@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
+import random
+from PIL import Image
+import skimage.filters as skf
 
 ##### Elastic Deformation #######
 
@@ -116,6 +119,53 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
 
     return deformed_image1, deformed_image2
 
+##### Crop and stretch #####
+
+def crop_stretch_helper(in_image, side, crop_size):
+    if side == 1:
+        cropped = in_image.crop((crop_size, 0, in_image.size[0], in_image.size[1] - crop_size))
+        fnew = cropped.resize(in_image.size)
+    if side == 2:
+        cropped = in_image.crop((0, 0, in_image.size[0] - crop_size, in_image.size[1] - crop_size))
+        fnew = cropped.resize(in_image.size)
+
+    return fnew
 
 
+def crop_stretch(in_image1, in_image2, rseed):
+    random.seed(rseed)
+    size = random.randint(25, 40)
+    side = random.randint(1, 2)
+    aug_img = crop_stretch_helper(in_image1, side, size)
+    aug_label = crop_stretch_helper(in_image2, side, size)
+
+    return aug_img, aug_label
+
+####### Blurring ############
+
+def blur_helper(image, sigma = 2):
+    """ blurs the input image by applying a gaussian filter with the specified sigma (only use for US data)
+        input: image: array of (N,N)
+               sigma: int specifying gaussian filter
+        output: transformed_image"""
+    shape = image.shape
+    if len(shape) == 2:
+        transformed_image = skf.gaussian(image, sigma = sigma)
+    else:
+        transformed_image = np.empty_like(image)
+        for channel in range(shape[2]):
+            transformed_image[:,:,channel] = skf.gaussian(image[:,:,channel], sigma = sigma)
+    return(transformed_image)
+
+
+def blur(image1, image2, rseed, lower_lim = 1, upper_lim = 3):
+    """ blurs image1 with a blur_helper, only use for US data
+        input: image1: the image to be blurred
+               image2: the target image, not to be blurred
+               lower_lim, upper_lim: ints lower and upper lim for the sigma for the gaussian filter
+        output: transformed_image1, image2"""
+    random.seed(rseed)
+    sig = np.random.randint(lower_lim, upper_lim + 1)
+    transformed_image1 = blur_helper(image1, sigma = sig)
+    return transformed_image1, image2
 
