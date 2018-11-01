@@ -1,12 +1,15 @@
 import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
+
+from skimage.transform import resize
+
 import random
-from PIL import Image
+
 import skimage.filters as skf
 
-##### Elastic Deformation #######
 
+##### Elastic Deformation #######
 
 # deform function
 def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
@@ -123,13 +126,17 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
 
 def crop_stretch_helper(in_image, side, crop_size):
     if side == 1:
-        cropped = in_image.crop((crop_size, 0, in_image.size[0], in_image.size[1] - crop_size))
-        fnew = cropped.resize(in_image.size)
-    if side == 2:
-        cropped = in_image.crop((0, 0, in_image.size[0] - crop_size, in_image.size[1] - crop_size))
-        fnew = cropped.resize(in_image.size)
+        cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
 
-    return fnew
+        resized = resize(cropped, (in_image.shape),
+                         anti_aliasing=True)
+    if side == 2:
+        cropped = in_image[crop_size:in_image.shape[0], crop_size:in_image.shape[1]]
+
+        resized = resize(cropped, (in_image.shape),
+                         anti_aliasing=True)
+
+    return resized
 
 
 def crop_stretch(in_image1, in_image2, rseed):
@@ -140,6 +147,7 @@ def crop_stretch(in_image1, in_image2, rseed):
     aug_label = crop_stretch_helper(in_image2, side, size)
 
     return aug_img, aug_label
+
 
 ####### Blurring ############
 
@@ -168,4 +176,5 @@ def blur(image1, image2, rseed, lower_lim = 1, upper_lim = 3):
     sig = np.random.randint(lower_lim, upper_lim + 1)
     transformed_image1 = blur_helper(image1, sigma = sig)
     return transformed_image1, image2
+
 
