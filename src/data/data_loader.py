@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import scipy.io
 import pickle
+import random
 import data.augmentation
 
 
@@ -13,11 +14,20 @@ class ProcessData(object):
     train_ratio:    Gives the train and validation split for the model
     process_raw:    Process the raw data in the input folder and load them into processed folder
     image_type:     Either 'US' or 'OA' to select which data should be loaded
+    do_augment:     Do the augmentation and save them in the correspodning folders
     """
 
-    def __init__(self, train_ratio, image_type, process_raw_data=False, do_flip = False, do_deform = False, do_blur = False):
+    def __init__(self,
+                 train_ratio,
+                 image_type,
+                 do_augment=False,
+                 process_raw_data=False,
+                 do_flip=False,
+                 do_deform=False,
+                 do_blur=False):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
+        self.do_augment = do_augment
         self.do_flip = do_flip
         self.do_deform = do_deform
         self.do_blur = do_blur
@@ -26,8 +36,8 @@ class ProcessData(object):
 
         project_root_dir = Path().resolve().parents[1]  # root directory
         self.dir_raw_in = project_root_dir / 'data' / 'raw' / 'new_in'
-        print(project_root_dir)
-        self.dir_processed = project_root_dir / 'data' / 'processed' / 'processed_all'
+        self.dir_processed_all = project_root_dir / 'data' / 'processed' / 'processed_all'
+        self.dir_processed = project_root_dir / 'data' / 'processed'
         self.all_folder = False  # check if raw folder was already processed
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
@@ -43,10 +53,25 @@ class ProcessData(object):
         if self.process_raw:
             self._process_raw_data()
 
-        X,Y = self._load_processed_data()
-        print(X.shape)
-        print(Y.shape)
-        # return X_train, y_train, X_test, y_test, df_complete
+        if self.do_augment:
+            self.augment_data()
+
+        # get the original file names, split them up to validation and training and write them into self
+        self.original_file_names = self._retrieve_original_file_names()
+        self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
+        self._add_augmented_file_names_to_train()
+        self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
+
+    def batch_names(self, batch_size):
+        # give a list and return the corresponding batch names
+        self.train_batch_chunks = np.array_split(np.array(self.train_file_names),
+                                                 int(len(self.train_file_names) / batch_size))
+        self.batch_number = len(self.train_batch_chunks)
+
+    def create_train_batches(self, batch_names):
+        # return the batches
+        X, Y = self._load_processed_data(full_file_names=batch_names)
+        return X, Y
 
     def _process_raw_data(self):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
@@ -54,8 +79,8 @@ class ProcessData(object):
         print("Preprocess raw data")
         if not self.all_folder:
             for sub in in_directories:
-                if (next((True for s in os.listdir(self.dir_processed / 'ultrasound') if sub in s), False)
-                    and next((True for s in os.listdir(self.dir_processed / 'optoacoustic') if sub in s), False)):
+                if (next((True for s in os.listdir(self.dir_processed_all / 'ultrasound') if sub in s), False)
+                    and next((True for s in os.listdir(self.dir_processed_all / 'optoacoustic') if sub in s), False)):
                     in_directories.remove(sub)
 
         for chunk_folder in in_directories:
@@ -74,10 +99,8 @@ class ProcessData(object):
                         name_us_save = 'US_' + chunk_folder + '_' + sample_folder + '_ch' + str(i)
                         dict_us_single = {name_us_low: us_raw['US_low'][:, :, i],
                                           name_us_high: us_raw['US_high'][:, :, i]}
-                        with open(self.dir_processed / 'ultrasound' / name_us_save, 'wb') as handle:
-                            pickle.dump(dict_us_single, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                        #np.save(self.dir_processed / 'ultrasound' / name_us_save, dict_us_single)
-                    #handle.close()
+                        self._save_dict_with_pickle(file=dict_us_single,
+                                                    folder_name='ultrasound', file_name=name_us_save)
 
                 if oa_file and self.process_oa:
                     oa_raw = scipy.io.loadmat(self.dir_raw_in / chunk_folder / sample_folder / oa_file[0])
@@ -86,52 +109,77 @@ class ProcessData(object):
                     name_oa_save = 'OA_' + chunk_folder + '_' + sample_folder
                     dict_oa = {name_oa_low: oa_raw['OA_low'],
                                name_oa_high: oa_raw['OA_high']}
-                    with open(self.dir_processed / 'optoacoustic' / name_oa_save, 'wb') as f:
-                        pickle.dump(dict_oa, f, protocol=pickle.HIGHEST_PROTOCOL)
-                    #np.save(self.dir_processed / 'optoacoustic' / name_oa_save, dict_oa)
-                #f.close()
+                    self._save_dict_with_pickle(file=dict_oa, folder_name='optoacoustic', file_name=name_oa_save)
 
-    def _split_data(self, df):
-        train_size = int(len(df) * self.train_ratio)
-        df_train, df_test = df[:train_size], df[train_size:]
-        return df_train, df_test
+    def _train_val_split(self, original_file_names):
+        # TODO: unify this seed with all other seeds
+        random.seed(42)
+        original_file_names = random.sample(original_file_names, len(original_file_names))
+        train_size = int(len(original_file_names) * self.train_ratio)
+        self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
+        return self.train_names, val_names
 
-    def _partition_for_cnn(self, df):
-        # returns the data in the format for the model
-        pass
-        # return ...
-
-    def _load_processed_data(self):
-        # load the already preprocessed data and store it into X (low) and Y (high)
-        if self.image_type not in ['US','OA']:
+    def _retrieve_original_file_names(self):
+        # get all the complete file names (path/filename) of the selected data to train on
+        if self.image_type not in ['US', 'OA']:
             sys.exit("Error: No valid image_type selected!")
         else:
-            if(self.image_type=='US'):
+            if self.image_type == 'US':
                 end_folder = 'ultrasound'
             else:
                 end_folder = 'optoacoustic'
-            in_files = [s for s in os.listdir(self.dir_processed/end_folder) if '.DS_' not in s]
-            print(self.dir_processed / end_folder)
-            X = np.array(
-                [np.array(self._load_file_to_numpy(folder_name=self.dir_processed / end_folder,
-                                                   file_name=fname,
-                                                   image_sign=self.image_type + '_low')) for fname in in_files])
-            Y = np.array(
-                [np.array(self._load_file_to_numpy(folder_name=self.dir_processed/end_folder,
-                                                   file_name=fname,
-                                                   image_sign=self.image_type + '_high')) for fname in in_files])
+        file_names = []
+        # original images
+        file_names = self._names_to_list(folder_name=self.dir_processed_all / end_folder, name_list=file_names)
+        return file_names
+
+    def _add_augmented_file_names_to_train(self):
+        # add the file names of the augmented data to self.train_file_names
+        path_augmented = self.dir_processed / 'augmented'
+        if self.do_augment:
+            if self.do_blur:
+                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'blur',
+                                                            name_list=self.train_file_names)
+            if self.do_deform:
+                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'deform',
+                                                            name_list=self.train_file_names)
+            if self.do_flip:
+                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'flip',
+                                                            name_list=self.train_file_names)
+
+    def _names_to_list(self, folder_name, name_list):
+        # extract file names from folder and add path name to it
+        file_names = [s for s in os.listdir(folder_name) if '.DS_' not in s]
+        # add path to file names and add them to list
+        name_list.extend([str(folder_name) + '/' + s for s in file_names])
+        return name_list
+
+    def _load_processed_data(self, full_file_names):
+        # load the already preprocessed data and store it into X (low) and Y (high) numpy array
+        # full_file_names:  iterable list of complete names: so path/filename
+
+        X = np.array(
+            [np.array(self._load_file_to_numpy(full_file_name=fname,
+                                                image_sign=self.image_type + '_low')) for fname in full_file_names])
+        Y = np.array(
+            [np.array(self._load_file_to_numpy(full_file_name=fname,
+                                               image_sign=self.image_type + '_high')) for fname in full_file_names])
 
         return X, Y
 
-    def _load_file_to_numpy(self,folder_name, file_name, image_sign):
-        # helper function to load and read the data
-        with open(folder_name / file_name, 'rb') as handle:
+    def _load_file_to_numpy(self, full_file_name, image_sign):
+        # helper function to load and read the data; pretty inefficient right now
+        #  as we need to open every dict two times
+        with open(full_file_name, 'rb') as handle:
             sample = pickle.load(handle)
-
         sample_array = [value for key, value in sample.items() if image_sign in key][0]
-
         return sample_array
 
-    def augment_data(self, augment_oa = False, augment_us = False):
-        pass
+    def _save_dict_with_pickle(self, file, folder_name, file_name):
+        # use this to save pairs of low and high quality pictures
+        with open(self.dir_processed_all / folder_name / file_name, 'wb') as handle:
+            pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def augment_data(self, augment_oa = False, augment_us = False):
+        print("Augment Data is not doing anything yet.")
+        pass
