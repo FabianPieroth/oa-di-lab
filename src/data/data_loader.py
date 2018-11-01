@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import scipy.io
 import pickle
-import src.data.augmentation
+import data.augmentation
 
 
 class ProcessData(object):

@@ -1,4 +1,4 @@
-from src.data.data_loader import ProcessData
+from data.data_loader import ProcessData
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
