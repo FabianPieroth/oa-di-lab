@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
 
-from skimage.transform import rescale, resize, downscale_local_mean
+from skimage.transform import resize
 
 import random
 
