@@ -203,16 +203,12 @@ class ProcessData(object):
             sum_image_low = np.zeros([401, 401])
             # do loop:
             for file in self.train_file_names:
-                #print(file)
                 image_sign = 'US_high'
                 # get US_high image
                 image = self._load_file_to_numpy(file, image_sign)
                 # check if min and max have to be updated, if yes, do so
-                if np.max(image) > max_data_high:
-                    max_data_high = np.max(image)
-                if np.min(image) < min_data_high:
-                    min_data_high = np.min(image)
-                #print(min_data_high, max_data_high)
+                if np.max(image) > max_data_high: max_data_high = np.max(image)
+                if np.min(image) < min_data_high: min_data_high = np.min(image)
                 # add image to sum (for mean)
                 sum_image_high += image
 
@@ -220,11 +216,8 @@ class ProcessData(object):
                 # get US_low image
                 image = self._load_file_to_numpy(file, image_sign)
                 # check if min and max have to be updated, if yes, do so
-                if np.max(image) > max_data_low:
-                    max_data_low = np.max(image)
-                if np.min(image) < min_data_low:
-                    min_data_low = np.min(image)
-                #print(min_data_low, max_data_low)
+                if np.max(image) > max_data_low: max_data_low = np.max(image)
+                if np.min(image) < min_data_low: min_data_low = np.min(image)
                 # add image to sum (for mean)
                 sum_image_low += image
 
@@ -233,11 +226,12 @@ class ProcessData(object):
             mean_image_high = sum_image_high / i
             mean_image_low = sum_image_low / i
 
-            # save the parameters
             # construct dictionaries
             US_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
             US_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
+            #print(US_scale_params)
 
+            #save the parameters
             with open(self.dir_params / 'scale_and_center' / 'US_scale_params', 'wb') as handle:
                 pickle.dump(US_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params / 'scale_and_center' / 'US_mean_images', 'wb') as handle:
