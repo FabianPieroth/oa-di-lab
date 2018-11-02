@@ -191,53 +191,75 @@ class ProcessData(object):
 
 
     def _get_scale_center(self):
+        # Initialize values
+        i = 0
         if self.image_type == 'US':
-            # Initialize values
-            i = 0
-            max_data_high = -np.inf
-            min_data_high = np.inf
-            max_data_low = -np.inf
-            min_data_low = np.inf
-            sum_image_high = np.zeros([401, 401])
-            sum_image_low = np.zeros([401, 401])
-            # do loop:
-            for file in self.train_file_names:
-                image_sign = 'US_high'
-                # get US_high image
-                image = self._load_file_to_numpy(file, image_sign)
-                # check if min and max have to be updated, if yes, do so
-                if np.max(image) > max_data_high: max_data_high = np.max(image)
-                if np.min(image) < min_data_high: min_data_high = np.min(image)
-                # add image to sum (for mean)
-                sum_image_high += image
+            temp = 1
+            shape_for_mean_image = [401,401]
+        else:
+            temp = np.ones(28)
+            shape_for_mean_image = [401, 401, 28]
+        max_data_high = -np.inf*temp
+        min_data_high = np.inf*temp
+        max_data_low = -np.inf*temp
+        min_data_low = np.inf*temp
+        sum_image_high = np.zeros(shape_for_mean_image)
+        sum_image_low = np.zeros(shape_for_mean_image)
+        # do loop:
+        for file in self.train_file_names:
+            image_sign = self.image_type + '_high'
+            # get high image
+            image = self._load_file_to_numpy(file, image_sign)
+            # get maximums/minimums of the image
+            if self.image_type == 'US':
+                maxs = np.max(image)
+                mins = np.min(image)
+            else:
+                maxs = np.amax(image, axis=(0, 1))
+                mins = np.amin(image, axis=(0, 1))
+            # update maximums
+            max_data_high = np.maximum(maxs, max_data_high)
+            min_data_high = np.minimum(mins, min_data_high)
+            # add image to sum (for mean)
+            sum_image_high += image
 
-                image_sign = 'US_low'
-                # get US_low image
-                image = self._load_file_to_numpy(file, image_sign)
-                # check if min and max have to be updated, if yes, do so
-                if np.max(image) > max_data_low: max_data_low = np.max(image)
-                if np.min(image) < min_data_low: min_data_low = np.min(image)
-                # add image to sum (for mean)
-                sum_image_low += image
+            image_sign = self.image_type + '_low'
+            # get low image
+            image = self._load_file_to_numpy(file, image_sign)
+            if self.image_type == 'US':
+                maxs = np.max(image)
+                mins = np.min(image)
+            else:
+                maxs = np.amax(image, axis=(0, 1))
+                mins = np.amin(image, axis=(0, 1))
+            # update maximums
+            max_data_low = np.maximum(maxs, max_data_low)
+            min_data_low = np.minimum(mins, min_data_low)
+            # add image to sum (for mean)
+            sum_image_low += image
+            # increase counter
+            i += 1
+        # calculate mean images
+        mean_image_high = sum_image_high / i
+        mean_image_low = sum_image_low / i
 
-                i += 1
-            # calculate mean images
-            mean_image_high = sum_image_high / i
-            mean_image_low = sum_image_low / i
-
-            # construct dictionaries
+        # construct dictionaries and save parameters
+        if self.image_type == 'US':
             US_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
             US_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
-            #print(US_scale_params)
-
-            #save the parameters
             with open(self.dir_params / 'scale_and_center' / 'US_scale_params', 'wb') as handle:
                 pickle.dump(US_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params / 'scale_and_center' / 'US_mean_images', 'wb') as handle:
                 pickle.dump(US_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            OA_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
+            OA_mean_images = {'OA_low': np.moveaxis(mean_image_low,2,0), 'OA_high': np.moveaxis(mean_image_high,2,0)}
+            ### CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
+            with open(self.dir_params / 'scale_and_center' / 'OA_scale_params', 'wb') as handle:
+                pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(self.dir_params / 'scale_and_center' / 'OA_mean_images', 'wb') as handle:
+                pickle.dump(OA_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        if self.image_type == 'OA':
-            print('get scale and center not implemented yet for OA data')
 
 
 
