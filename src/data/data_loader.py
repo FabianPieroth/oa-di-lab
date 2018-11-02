@@ -44,6 +44,7 @@ class ProcessData(object):
         self.process_us = True  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center # get scaling and mean image and store them
+        self.dir_params = project_root_dir/ 'params'
 
 
         # run _prepare_data which calls all other needed methods
@@ -153,9 +154,7 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(folder_name=path_augmented / 'flip',
                                                             name_list=self.train_file_names)
 
-    def _get_scale_center(self):
-        print('Hello')
-        pass
+
 
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
@@ -189,6 +188,63 @@ class ProcessData(object):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_processed_all / folder_name / file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+    def _get_scale_center(self):
+        print('Hello')
+        if self.image_type == 'US':
+            # Initialize values
+            i = 0
+            max_data_high = -np.inf
+            min_data_high = np.inf
+            max_data_low = -np.inf
+            min_data_low = np.inf
+            sum_image_high = np.zeros([401, 401])
+            sum_image_low = np.zeros([401, 401])
+            # do loop:
+            for file in self.train_file_names:
+                #print(file)
+                image_sign = 'US_high'
+                # get US_high image
+                image = self._load_file_to_numpy(file, image_sign)
+                # check if min and max have to be updated, if yes, do so
+                if np.max(image) > max_data_high:
+                    max_data_high = np.max(image)
+                if np.min(image) < min_data_high:
+                    min_data_high = np.min(image)
+                #print(min_data_high, max_data_high)
+                # add image to sum (for mean)
+                sum_image_high += image
+
+                image_sign = 'US_low'
+                # get US_low image
+                image = self._load_file_to_numpy(file, image_sign)
+                # check if min and max have to be updated, if yes, do so
+                if np.max(image) > max_data_low:
+                    max_data_low = np.max(image)
+                if np.min(image) < min_data_low:
+                    min_data_low = np.min(image)
+                #print(min_data_low, max_data_low)
+                # add image to sum (for mean)
+                sum_image_low += image
+
+                i += 1
+            # calculate mean images
+            mean_image_high = sum_image_high / i
+            mean_image_low = sum_image_low / i
+
+            # save the parameters
+            # construct dictionaries
+            US_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
+            US_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
+
+            with open(self.dir_params / 'scale_and_center' / 'US_scale_params', 'wb') as handle:
+                pickle.dump(US_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(self.dir_params / 'scale_and_center' / 'US_mean_images', 'wb') as handle:
+                pickle.dump(US_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        if self.image_type == 'OA':
+            print('get scale and center not implemented yet for OA data')
 
     def augment_data(self, augment_oa = False, augment_us = False):
         print("Augment Data is not doing anything yet.")
