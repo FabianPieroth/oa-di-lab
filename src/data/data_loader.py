@@ -191,7 +191,6 @@ class ProcessData(object):
 
 
     def _get_scale_center(self):
-        print('Hello')
         if self.image_type == 'US':
             # Initialize values
             i = 0
@@ -239,6 +238,8 @@ class ProcessData(object):
 
         if self.image_type == 'OA':
             print('get scale and center not implemented yet for OA data')
+
+
 
     def augment_data(self, augment_oa = False, augment_us = False):
         print("Augment Data is not doing anything yet.")
