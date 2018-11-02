@@ -24,7 +24,8 @@ class ProcessData(object):
                  process_raw_data=False,
                  do_flip=False,
                  do_deform=False,
-                 do_blur=False):
+                 do_blur=False,
+                 get_scale_center = False):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
         self.do_augment = do_augment
@@ -42,6 +43,8 @@ class ProcessData(object):
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
+        self.get_scale_center = get_scale_center # get scaling and mean image and store them
+
 
         # run _prepare_data which calls all other needed methods
         self._prepare_data()
@@ -60,6 +63,9 @@ class ProcessData(object):
         self.original_file_names = self._retrieve_original_file_names()
         self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
         self._add_augmented_file_names_to_train()
+        if self.get_scale_center:
+            self._get_scale_center()
+
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
 
     def batch_names(self, batch_size):
@@ -146,6 +152,10 @@ class ProcessData(object):
             if self.do_flip:
                 self.train_file_names = self._names_to_list(folder_name=path_augmented / 'flip',
                                                             name_list=self.train_file_names)
+
+    def _get_scale_center(self):
+        print('Hello')
+        pass
 
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
