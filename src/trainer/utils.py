@@ -74,17 +74,14 @@ def load_params(image_type, param_type):
                 param_type: 'scale' or 'mean_image' (maybe more options later)
         output: params_low, params_high: the parameters."""
     dir_params = Path().resolve().parents[1] / 'params'
-    if image_type == 'US':
-        if param_type == 'scale':
-            filepath = dir_params / 'scale_and_center' / 'US_scale_params'
-            with open(filepath, 'rb') as handle:
-                params = pickle.load(handle)
-        elif param_type == 'mean_image':
-            filepath = dir_params / 'scale_and_center' / 'US_mean_images'
-            with open(filepath, 'rb') as handle:
-                params = pickle.load(handle)
-        else: print('invalid parameter type')
-        params_low = params['US_low']
-        params_high = params['US_high']
-    else: print('scale and center not yet implemented for OA data')
+    if param_type in ['scale_params', 'mean_images']:
+        file_name = image_type + '_' + param_type
+        filepath = dir_params / 'scale_and_center' / file_name
+        with open(filepath, 'rb') as handle:
+            params = pickle.load(handle)
+    else: print('invalid parameter type')
+    dic_key_low = image_type + '_low'
+    dic_key_high = image_type + '_high'
+    params_low = params[dic_key_low]
+    params_high = params[dic_key_high]
     return params_low, params_high
