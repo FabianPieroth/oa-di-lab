@@ -1,10 +1,9 @@
 from data.data_loader import ProcessData
 import trainer.utils as utils
-from matplotlib import pyplot as plt
 #import numpy as np
 
 class CNN_skipCo_trainer(object):
-    def __init__(self, image_type='OA'):
+    def __init__(self, image_type='US'):
         self.image_type = image_type
         self.dataset = ProcessData(train_ratio=0.7,process_raw_data=False, image_type=self.image_type, get_scale_center=False)
 
@@ -23,8 +22,8 @@ class CNN_skipCo_trainer(object):
             print("The input batch:")
             print(X.shape)
             # scale and center the batch
-        #    scale_center_X = utils.scale_and_center(X, scale_params_low, mean_image_low, image_type = self.image_type)
-        #    scale_center_Y = utils.scale_and_center(Y, scale_params_high, mean_image_high, image_type=self.image_type)
+            scale_center_X = utils.scale_and_center(X, scale_params_low, mean_image_low, image_type = self.image_type)
+            scale_center_Y = utils.scale_and_center(Y, scale_params_high, mean_image_high, image_type=self.image_type)
 
             ## how to undo the scaling:
             #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.image_type)
