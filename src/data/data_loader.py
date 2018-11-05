@@ -41,11 +41,13 @@ class ProcessData(object):
 
         self.image_type = image_type
 
-        project_root_dir = Path().resolve().parents[1]  # root directory
-        self.dir_raw_in = project_root_dir / 'data' / 'raw' / 'new_in'
-        self.dir_processed_all = project_root_dir / 'data' / 'processed' / 'processed_all'
-        self.dir_processed = project_root_dir / 'data' / 'processed'
-        self.dir_augmented = project_root_dir / 'data' / 'processed'/'augmented'
+        project_root_dir = str(Path().resolve().parents[1])  # root directory
+        #project_root_dir = '/mnt/local/mounted'
+
+        self.dir_raw_in = project_root_dir + '/data' + '/raw' + '/new_in'
+        self.dir_processed_all = project_root_dir + '/data' + '/processed' + '/processed_all'
+        self.dir_processed = project_root_dir + '/data' + '/processed'
+        self.dir_augmented = project_root_dir + '/data' + '/processed'+ '/augmented'
         self.all_folder = False  # check if raw folder was already processed
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
@@ -53,7 +55,7 @@ class ProcessData(object):
         self.augment_us = True # augment processed us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center # get scaling and mean image and store them
-        self.dir_params = project_root_dir/ 'params'
+        self.dir_params = project_root_dir+ '/params'
 
 
         # run _prepare_data which calls the methods for preparartion, also augmentation etc.
@@ -95,21 +97,21 @@ class ProcessData(object):
         print("Preprocess raw data")
         if not self.all_folder:
             for sub in in_directories:
-                if (next((True for s in os.listdir(self.dir_processed_all / 'ultrasound') if sub in s), False)
-                    and next((True for s in os.listdir(self.dir_processed_all / 'optoacoustic') if sub in s), False)):
+                if (next((True for s in os.listdir(self.dir_processed_all + '/ultrasound') if sub in s), False)
+                    and next((True for s in os.listdir(self.dir_processed_all + '/optoacoustic') if sub in s), False)):
                     in_directories.remove(sub)
                     print("As preprocessed data already exist, skip Folder:" + sub)
 
         for chunk_folder in in_directories:
-            sample_directories = [s for s in os.listdir(self.dir_raw_in / chunk_folder) if '.' not in s]
+            sample_directories = [s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder) if '.' not in s]
             print("Processing data from raw input folder: " + chunk_folder)
 
             for sample_folder in sample_directories:
-                in_files = os.listdir(self.dir_raw_in / chunk_folder / sample_folder)
+                in_files = os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
                 us_file = [s for s in in_files if 'US_' in s]
                 oa_file = [s for s in in_files if 'OA_' in s]
                 if us_file and self.process_us:
-                    us_raw = scipy.io.loadmat(self.dir_raw_in / chunk_folder / sample_folder / us_file[0])
+                    us_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder + '/' + us_file[0])
                     for i in range(us_raw['US_low'].shape[2]):
                         name_us_low = 'US_low_' + chunk_folder + '_' + sample_folder + '_ch' + str(i)
                         name_us_high = 'US_high_' + chunk_folder + '_' + sample_folder + '_ch' + str(i)  #
@@ -120,7 +122,7 @@ class ProcessData(object):
                                                     folder_name='processed_all/ultrasound', file_name=name_us_save)
 
                 if oa_file and self.process_oa:
-                    oa_raw = scipy.io.loadmat(self.dir_raw_in / chunk_folder / sample_folder / oa_file[0])
+                    oa_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder + '/' + oa_file[0])
                     name_oa_low = 'OA_low_' + chunk_folder + '_' + sample_folder
                     name_oa_high = 'OA_high_' + chunk_folder + '_' + sample_folder
                     name_oa_save = 'OA_' + chunk_folder + '_' + sample_folder
@@ -147,12 +149,12 @@ class ProcessData(object):
                 end_folder = 'optoacoustic'
         file_names = []
         # original images
-        file_names = self._names_to_list(folder_name=self.dir_processed_all / end_folder, name_list=file_names)
+        file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + end_folder, name_list=file_names)
         return file_names
 
     def _add_augmented_file_names_to_train(self):
         # add the file names of the augmented data to self.train_file_names
-        path_augmented = self.dir_processed / 'augmented'
+        path_augmented = self.dir_processed + '/augmented'
         if self.image_type == 'US':
             end_folder = 'ultrasound'
         else:
@@ -160,13 +162,13 @@ class ProcessData(object):
 
         if self.do_augment:
             if self.do_blur:
-                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'blur' / end_folder,
+                self.train_file_names = self._names_to_list(folder_name=path_augmented + '/blur' + '/' + end_folder,
                                                             name_list=self.train_file_names)
             if self.do_deform:
-                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'deform' / end_folder,
+                self.train_file_names = self._names_to_list(folder_name=path_augmented + '/deform' + '/' + end_folder,
                                                             name_list=self.train_file_names)
             if self.do_flip:
-                self.train_file_names = self._names_to_list(folder_name=path_augmented / 'flip' / end_folder,
+                self.train_file_names = self._names_to_list(folder_name=path_augmented + '/flip' + '/' + end_folder,
                                                             name_list=self.train_file_names)
 
 
@@ -201,7 +203,7 @@ class ProcessData(object):
 
     def _save_dict_with_pickle(self, file, folder_name, file_name):
         # use this to save pairs of low and high quality pictures
-        with open(self.dir_processed / folder_name / file_name, 'wb') as handle:
+        with open(self.dir_processed + '/' + folder_name + '/' + file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def _augment_data(self):
@@ -212,7 +214,7 @@ class ProcessData(object):
 
         for chunk_folder in proc_directories:
 
-            aug_files = os.listdir(self.dir_processed_all / chunk_folder)
+            aug_files = os.listdir(self.dir_processed_all + '/' + chunk_folder)
             #print("chunk folder",chunk_folder)
             #print("to augment",aug_files)
 
@@ -227,9 +229,9 @@ class ProcessData(object):
             if us_file and self.image_type == 'US':
 
                 for file in us_file:
-                    X=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all/"ultrasound") + "/" + file,
+                    X=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all+ "/ultrasound") + "/" + file,
                                                image_sign=self.image_type+'_low')
-                    Y=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all/"ultrasound") + "/" + file,
+                    Y=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all + "/ultrasound") + "/" + file,
                                                image_sign=self.image_type+'_high')
                     print("file",file)
                     #print("Aug_Y",Y,file)
@@ -288,9 +290,9 @@ class ProcessData(object):
 
 
                 for file in oa_file:
-                    X = self._load_file_to_numpy(full_file_name= str(self.dir_processed_all/"optoacoustic") + "/" + file,
+                    X = self._load_file_to_numpy(full_file_name= str(self.dir_processed_all + "/optoacoustic") + "/" + file,
                                                  image_sign=self.image_type + '_low')
-                    Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all/"optoacoustic") + "/" + file,
+                    Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all + "/optoacoustic") + "/" + file,
                                                  image_sign=self.image_type + '_high')
                     # print("Aug_X", X, file)
                     # print("Aug_Y",Y,file)
@@ -395,16 +397,16 @@ class ProcessData(object):
         if self.image_type == 'US':
             US_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
             US_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
-            with open(self.dir_params / 'scale_and_center' / 'US_scale_params', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/US_scale_params', 'wb') as handle:
                 pickle.dump(US_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(self.dir_params / 'scale_and_center' / 'US_mean_images', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
                 pickle.dump(US_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             OA_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
             OA_mean_images = {'OA_low': mean_image_low, 'OA_high': mean_image_high}
             ### CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
-            with open(self.dir_params / 'scale_and_center' / 'OA_scale_params', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
                 pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(self.dir_params / 'scale_and_center' / 'OA_mean_images', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
                 pickle.dump(OA_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
