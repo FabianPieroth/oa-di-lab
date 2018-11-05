@@ -9,6 +9,7 @@ class CNN_skipCo_trainer(object):
         self.dataset = ProcessData(train_ratio=0.3,process_raw_data=True, do_augment=False, image_type='US', get_scale_center=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model()
+
         #self.logger = Logger(self)
 
     def fit(self):
@@ -18,7 +19,7 @@ class CNN_skipCo_trainer(object):
         mean_image_low, mean_image_high = utils.load_params(image_type=self.dataset.image_type, param_type="mean_images")
         print(mean_image_low.shape)
 
-
+        epochs=100
         for e in range(0, epochs):
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
@@ -36,6 +37,7 @@ class CNN_skipCo_trainer(object):
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
                 #unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high, mean_image_high, image_type=self.dataset.image_type)
 
+    '''
     epochs = 200
     net = AwesomeImageTranslator1000(learning_rate=0.001)
 
@@ -48,6 +50,7 @@ class CNN_skipCo_trainer(object):
             net.train_model(torch.from_numpy(np.array([batch]).reshape(batch_size, 1, 401, 401)),
                             torch.from_numpy(np.array([target]).reshape(batch_size, 1, 401, 401)), j)
     print('\n-----------------------------------------')
+    '''
     def predict(self):
         #self.model.predict()
 

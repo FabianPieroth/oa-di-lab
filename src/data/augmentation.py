@@ -127,6 +127,8 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
 ##### Crop and stretch #####
 
 def crop_stretch_helper(in_image, side, crop_size):
+    #helper function to crop both the input and target image by some crop size
+
     if side == 1:
         cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
 
@@ -179,4 +181,8 @@ def blur(image1, image2, rseed, lower_lim = 1, upper_lim = 3):
     transformed_image1 = blur_helper(image1, sigma = sig)
     return transformed_image1, image2
 
+def flip(image1,image2):
+    #flips boths images along the vertical axis
+
+    return np.flip(image1,axis=1), np.flip(image2,axis=1)
 
