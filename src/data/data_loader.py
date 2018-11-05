@@ -25,10 +25,10 @@ class ProcessData(object):
                  image_type,
                  do_augment=False,
                  process_raw_data=False,
-                 do_flip=False,
-                 do_deform=True,
-                 do_blur=True,
-                 do_crop=True,
+                 do_flip=True,
+                 do_deform=False,
+                 do_blur=False,
+                 do_crop=False,
                  get_scale_center=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer

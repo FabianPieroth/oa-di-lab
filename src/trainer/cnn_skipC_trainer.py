@@ -5,12 +5,9 @@ import numpy as np
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
-<<<<<<< HEAD
-        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False, do_augment=True, image_type='US')
+        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False, do_augment=True, image_type='OA', get_scale_center=True)
 
-=======
-        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=True, do_augment=True, image_type='US', get_scale_center=True)
->>>>>>> 5cc3a01e03e33bfce0fcc496114bc382c98c5038
+
         #self.logger = Logger(self)
 
     def fit(self):
