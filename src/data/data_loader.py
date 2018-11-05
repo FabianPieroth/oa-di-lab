@@ -28,7 +28,8 @@ class ProcessData(object):
                  do_flip=False,
                  do_deform=True,
                  do_blur=True,
-                 do_crop=True):
+                 do_crop=True,
+                 get_scale_center=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
@@ -51,6 +52,9 @@ class ProcessData(object):
         self.augment_oa = True # augment processed oa data
         self.augment_us = True # augment processed us data
         self.process_raw = process_raw_data  # call method _process_raw_data
+        self.get_scale_center = get_scale_center # get scaling and mean image and store them
+        self.dir_params = project_root_dir/ 'params'
+
 
         # run _prepare_data which calls the methods for preparartion, also augmentation etc.
         self._prepare_data()
@@ -69,6 +73,9 @@ class ProcessData(object):
         self.original_file_names = self._retrieve_original_file_names()
         self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
         self._add_augmented_file_names_to_train()
+        if self.get_scale_center:
+            self._get_scale_center()
+
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
 
     def batch_names(self, batch_size):
@@ -162,6 +169,8 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(folder_name=path_augmented / 'flip' / end_folder,
                                                             name_list=self.train_file_names)
 
+
+
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
         file_names = [s for s in os.listdir(folder_name) if '.DS_' not in s]
@@ -194,7 +203,6 @@ class ProcessData(object):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_processed / folder_name / file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 
     def _augment_data(self):
 
@@ -315,3 +323,74 @@ class ProcessData(object):
                                    name_oa_high: aug_Y}
                         self._save_dict_with_pickle(dict_oa, "augmented/crop/optoacoustic/", name_oa_save)
                 
+
+    def _get_scale_center(self):
+        # Initialize values
+        i = 0
+        if self.image_type == 'US':
+            temp = 1
+            shape_for_mean_image = [401,401]
+        else:
+            temp = np.ones(28)
+            shape_for_mean_image = [401, 401, 28]
+        max_data_high = -np.inf*temp
+        min_data_high = np.inf*temp
+        max_data_low = -np.inf*temp
+        min_data_low = np.inf*temp
+        sum_image_high = np.zeros(shape_for_mean_image)
+        sum_image_low = np.zeros(shape_for_mean_image)
+        # do loop:
+        for file in self.train_file_names:
+            image_sign = self.image_type + '_high'
+            # get high image
+            image = self._load_file_to_numpy(file, image_sign)
+            # get maximums/minimums of the image
+            if self.image_type == 'US':
+                maxs = np.max(image)
+                mins = np.min(image)
+            else:
+                maxs = np.amax(image, axis=(0, 1))
+                mins = np.amin(image, axis=(0, 1))
+            # update maximums
+            max_data_high = np.maximum(maxs, max_data_high)
+            min_data_high = np.minimum(mins, min_data_high)
+            # add image to sum (for mean)
+            sum_image_high += image
+
+            image_sign = self.image_type + '_low'
+            # get low image
+            image = self._load_file_to_numpy(file, image_sign)
+            if self.image_type == 'US':
+                maxs = np.max(image)
+                mins = np.min(image)
+            else:
+                maxs = np.amax(image, axis=(0, 1))
+                mins = np.amin(image, axis=(0, 1))
+            # update maximums
+            max_data_low = np.maximum(maxs, max_data_low)
+            min_data_low = np.minimum(mins, min_data_low)
+            # add image to sum (for mean)
+            sum_image_low += image
+            # increase counter
+            i += 1
+        # calculate mean images
+        mean_image_high = sum_image_high / i
+        mean_image_low = sum_image_low / i
+
+        # construct dictionaries and save parameters
+        if self.image_type == 'US':
+            US_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
+            US_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
+            with open(self.dir_params / 'scale_and_center' / 'US_scale_params', 'wb') as handle:
+                pickle.dump(US_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(self.dir_params / 'scale_and_center' / 'US_mean_images', 'wb') as handle:
+                pickle.dump(US_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            OA_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
+            OA_mean_images = {'OA_low': mean_image_low, 'OA_high': mean_image_high}
+            ### CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
+            with open(self.dir_params / 'scale_and_center' / 'OA_scale_params', 'wb') as handle:
+                pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(self.dir_params / 'scale_and_center' / 'OA_mean_images', 'wb') as handle:
+                pickle.dump(OA_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
