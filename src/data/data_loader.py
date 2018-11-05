@@ -25,10 +25,10 @@ class ProcessData(object):
                  image_type,
                  do_augment=False,
                  process_raw_data=False,
-                 do_flip=False,
-                 do_deform=True,
-                 do_blur=True,
-                 do_crop=True):
+                 do_flip=True,
+                 do_deform=False,
+                 do_blur=False,
+                 do_crop=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
@@ -262,11 +262,15 @@ class ProcessData(object):
                                    name_oa_high: aug_Y}
                         self._save_dict_with_pickle(dict_oa, "augmented/crop/ultrasound/", name_oa_save)
 
+                    if self.do_flip:
+                        aug_X, aug_Y = data.augmentation.flip(X, Y)
+                        name_oa_low = 'US_low_ultrasound_flip'
+                        name_oa_high = 'US_high_ultrasound_flip'
+                        name_oa_save = 'US_ultrasound_' + file + "_flip"
 
-
-
-
-
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/flip/ultrasound/", name_oa_save)
 
 
 
@@ -314,4 +318,14 @@ class ProcessData(object):
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
                         self._save_dict_with_pickle(dict_oa, "augmented/crop/optoacoustic/", name_oa_save)
+
+                    if self.do_flip:
+                        aug_X, aug_Y = data.augmentation.flip(X, Y)
+                        name_oa_low = 'OA_low_optoacoustic_flip'
+                        name_oa_high = 'OA_high_optoacoustic_flip'
+                        name_oa_save = 'OA_optoacoustic_' + file + "_flip"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/flip/optoacoustic/", name_oa_save)
                 

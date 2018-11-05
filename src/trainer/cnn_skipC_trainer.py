@@ -3,7 +3,7 @@ from data.data_loader import ProcessData
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
-        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=True, do_augment=True, image_type='US')
+        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False, do_augment=True, image_type='US')
 
         #self.logger = Logger(self)
 
