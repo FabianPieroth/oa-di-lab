@@ -1,10 +1,12 @@
-import sys
-import numpy as np
-from pathlib import Path
 import os
-import scipy.io
 import pickle
+import sys
+from pathlib import Path
+
+import numpy as np
+import scipy.io
 import data.augmentation
+import matplotlib.pyplot as plt
 
 
 class ProcessData(object):
@@ -15,12 +17,13 @@ class ProcessData(object):
     image_type:     Either 'US' or 'OA' to select which data should be loaded
     """
 
-    def __init__(self, train_ratio, image_type, process_raw_data=False, do_flip = False, do_deform = False, do_blur = False):
+    def __init__(self, train_ratio, image_type, process_raw_data=False, augment_data=True, do_flip = False, do_deform = True, do_blur = Truegit , do_crop = True):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
         self.do_flip = do_flip
         self.do_deform = do_deform
         self.do_blur = do_blur
+        self.do_crop = do_crop
 
         self.image_type = image_type
 
@@ -28,10 +31,15 @@ class ProcessData(object):
         self.dir_raw_in = project_root_dir / 'data' / 'raw' / 'new_in'
         print(project_root_dir)
         self.dir_processed_all = project_root_dir / 'data' / 'processed' / 'processed_all'
+        self.dir_processed = project_root_dir / 'data' / 'processed'
+        self.dir_augmented = project_root_dir / 'data' / 'processed'/'augmented'
         self.all_folder = False  # check if raw folder was already processed
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
+        self.augment_oa = True # augment processed oa data
+        self.augment_us = True # augment processed us data
         self.process_raw = process_raw_data  # call method _process_raw_data
+        self.augment_proc_data = augment_data  # call method _augment_data
 
         # run _prepare_data which calls all other needed methods
         self._prepare_data()
@@ -44,8 +52,12 @@ class ProcessData(object):
             self._process_raw_data()
 
         X,Y = self._load_processed_data()
+        #Aug_X,Aug_Y = self._augment_data(X,Y)
         print(X.shape)
         print(Y.shape)
+        if self.augment_proc_data:
+            self._augment_data()
+
         # return X_train, y_train, X_test, y_test, df_complete
 
     def _process_raw_data(self):
@@ -111,7 +123,7 @@ class ProcessData(object):
             else:
                 end_folder = 'optoacoustic'
             in_files = [s for s in os.listdir(self.dir_processed_all/end_folder) if '.DS_' not in s]
-            print(self.dir_processed_raw / end_folder)
+            print(self.dir_processed_all/ end_folder)
             X = np.array(
                 [np.array(self._load_file_to_numpy(folder_name=self.dir_processed_all / end_folder,
                                                    file_name=fname,
@@ -128,20 +140,139 @@ class ProcessData(object):
         with open(folder_name / file_name, 'rb') as handle:
             sample = pickle.load(handle)
 
+
         sample_array = [value for key, value in sample.items() if image_sign in key][0]
 
         return sample_array
 
-    def augment_data(self, augment_oa = False, augment_us = False):
+    def _save_dict_with_pickle(self, file, folder_name, file_name):
+        # use this to save pairs of low and high quality pictures
+        with open(self.dir_processed / folder_name / file_name, 'wb') as handle:
+            pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def _augment_data(self):
+
+        # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
+        proc_directories = [s for s in os.listdir(self.dir_processed_all) if '.' not in s]
 
 
-        # load data pair
+        for chunk_folder in proc_directories:
 
-        # do augment
+            aug_files = os.listdir(self.dir_processed_all / chunk_folder)
+            #print("chunk folder",chunk_folder)
+            #print("to augment",aug_files)
 
-        # save augmented images
+            #print("in_files",in_files)
+
+            us_file = [s for s in aug_files if 'US_' in s]
+            oa_file = [s for s in aug_files if 'OA_' in s]
+
+            #print("X",X)
+
+
+            if us_file and self.image_type == 'US':
+
+                for file in us_file:
+                    X=self._load_file_to_numpy(folder_name= self.dir_processed_all/"ultrasound",
+                                               file_name=file, image_sign=self.image_type+'_low')
+                    Y=self._load_file_to_numpy(folder_name= self.dir_processed_all/"ultrasound",
+                                               file_name=file, image_sign=self.image_type+'_high')
+                    print("file",file)
+                    #print("Aug_Y",Y,file)
+
+                    if self.do_blur:
+                        aug_X, aug_Y=data.augmentation.blur(X,Y, rseed =2, lower_lim =1,upper_lim = 3)
+
+
+                        
+                        name_oa_low = 'OA_low_ultrasound_blur'
+                        name_oa_high = 'OA_high_ultrasound_blur'
+                        name_oa_save = 'OA_ultrasound_'+ file+ "_blur"
+                        
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa,"augmented/blur/ultrasound/",name_oa_save)
 
 
 
-        pass
+
+                    if self.do_deform:
+                        aug_X,aug_Y=data.augmentation.elastic_deform(X,Y)
+                        name_oa_low = 'OA_low_ultrasound_deform'
+                        name_oa_high = 'OA_high_ultrasound_deform'
+                        name_oa_save = 'OA_ultrasound_' + file + "_deform"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/deform/ultrasound/", name_oa_save)
+
+                    if self.do_crop:
+                        aug_X,aug_Y=data.augmentation.crop_stretch(X,Y,rseed=2)
+                        name_oa_low = 'OA_low_ultrasound_crop'
+                        name_oa_high = 'OA_high_ultrasound_crop'
+                        name_oa_save = 'OA_ultrasound_' + file + "_crop"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/crop/ultrasound/", name_oa_save)
+
+
+
+
+
+
+
+
+
+            if oa_file and self.image_type=='OA':
+
+
+
+
+                for file in oa_file:
+                    X = self._load_file_to_numpy(folder_name=self.dir_processed_all / "optoacoustic",
+                                                 file_name=file, image_sign=self.image_type + '_low')
+                    Y = self._load_file_to_numpy(folder_name=self.dir_processed_all / "optoacoustic",
+                                                 file_name=file, image_sign=self.image_type + '_high')
+                    # print("Aug_X", X, file)
+                    # print("Aug_Y",Y,file)
+
+
+                    if self.do_blur:
+                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=2, lower_lim=1, upper_lim=3)
+
+                        name_oa_low = 'OA_low_optocoustic_blur'
+                        name_oa_high = 'OA_high_optoacoustic_blur'
+                        name_oa_save = 'OA_optoacoustic_' + file + "_blur"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/blur/optoacoustic/", name_oa_save)
+
+                    if self.do_deform:
+                        aug_X, aug_Y = data.augmentation.elastic_deform(X, Y)
+                        name_oa_low = 'OA_low_optoacoustic_deform'
+                        name_oa_high = 'OA_high_optoacoustic_deform'
+                        name_oa_save = 'OA_optoacoustic_' + file + "_deform"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/deform/optoacoustic/", name_oa_save)
+
+                    if self.do_crop:
+                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=2)
+                        name_oa_low = 'OA_low_optoacoustic_crop'
+                        name_oa_high = 'OA_high_optoacoustic_crop'
+                        name_oa_save = 'OA_optoacoustic_' + file + "_crop"
+
+                        dict_oa = {name_oa_low: aug_X,
+                                   name_oa_high: aug_Y}
+                        self._save_dict_with_pickle(dict_oa, "augmented/crop/optoacoustic/", name_oa_save)
+                
+                
+
+
+                
+
+
 

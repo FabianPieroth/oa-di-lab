@@ -1,9 +1,9 @@
 from data.data_loader import ProcessData
 
+
 class CNN_skipCo_trainer(object):
     def __init__(self):
-        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False, image_type='US')
-        #self.model = CNN_skipCo(self.dataset)
+        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False, augment_data= True, image_type='OA')
         #self.logger = Logger(self)
 
     def fit(self):
