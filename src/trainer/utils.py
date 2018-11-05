@@ -75,10 +75,11 @@ def load_params(image_type, param_type):
         input: image_type: 'US' or 'OA'
                 param_type: 'scale' or 'mean_image' (maybe more options later)
         output: params_low, params_high: the parameters."""
-    dir_params = Path().resolve().parents[1] / 'params'
+    #dir_params = '/mnt/local/mounted'
+    dir_params = str(Path().resolve().parents[1] / 'params')
     if param_type in ['scale_params', 'mean_images']:
         file_name = image_type + '_' + param_type
-        filepath = dir_params / 'scale_and_center' / file_name
+        filepath = dir_params + '/' + 'scale_and_center' + '/' + file_name
         with open(filepath, 'rb') as handle:
             params = pickle.load(handle)
     else: print('invalid parameter type')
