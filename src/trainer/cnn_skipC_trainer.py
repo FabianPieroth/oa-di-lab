@@ -27,7 +27,7 @@ class CNN_skipCo_trainer(object):
         mean_image_low, mean_image_high = utils.load_params(image_type=self.dataset.image_type, param_type="mean_images")
         print(mean_image_low.shape)
 
-        epochs=100
+        epochs=1
         for e in range(0, epochs):
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
@@ -78,6 +78,7 @@ def main():
     trainer = CNN_skipCo_trainer()
     trainer.fit()
     trainer.predict()
+    torch.save(trainer.model, "../../reports/model.pt")
     trainer.log_model()
 
 
