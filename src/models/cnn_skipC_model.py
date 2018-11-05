@@ -17,7 +17,7 @@ class cnn_skipC_model(nn.Module):
                  learning_rate=0.01,
                  weight_decay=0):
 
-        super(AwesomeImageTranslator1000, self).__init__()
+        super(cnn_skipC_model, self).__init__()
         self.conv = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1, padding=2).double()
         self.deconv = ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1,
                                       padding=2).double()

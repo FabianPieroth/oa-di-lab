@@ -43,7 +43,7 @@ class ProcessData(object):
         self.process_us = True  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
 
-        # run _prepare_data which calls all other needed methods
+        # run _prepare_data which calls the methods for preparartion, also augmentation etc.
         self._prepare_data()
 
         # self.X_train, self.y_train, self.X_test, self.y_test, self.df_complete = self._prepare_data()
@@ -82,6 +82,7 @@ class ProcessData(object):
                 if (next((True for s in os.listdir(self.dir_processed_all / 'ultrasound') if sub in s), False)
                     and next((True for s in os.listdir(self.dir_processed_all / 'optoacoustic') if sub in s), False)):
                     in_directories.remove(sub)
+                    print("As preprocessed data already exist, skip Folder:" + sub)
 
         for chunk_folder in in_directories:
             sample_directories = [s for s in os.listdir(self.dir_raw_in / chunk_folder) if '.' not in s]
@@ -100,7 +101,7 @@ class ProcessData(object):
                         dict_us_single = {name_us_low: us_raw['US_low'][:, :, i],
                                           name_us_high: us_raw['US_high'][:, :, i]}
                         self._save_dict_with_pickle(file=dict_us_single,
-                                                    folder_name='ultrasound', file_name=name_us_save)
+                                                    folder_name='processed_all/ultrasound', file_name=name_us_save)
 
                 if oa_file and self.process_oa:
                     oa_raw = scipy.io.loadmat(self.dir_raw_in / chunk_folder / sample_folder / oa_file[0])
@@ -109,7 +110,7 @@ class ProcessData(object):
                     name_oa_save = 'OA_' + chunk_folder + '_' + sample_folder
                     dict_oa = {name_oa_low: oa_raw['OA_low'],
                                name_oa_high: oa_raw['OA_high']}
-                    self._save_dict_with_pickle(file=dict_oa, folder_name='optoacoustic', file_name=name_oa_save)
+                    self._save_dict_with_pickle(file=dict_oa, folder_name='processed_all/optoacoustic', file_name=name_oa_save)
 
     def _train_val_split(self, original_file_names):
         # TODO: unify this seed with all other seeds
@@ -177,7 +178,7 @@ class ProcessData(object):
 
     def _save_dict_with_pickle(self, file, folder_name, file_name):
         # use this to save pairs of low and high quality pictures
-        with open(self.dir_processed_all / folder_name / file_name, 'wb') as handle:
+        with open(self.dir_processed / folder_name / file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def augment_data(self, augment_oa = False, augment_us = False):
