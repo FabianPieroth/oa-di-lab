@@ -184,5 +184,5 @@ def blur(image1, image2, rseed, lower_lim = 1, upper_lim = 3):
 def flip(image1,image2):
     #flips boths images along the vertical axis
 
-    return np.flip(image1,axis=0), np.flip(image2,axis=0)
+    return np.flip(image1,axis=1), np.flip(image2,axis=1)
 
