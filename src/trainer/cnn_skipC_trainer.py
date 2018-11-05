@@ -2,7 +2,7 @@ from data.data_loader import ProcessData
 import trainer.utils as utils
 import numpy as np
 from models import cnn_skipC_model
-import torchgit
+import torch
 import torch.nn as nn
 
 class CNN_skipCo_trainer(object):
@@ -13,7 +13,7 @@ class CNN_skipCo_trainer(object):
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
             optimizer= torch.optim.Adam,
-            learning_rate=0.01,
+            learning_rate=0.001,
             weight_decay=0
         )
 
@@ -45,13 +45,13 @@ class CNN_skipCo_trainer(object):
                 #print(scale_center_Y.shape)
 
                 input_tensor, target_tensor = torch.from_numpy(scale_center_X), torch.from_numpy(scale_center_Y)
-                print('------------ Testing CUDA ----------')
+                #print('------------ Testing CUDA ----------')
                 if torch.cuda.is_available():
-                    print('CUDA available')
+                    #print('CUDA available')
                     cur_dev = torch.cuda.current_device()
-                    print('current device ' + str(cur_dev))
-                    print('device count ' + str(torch.cuda.device_count()))
-                    print('device name ' + torch.cuda.get_device_name(cur_dev))
+                    #print('current device ' + str(cur_dev))
+                    #print('device count ' + str(torch.cuda.device_count()))
+                    #print('device name ' + torch.cuda.get_device_name(cur_dev))
                     input_tensor.cuda()
                     target_tensor.cuda()
                 else:

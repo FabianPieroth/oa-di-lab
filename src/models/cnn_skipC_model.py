@@ -26,6 +26,9 @@ class cnn_skipC_model(nn.Module):
         self.optimizer = optimizer(self.parameters(), lr=learning_rate, weight_decay=weight_decay)
         self.train_loss = []
         self.test_loss = []
+        if torch.cuda.is_available():
+            self.conv = self.conv.cuda()
+            self.deconv=self.deconv.cuda()
 
     def forward(self, X):
         x = self.conv(X)
