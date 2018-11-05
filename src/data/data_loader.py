@@ -253,7 +253,7 @@ class ProcessData(object):
                 pickle.dump(US_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             OA_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
-            OA_mean_images = {'OA_low': np.moveaxis(mean_image_low,2,0), 'OA_high': np.moveaxis(mean_image_high,2,0)}
+            OA_mean_images = {'OA_low': mean_image_low, 'OA_high': mean_image_high}
             ### CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
             with open(self.dir_params / 'scale_and_center' / 'OA_scale_params', 'wb') as handle:
                 pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
