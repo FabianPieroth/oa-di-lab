@@ -2,12 +2,9 @@ import os
 import pickle
 import sys
 from pathlib import Path
-
 import numpy as np
 import scipy.io
-
 import random
-
 import data.augmentation
 
 
@@ -33,7 +30,7 @@ class ProcessData(object):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
-        self.do_augment = do_augment # call data_augment method
+        self.do_augment = do_augment  # call data_augment method
         self.do_flip = do_flip
         self.do_deform = do_deform
         self.do_blur = do_blur
@@ -42,21 +39,21 @@ class ProcessData(object):
         self.image_type = image_type
 
         project_root_dir = str(Path().resolve().parents[1])  # root directory
-        #project_root_dir = '/mnt/local/mounted'
+        # project_root_dir = '/mnt/local/mounted'
 
         self.dir_raw_in = project_root_dir + '/data' + '/raw' + '/new_in'
         self.dir_processed_all = project_root_dir + '/data' + '/processed' + '/processed_all'
         self.dir_processed = project_root_dir + '/data' + '/processed'
-        self.dir_augmented = project_root_dir + '/data' + '/processed'+ '/augmented'
+        self.dir_augmented = project_root_dir + '/data' + '/processed' + '/augmented'
         self.all_folder = False  # check if raw folder was already processed
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
-        self.augment_oa = True # augment processed oa data
-        self.augment_us = True # augment processed us data
+        self.augment_oa = True  # augment processed oa data
+        self.augment_us = True  # augment processed us data
         self.process_raw = process_raw_data  # call method _process_raw_data
-        self.get_scale_center = get_scale_center # get scaling and mean image and store them
-        self.dir_params = project_root_dir+ '/params'
-
+        self.get_scale_center = get_scale_center  # get scaling and mean image and store them
+        self.dir_params = project_root_dir + '/params'
+        self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
         # run _prepare_data which calls the methods for preparartion, also augmentation etc.
         self._prepare_data()
@@ -81,6 +78,10 @@ class ProcessData(object):
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
 
     def batch_names(self, batch_size):
+        # shuffle the train_file_names; this gets called every epoch
+        self.set_random_seed = self.set_random_seed + 1
+        random.seed(self.set_random_seed)
+        self.train_file_names = random.sample(self.train_file_names, len(self.train_file_names))
         # give a list and return the corresponding batch names
         self.train_batch_chunks = np.array_split(np.array(self.train_file_names),
                                                  int(len(self.train_file_names) / batch_size))
@@ -88,19 +89,22 @@ class ProcessData(object):
 
     def create_train_batches(self, batch_names):
         # return the batches
-        X, Y = self._load_processed_data(full_file_names=batch_names)
-        return X, Y
+        x, y = self._load_processed_data(full_file_names=batch_names)
+        return x, y
 
     def _process_raw_data(self):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         in_directories = [s for s in os.listdir(self.dir_raw_in) if '.' not in s]
         print("Preprocess raw data")
         if not self.all_folder:
+            skip_dirs = []
             for sub in in_directories:
                 if (next((True for s in os.listdir(self.dir_processed_all + '/ultrasound') if sub in s), False)
                     and next((True for s in os.listdir(self.dir_processed_all + '/optoacoustic') if sub in s), False)):
-                    in_directories.remove(sub)
+                    skip_dirs.append(sub)
                     print("As preprocessed data already exist, skip Folder:" + sub)
+            # skip already processed folders
+            in_directories = list(set(skip_dirs) ^ set(in_directories))
 
         for chunk_folder in in_directories:
             sample_directories = [s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder) if '.' not in s]
@@ -111,7 +115,8 @@ class ProcessData(object):
                 us_file = [s for s in in_files if 'US_' in s]
                 oa_file = [s for s in in_files if 'OA_' in s]
                 if us_file and self.process_us:
-                    us_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder + '/' + us_file[0])
+                    us_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' +
+                                              sample_folder + '/' + us_file[0])
                     for i in range(us_raw['US_low'].shape[2]):
                         name_us_low = 'US_low_' + chunk_folder + '_' + sample_folder + '_ch' + str(i)
                         name_us_high = 'US_high_' + chunk_folder + '_' + sample_folder + '_ch' + str(i)  #
@@ -122,17 +127,20 @@ class ProcessData(object):
                                                     folder_name='processed_all/ultrasound', file_name=name_us_save)
 
                 if oa_file and self.process_oa:
-                    oa_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder + '/' + oa_file[0])
+                    oa_raw = scipy.io.loadmat(self.dir_raw_in + '/' + chunk_folder + '/' +
+                                              sample_folder + '/' + oa_file[0])
+
                     name_oa_low = 'OA_low_' + chunk_folder + '_' + sample_folder
                     name_oa_high = 'OA_high_' + chunk_folder + '_' + sample_folder
                     name_oa_save = 'OA_' + chunk_folder + '_' + sample_folder
                     dict_oa = {name_oa_low: oa_raw['OA_low'],
                                name_oa_high: oa_raw['OA_high']}
-                    self._save_dict_with_pickle(file=dict_oa, folder_name='processed_all/optoacoustic', file_name=name_oa_save)
+                    self._save_dict_with_pickle(file=dict_oa, folder_name='processed_all/optoacoustic',
+                                                file_name=name_oa_save)
 
     def _train_val_split(self, original_file_names):
-        # TODO: unify this seed with all other seeds
-        random.seed(42)
+        # this should only be called once at the beginning to ensure the same random seed
+        random.seed(self.set_random_seed)
         original_file_names = random.sample(original_file_names, len(original_file_names))
         train_size = int(len(original_file_names) * self.train_ratio)
         self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
@@ -171,8 +179,6 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(folder_name=path_augmented + '/flip' + '/' + end_folder,
                                                             name_list=self.train_file_names)
 
-
-
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
         file_names = [s for s in os.listdir(folder_name) if '.DS_' not in s]
@@ -186,7 +192,7 @@ class ProcessData(object):
 
         X = np.array(
             [np.array(self._load_file_to_numpy(full_file_name=fname,
-                                                image_sign=self.image_type + '_low')) for fname in full_file_names])
+                                               image_sign=self.image_type + '_low')) for fname in full_file_names])
         Y = np.array(
             [np.array(self._load_file_to_numpy(full_file_name=fname,
                                                image_sign=self.image_type + '_high')) for fname in full_file_names])
@@ -211,49 +217,35 @@ class ProcessData(object):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         proc_directories = [s for s in os.listdir(self.dir_processed_all) if '.' not in s]
 
-
         for chunk_folder in proc_directories:
 
             aug_files = os.listdir(self.dir_processed_all + '/' + chunk_folder)
-            #print("chunk folder",chunk_folder)
-            #print("to augment",aug_files)
-
-            #print("in_files",in_files)
 
             us_file = [s for s in aug_files if 'US_' in s]
             oa_file = [s for s in aug_files if 'OA_' in s]
 
-            #print("X",X)
-
-
             if us_file and self.image_type == 'US':
 
                 for file in us_file:
-                    X=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all+ "/ultrasound") + "/" + file,
-                                               image_sign=self.image_type+'_low')
-                    Y=self._load_file_to_numpy(full_file_name= str(self.dir_processed_all + "/ultrasound") + "/" + file,
-                                               image_sign=self.image_type+'_high')
-                    print("file",file)
-                    #print("Aug_Y",Y,file)
-
+                    X = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all+ "/ultrasound") + "/" + file,
+                                                 image_sign=self.image_type+'_low')
+                    Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all + "/ultrasound") + "/" + file,
+                                                 image_sign=self.image_type+'_high')
+                    print("file", file)
                     if self.do_blur:
-                        aug_X, aug_Y=data.augmentation.blur(X,Y, rseed =2, lower_lim =1,upper_lim = 3)
+                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=self.set_random_seed,
+                                                              lower_lim=1, upper_lim=3)
 
-
-                        
                         name_oa_low = 'US_low_ultrasound_blur'
                         name_oa_high = 'US_high_ultrasound_blur'
-                        name_oa_save = 'US_ultrasound_'+ file+ "_blur"
+                        name_oa_save = 'US_ultrasound_' + file + "_blur"
                         
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa,"augmented/blur/ultrasound/",name_oa_save)
-
-
-
+                        self._save_dict_with_pickle(dict_oa, "augmented/blur/ultrasound/", name_oa_save)
 
                     if self.do_deform:
-                        aug_X,aug_Y=data.augmentation.elastic_deform(X,Y)
+                        aug_X, aug_Y = data.augmentation.elastic_deform(X, Y)
                         name_oa_low = 'US_low_ultrasound_deform'
                         name_oa_high = 'US_high_ultrasound_deform'
                         name_oa_save = 'US_ultrasound_' + file + "_deform"
@@ -263,7 +255,7 @@ class ProcessData(object):
                         self._save_dict_with_pickle(dict_oa, "augmented/deform/ultrasound/", name_oa_save)
 
                     if self.do_crop:
-                        aug_X,aug_Y=data.augmentation.crop_stretch(X,Y,rseed=2)
+                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=self.set_random_seed)
                         name_oa_low = 'US_low_ultrasound_crop'
                         name_oa_high = 'US_high_ultrasound_crop'
                         name_oa_save = 'US_ultrasound_' + file + "_crop"
@@ -282,24 +274,17 @@ class ProcessData(object):
                                    name_oa_high: aug_Y}
                         self._save_dict_with_pickle(dict_oa, "augmented/flip/ultrasound/", name_oa_save)
 
-
-
-            if oa_file and self.image_type=='OA':
-
-
-
+            if oa_file and self.image_type == 'OA':
 
                 for file in oa_file:
                     X = self._load_file_to_numpy(full_file_name= str(self.dir_processed_all + "/optoacoustic") + "/" + file,
                                                  image_sign=self.image_type + '_low')
                     Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all + "/optoacoustic") + "/" + file,
                                                  image_sign=self.image_type + '_high')
-                    # print("Aug_X", X, file)
-                    # print("Aug_Y",Y,file)
-
 
                     if self.do_blur:
-                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=2, lower_lim=1, upper_lim=3)
+                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=self.set_random_seed,
+                                                              lower_lim=1, upper_lim=3)
 
                         name_oa_low = 'OA_low_optocoustic_blur'
                         name_oa_high = 'OA_high_optoacoustic_blur'
@@ -320,7 +305,7 @@ class ProcessData(object):
                         self._save_dict_with_pickle(dict_oa, "augmented/deform/optoacoustic/", name_oa_save)
 
                     if self.do_crop:
-                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=2)
+                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=self.set_random_seed)
                         name_oa_low = 'OA_low_optoacoustic_crop'
                         name_oa_high = 'OA_high_optoacoustic_crop'
                         name_oa_save = 'OA_optoacoustic_' + file + "_crop"
@@ -338,14 +323,13 @@ class ProcessData(object):
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
                         self._save_dict_with_pickle(dict_oa, "augmented/flip/optoacoustic/", name_oa_save)
-                
 
     def _get_scale_center(self):
         # Initialize values
         i = 0
         if self.image_type == 'US':
             temp = 1
-            shape_for_mean_image = [401,401]
+            shape_for_mean_image = [401, 401]
         else:
             temp = np.ones(28)
             shape_for_mean_image = [401, 401, 28]
@@ -404,9 +388,8 @@ class ProcessData(object):
         else:
             OA_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
             OA_mean_images = {'OA_low': mean_image_low, 'OA_high': mean_image_high}
-            ### CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
+            # CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
             with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
                 pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
                 pickle.dump(OA_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
