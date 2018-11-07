@@ -52,20 +52,20 @@ class CNN_skipCo_trainer(object):
                 #print(scale_center_Y.shape)
 
                 input_tensor, target_tensor = torch.from_numpy(scale_center_X), torch.from_numpy(scale_center_Y)
-                #print('------------ Testing CUDA ----------')
+
                 if torch.cuda.is_available():
                     #print('CUDA available')
-                    cur_dev = torch.cuda.current_device()
                     #print('current device ' + str(cur_dev))
                     #print('device count ' + str(torch.cuda.device_count()))
                     #print('device name ' + torch.cuda.get_device_name(cur_dev))
+
+                    cur_dev = torch.cuda.current_device()
                     input_tensor.cuda()
                     target_tensor.cuda()
-                else:
-                    print('CUDA not available')
 
-                input_tensor, target_tensor = torch.from_numpy(scale_center_X).cuda(), torch.from_numpy(scale_center_Y).cuda()
+
                 self.model.train_model(input_tensor, target_tensor, e)
+
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
                 #unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high, mean_image_high, image_type=self.dataset.image_type)
