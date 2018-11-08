@@ -4,6 +4,7 @@ import numpy as np
 from models import cnn_skipC_model
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
@@ -13,22 +14,21 @@ class CNN_skipCo_trainer(object):
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
-            optimizer= torch.optim.Adam,
-            learning_rate=0.001,
+            optimizer=torch.optim.Adam,
+            learning_rate=0.01,
             weight_decay=0
         )
 
 
         #self.logger = Logger(self)
 
-    def fit(self):
+    def fit(self, epochs=10):
         # get scale and center parameters
         scale_params_low, scale_params_high = utils.load_params(image_type=self.dataset.image_type,
                                                                 param_type="scale_params")
         mean_image_low, mean_image_high = utils.load_params(image_type=self.dataset.image_type,
                                                             param_type="mean_images")
 
-        epochs=2
         for e in range(0, epochs):
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=5)
@@ -40,14 +40,20 @@ class CNN_skipCo_trainer(object):
                                                         image_type=self.dataset.image_type)
                 scale_center_Y = utils.scale_and_center(Y, scale_params_high, mean_image_high,
                                                         image_type=self.dataset.image_type)
+
                 scale_center_X = np.array([scale_center_X])
                 scale_center_Y = np.array([scale_center_Y])
+
+                #plt.imshow(scale_center_Y[0,0,:,:])
+                #plt.show()
                 #print(scale_center_Y.shape)
                 # (C, N, H, W) to (N, C, H, W)
                 scale_center_X = scale_center_X.reshape(scale_center_X.shape[1], scale_center_X.shape[0],
                                                         scale_center_X.shape[2], scale_center_X.shape[3])
                 scale_center_Y = scale_center_Y.reshape(scale_center_Y.shape[1], scale_center_Y.shape[0],
                                                         scale_center_Y.shape[2], scale_center_Y.shape[3])
+                #plt.imshow(scale_center_Y[0,0,:,:])
+                #plt.show()
                 #print(scale_center_X.shape)
                 #print(scale_center_Y.shape)
 
@@ -64,7 +70,7 @@ class CNN_skipCo_trainer(object):
                     target_tensor.cuda()
 
 
-                self.model.train_model(input_tensor, target_tensor, e)
+                self.model.train_model(input_tensor, target_tensor, current_epoch=e)
 
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
@@ -83,7 +89,7 @@ class CNN_skipCo_trainer(object):
 
 def main():
     trainer = CNN_skipCo_trainer()
-    trainer.fit()
+    trainer.fit(epochs=10)
     trainer.predict()
     torch.save(trainer.model, "../../reports/model.pt")
     trainer.log_model()

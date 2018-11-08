@@ -67,6 +67,9 @@ def scale_and_center_reverse(batch, scale_params, mean_image, image_type):
     batch_out = batch + mean_scaled
     batch_out = scale_batch(batch_out, min_data=-1, max_data=1, image_type=image_type, min_out=min_data,
                             max_out=max_data)
+    # just for not using the mean addition
+    #batch_out = scale_batch(batch, min_data=-1, max_data=1, image_type=image_type, min_out=min_data,
+    #                        max_out = max_data)
     return batch_out
 
 
