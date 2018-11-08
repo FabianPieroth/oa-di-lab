@@ -9,7 +9,7 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False,
-                                   do_augment=False, image_type='US', get_scale_center=True)
+                                   do_augment=False, image_type='US', get_scale_center=True, single_sample=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -28,13 +28,14 @@ class CNN_skipCo_trainer(object):
         mean_image_low, mean_image_high = utils.load_params(image_type=self.dataset.image_type,
                                                             param_type="mean_images")
 
-        epochs=2
+        epochs=5
         for e in range(0, epochs):
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=5)
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 X, Y = self.dataset.create_train_batches(self.dataset.train_batch_chunks[i])
+
                 # scale and center the batch
                 scale_center_X = utils.scale_and_center(X, scale_params_low, mean_image_low,
                                                         image_type=self.dataset.image_type)

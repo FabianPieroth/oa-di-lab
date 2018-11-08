@@ -20,6 +20,7 @@ class ProcessData(object):
     def __init__(self,
                  train_ratio,
                  image_type,
+                 single_sample=False,
                  do_augment=False,
                  process_raw_data=False,
                  do_flip=True,
@@ -37,6 +38,7 @@ class ProcessData(object):
         self.do_crop = do_crop
 
         self.image_type = image_type
+        self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
 
         project_root_dir = str(Path().resolve().parents[1])  # root directory
         # project_root_dir = '/mnt/local/mounted'
@@ -70,8 +72,12 @@ class ProcessData(object):
 
         # get the original file names, split them up to validation and training and write them into self
         self.original_file_names = self._retrieve_original_file_names()
-        self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
-        self._add_augmented_file_names_to_train()
+        if self.single_sample:
+            self.train_file_names = [self.original_file_names[0]]
+            self.val_file_names = [self.original_file_names[0]]
+        else:
+            self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
+            self._add_augmented_file_names_to_train()
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -82,6 +88,10 @@ class ProcessData(object):
         self.set_random_seed = self.set_random_seed + 1
         random.seed(self.set_random_seed)
         self.train_file_names = random.sample(self.train_file_names, len(self.train_file_names))
+
+        if self.single_sample:
+            batch_size = 1  # if only signle sample is called, set batch_size on 1
+
         # give a list and return the corresponding batch names
         self.train_batch_chunks = np.array_split(np.array(self.train_file_names),
                                                  int(len(self.train_file_names) / batch_size))
