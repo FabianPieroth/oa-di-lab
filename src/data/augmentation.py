@@ -122,7 +122,10 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
     deformed_image1 = elastic_deform_helper(image1, x_coord, y_coord, dx, dy)
     deformed_image2 = elastic_deform_helper(image2, x_coord, y_coord, dx, dy)
 
-    return deformed_image1, deformed_image2
+    # prepare parameters for output
+    params = [x_coord, y_coord, dx, dy]
+
+    return deformed_image1, deformed_image2, params
 
 ##### Crop and stretch #####
 
@@ -131,11 +134,13 @@ def crop_stretch_helper(in_image, side, crop_size):
 
     if side == 1:
         cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
+        cropped = in_image[:in_image.shape[0] - crop_size, :in_image.shape[1] - crop_size]
 
         resized = resize(cropped, (in_image.shape),
                          anti_aliasing=True)
     if side == 2:
         cropped = in_image[crop_size:in_image.shape[0], crop_size:in_image.shape[1]]
+        cropped = in_image[:in_image.shape[0] - crop_size, crop_size:in_image.shape[1]]
 
         resized = resize(cropped, (in_image.shape),
                          anti_aliasing=True)
@@ -143,14 +148,15 @@ def crop_stretch_helper(in_image, side, crop_size):
     return resized
 
 
-def crop_stretch(in_image1, in_image2, rseed):
-    random.seed(rseed)
+def crop_stretch(in_image1, in_image2):
     size = random.randint(25, 40)
     side = random.randint(1, 2)
     aug_img = crop_stretch_helper(in_image1, side, size)
     aug_label = crop_stretch_helper(in_image2, side, size)
 
-    return aug_img, aug_label
+    params = [side, size]
+
+    return aug_img, aug_label, params
 
 
 ####### Blurring ############
@@ -170,17 +176,18 @@ def blur_helper(image, sigma = 2):
     return(transformed_image)
 
 
-def blur(image1, image2, rseed, lower_lim = 1, upper_lim = 3):
+def blur(image1, image2, lower_lim = 1, upper_lim = 3):
     """ blurs image1 with a blur_helper, only use for US data
         input: image1: the image to be blurred
                image2: the target image, not to be blurred
                lower_lim, upper_lim: ints lower and upper lim for the sigma for the gaussian filter
         output: transformed_image1, image2"""
-    random.seed(rseed)
     sig = np.random.randint(lower_lim, upper_lim + 1)
     transformed_image1 = blur_helper(image1, sigma = sig)
-    return transformed_image1, image2
+    return transformed_image1, image2, sig
 
+
+########### Flip ####################
 def flip(image1,image2):
     #flips boths images along the vertical axis
 
