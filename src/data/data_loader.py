@@ -20,10 +20,12 @@ class ProcessData(object):
     def __init__(self,
                  train_ratio,
                  image_type,
+                 single_sample=False,
                  do_augment=False,
                  process_raw_data=False,
-                 do_flip=True,
+                 do_flip=False,
                  do_deform=False,
+                 num_deform = 3,
                  do_blur=False,
                  do_crop=False,
                  get_scale_center=False):
@@ -33,10 +35,12 @@ class ProcessData(object):
         self.do_augment = do_augment  # call data_augment method
         self.do_flip = do_flip
         self.do_deform = do_deform
+        self.num_deform = num_deform
         self.do_blur = do_blur
         self.do_crop = do_crop
 
         self.image_type = image_type
+        self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
 
         project_root_dir = str(Path().resolve().parents[1])  # root directory
         # project_root_dir = '/mnt/local/mounted'
@@ -70,8 +74,12 @@ class ProcessData(object):
 
         # get the original file names, split them up to validation and training and write them into self
         self.original_file_names = self._retrieve_original_file_names()
-        self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
-        self._add_augmented_file_names_to_train()
+        if self.single_sample:
+            self.train_file_names = [self.original_file_names[0]]
+            self.val_file_names = [self.original_file_names[0]]
+        else:
+            self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
+            self._add_augmented_file_names_to_train()
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -82,6 +90,10 @@ class ProcessData(object):
         self.set_random_seed = self.set_random_seed + 1
         random.seed(self.set_random_seed)
         self.train_file_names = random.sample(self.train_file_names, len(self.train_file_names))
+
+        if self.single_sample:
+            batch_size = 1  # if only signle sample is called, set batch_size on 1
+
         # give a list and return the corresponding batch names
         self.train_batch_chunks = np.array_split(np.array(self.train_file_names),
                                                  int(len(self.train_file_names) / batch_size))
@@ -212,10 +224,20 @@ class ProcessData(object):
         with open(self.dir_processed + '/' + folder_name + '/' + file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def _save_params_with_pickle(self, file, folder_name, file_name):
+        # use this to save pairs of low and high quality pictures
+        with open(self.dir_params + '/' + folder_name + '/' + file_name, 'wb') as handle:
+            pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     def _augment_data(self):
+        # set random seed
+        random.seed(self.set_random_seed)
+        np.random.seed(self.set_random_seed)
 
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         proc_directories = [s for s in os.listdir(self.dir_processed_all) if '.' not in s]
+        if self.image_type == 'OA' and self.do_blur:
+            print('No blur augmentation for OA data')
 
         for chunk_folder in proc_directories:
 
@@ -231,9 +253,9 @@ class ProcessData(object):
                                                  image_sign=self.image_type+'_low')
                     Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all + "/ultrasound") + "/" + file,
                                                  image_sign=self.image_type+'_high')
-                    print("file", file)
+                    print("augmenting file", file)
                     if self.do_blur:
-                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=self.set_random_seed,
+                        aug_X, aug_Y, params = data.augmentation.blur(X, Y,
                                                               lower_lim=1, upper_lim=3)
 
                         name_oa_low = 'US_low_ultrasound_blur'
@@ -242,27 +264,35 @@ class ProcessData(object):
                         
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/blur/ultrasound/", name_oa_save)
+                        self._save_dict_with_pickle(dict_oa, "augmented/blur/ultrasound", name_oa_save)
+                        name_oa_save_params = name_oa_save + '_params'
+                        self._save_params_with_pickle(params, 'augmentation/blur/ultrasound', name_oa_save_params)
 
                     if self.do_deform:
-                        aug_X, aug_Y = data.augmentation.elastic_deform(X, Y)
-                        name_oa_low = 'US_low_ultrasound_deform'
-                        name_oa_high = 'US_high_ultrasound_deform'
-                        name_oa_save = 'US_ultrasound_' + file + "_deform"
+                        for i in range(self.num_deform):
+                            aug_X, aug_Y, params = data.augmentation.elastic_deform(X, Y)
 
-                        dict_oa = {name_oa_low: aug_X,
-                                   name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/deform/ultrasound/", name_oa_save)
+                            name_oa_low = 'US_low_ultrasound_deform'
+                            name_oa_high = 'US_high_ultrasound_deform'
+                            name_oa_save = 'US_ultrasound_' + file + "_deform_" + str(i)
+
+                            dict_oa = {name_oa_low: aug_X,
+                                        name_oa_high: aug_Y}
+                            self._save_dict_with_pickle(dict_oa, "augmented/deform/ultrasound", name_oa_save)
+                            name_oa_save_params = name_oa_save + '_params'
+                            self._save_params_with_pickle(params, 'augmentation/deform/ultrasound', name_oa_save_params)
 
                     if self.do_crop:
-                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=self.set_random_seed)
+                        aug_X, aug_Y, params = data.augmentation.crop_stretch(X, Y)
                         name_oa_low = 'US_low_ultrasound_crop'
                         name_oa_high = 'US_high_ultrasound_crop'
                         name_oa_save = 'US_ultrasound_' + file + "_crop"
 
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/crop/ultrasound/", name_oa_save)
+                        self._save_dict_with_pickle(dict_oa, "augmented/crop/ultrasound", name_oa_save)
+                        name_oa_save_params = name_oa_save + '_params'
+                        self._save_params_with_pickle(params, 'augmentation/crop/ultrasound', name_oa_save_params)
 
                     if self.do_flip:
                         aug_X, aug_Y = data.augmentation.flip(X, Y)
@@ -272,7 +302,7 @@ class ProcessData(object):
 
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/flip/ultrasound/", name_oa_save)
+                        self._save_dict_with_pickle(dict_oa, "augmented/flip/ultrasound", name_oa_save)
 
             if oa_file and self.image_type == 'OA':
 
@@ -281,38 +311,43 @@ class ProcessData(object):
                                                  image_sign=self.image_type + '_low')
                     Y = self._load_file_to_numpy(full_file_name=str(self.dir_processed_all + "/optoacoustic") + "/" + file,
                                                  image_sign=self.image_type + '_high')
+                    print("augmenting file", file)
 
                     if self.do_blur:
-                        aug_X, aug_Y = data.augmentation.blur(X, Y, rseed=self.set_random_seed,
-                                                              lower_lim=1, upper_lim=3)
-
-                        name_oa_low = 'OA_low_optocoustic_blur'
-                        name_oa_high = 'OA_high_optoacoustic_blur'
-                        name_oa_save = 'OA_optoacoustic_' + file + "_blur"
-
-                        dict_oa = {name_oa_low: aug_X,
-                                   name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/blur/optoacoustic/", name_oa_save)
-
+                        pass
+                        #### we don't blur for optoacoustic
+                        #aug_X, aug_Y, params = data.augmentation.blur(X, Y, lower_lim=1, upper_lim=3)
+                        #name_oa_low = 'OA_low_optocoustic_blur'
+                        #name_oa_high = 'OA_high_optoacoustic_blur'
+                        #name_oa_save = 'OA_optoacoustic_' + file + "_blur"
+                        #dict_oa = {name_oa_low: aug_X,
+                        #           name_oa_high: aug_Y}
+                        #self._save_dict_with_pickle(dict_oa, "augmented/blur/optoacoustic", name_oa_save)
+                        #name_oa_save_params = name_oa_save + '_params'
+                        #self._save_params_with_pickle(params, 'augmentation/blur/optoacoustic', name_oa_save_params)
                     if self.do_deform:
-                        aug_X, aug_Y = data.augmentation.elastic_deform(X, Y)
-                        name_oa_low = 'OA_low_optoacoustic_deform'
-                        name_oa_high = 'OA_high_optoacoustic_deform'
-                        name_oa_save = 'OA_optoacoustic_' + file + "_deform"
-
-                        dict_oa = {name_oa_low: aug_X,
-                                   name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/deform/optoacoustic/", name_oa_save)
+                        for i in range(self.num_deform):
+                            aug_X, aug_Y, params = data.augmentation.elastic_deform(X, Y)
+                            name_oa_low = 'OA_low_optoacoustic_deform'
+                            name_oa_high = 'OA_high_optoacoustic_deform'
+                            name_oa_save = 'OA_optoacoustic_' + file + "_deform_" + str(i)
+                            dict_oa = {name_oa_low: aug_X,
+                                       name_oa_high: aug_Y}
+                            self._save_dict_with_pickle(dict_oa, "augmented/deform/optoacoustic", name_oa_save)
+                            name_oa_save_params = name_oa_save + '_params'
+                            self._save_params_with_pickle(params, 'augmentation/deform/optoacoustic', name_oa_save_params)
 
                     if self.do_crop:
-                        aug_X, aug_Y = data.augmentation.crop_stretch(X, Y, rseed=self.set_random_seed)
+                        aug_X, aug_Y, params = data.augmentation.crop_stretch(X, Y)
                         name_oa_low = 'OA_low_optoacoustic_crop'
                         name_oa_high = 'OA_high_optoacoustic_crop'
                         name_oa_save = 'OA_optoacoustic_' + file + "_crop"
 
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/crop/optoacoustic/", name_oa_save)
+                        self._save_dict_with_pickle(dict_oa, "augmented/crop/optoacoustic", name_oa_save)
+                        name_oa_save_params = name_oa_save + '_params'
+                        self._save_params_with_pickle(params, 'augmentation/crop/optoacoustic', name_oa_save_params)
 
                     if self.do_flip:
                         aug_X, aug_Y = data.augmentation.flip(X, Y)
@@ -322,7 +357,7 @@ class ProcessData(object):
 
                         dict_oa = {name_oa_low: aug_X,
                                    name_oa_high: aug_Y}
-                        self._save_dict_with_pickle(dict_oa, "augmented/flip/optoacoustic/", name_oa_save)
+                        self._save_dict_with_pickle(dict_oa, "augmented/flip/optoacoustic", name_oa_save)
 
     def _get_scale_center(self):
         # Initialize values
