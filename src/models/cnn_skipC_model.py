@@ -41,20 +41,21 @@ class cnn_skipC_model(nn.Module):
         self.test_loss = []
 
     def forward(self, X):
-        x = self.conv1(X)
-        x1 = self.conv2(x)
-        x2 = x1
+        x = self.relu(self.conv1(X))
+        x1 = self.relu(self.conv2(x))
+        # doing relu before saving the result tfor the skip connection
+        x2 = x1.clone()
 
-        x3 = self.conv3(x1)
-        x3 = self.conv4(x3)
+        x3 = self.relu(self.conv3(x1))
+        x3 = self.relu(self.conv4(x3))
 
-        x3 = self.deconv1(x3)
+        x3 = self.relu(self.deconv1(x3))
         x3 = self.deconv2(x3)
 
         x4 = x2 + x3
         x4 = self.relu(x4)
 
-        x5 = self.deconv3(x4)
+        x5 = self.relu(self.deconv3(x4))
         x5 = self.deconv4(x5)
 
         out = x5 + X
