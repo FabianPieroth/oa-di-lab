@@ -21,6 +21,7 @@ class ProcessData(object):
                  train_ratio,
                  image_type,
                  single_sample=False,
+                 add_augment=True,
                  do_augment=False,
                  process_raw_data=False,
                  do_flip=False,
@@ -38,6 +39,8 @@ class ProcessData(object):
         self.num_deform = num_deform
         self.do_blur = do_blur
         self.do_crop = do_crop
+
+        self.add_augment = add_augment  # bool if augmented data should be included in training
 
         self.image_type = image_type
         self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
@@ -80,6 +83,8 @@ class ProcessData(object):
         else:
             self.train_file_names, self.val_file_names = self._train_val_split(original_file_names=self.original_file_names)
             self._add_augmented_file_names_to_train()
+            self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
+                                                               train_names=self.train_file_names)
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -180,7 +185,7 @@ class ProcessData(object):
         else:
             end_folder = 'optoacoustic'
 
-        if self.do_augment:
+        if self.add_augment:
             if self.do_blur:
                 self.train_file_names = self._names_to_list(folder_name=path_augmented + '/blur' + '/' + end_folder,
                                                             name_list=self.train_file_names)
@@ -190,6 +195,35 @@ class ProcessData(object):
             if self.do_flip:
                 self.train_file_names = self._names_to_list(folder_name=path_augmented + '/flip' + '/' + end_folder,
                                                             name_list=self.train_file_names)
+
+    def _delete_val_from_augmented(self, val_names, train_names):
+        # deletes the augmented data from the validation set from the training files
+        val_names
+        print(train_names)
+        names=train_names
+
+        names = [s for s in train_names if not self._detect_val_in_augment(s, val_names)]
+
+        return names
+
+    def _detect_val_in_augment(self, string, val_list):
+
+        contained_in_val = any(self._extract_name_from_path(name) in string for name in val_list)
+
+        return contained_in_val
+
+    def _extract_name_from_path(self,string):
+        # a small helper function to get the file name from the whole path
+        # needed because we can't use os.path on server
+        filename = ''
+        found_slash = True
+        for i in reversed(range(len(string))):
+            sub = string[i]
+            if sub == '/':
+                found_slash = False
+            if found_slash:
+                filename = sub + filename
+        return filename
 
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
