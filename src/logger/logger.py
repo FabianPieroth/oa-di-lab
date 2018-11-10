@@ -2,6 +2,7 @@ import json
 import numpy as np
 import torch
 from pathlib import Path
+import pickle
 
 class Logger(object):
     # This class...
@@ -34,18 +35,20 @@ class Logger(object):
         # saves the predicted images on the hard drive to evaluate later on, needs a bool
         pass
 
-    def save_loss(self, train_loss, valid_loss=None, model_name=None):
-        if model_name is None:
-            model_name = ""
-        np.save(self.base_dir + '/'+model_name+'train_loss', train_loss)
+    def save_loss(self, model_name, train_loss, valid_loss=None):
+        np.save(self.base_dir + '/model_' + model_name + '_train_loss', np.array(train_loss))
 
         if valid_loss is not None:
-            np.save(self.base_dir + '/'+model_name+'validation_loss', valid_loss)
+            np.save(self.base_dir + '/model_' + model_name + '_validation_loss', np.array(valid_loss))
 
-    def save_representation_of_model(self, data, model_name=None):
-        if model_name is None:
-            model_name = 'model'
-        text_file = open(self.base_dir+'/'+model_name+'_structure.txt', "w")
+    def save_scale_center_params(self, model_name, mean_images, scale_params):
+        with open(self.base_dir + '/model_' + model_name + '_mean_images', 'wb') as handle:
+            pickle.dump(mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.base_dir + '/model_' + model_name + '_scale_params', 'wb') as handle:
+            pickle.dump(scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def save_representation_of_model(self, model_name, data):
+        text_file = open(self.base_dir + '/model_' + model_name + '_model_structure.txt', "w")
         text_file.write(data)
         text_file.close()
 
@@ -64,7 +67,7 @@ class Logger(object):
             self.save_model(model, model_name)
 
         if train_loss is not None:
-            self.save_loss(train_loss, test_loss, model_name)
+            self.save_loss(model_name, train_loss, test_loss)
 
         if model_structure is not None:
-            self.save_representation_of_model(model_structure, model_name)
+            self.save_representation_of_model(model_name, model_structure)

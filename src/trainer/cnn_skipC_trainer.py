@@ -84,9 +84,23 @@ class CNN_skipCo_trainer(object):
                 #self.model.train_model(input_tensor, target_tensor, current_epoch=e)
                 self.model.train_model(input_tensor, target_tensor, current_epoch=e)
 
-                # save model every 25 epochs
-                if e % 25 == 0:
-                    self.logger.save_model(self.model, model_name=str(datetime.datetime.now())+'_epoch_' + str(e))
+                # save model every x epochs
+                if e % 5 == 0:
+                    self.logger.save_model(self.model, model_name=self.model.model_name +'_' + str(datetime.datetime.now())+'_epoch_' + str(e))
+                    self.logger.save_loss(self.model.model_name, self.model.train_loss, self.model.test_loss)
+
+
+                    # save model every 50 epochs
+                    #if e % 50 == 0:
+                    #    self.logger.save_model(self.model, model_name=self.model.model_name + '_epoch_' + str(e))
+
+
+
+                if e == 0:
+                    self.logger.save_scale_center_params(model_name=self.model.model_name,
+                                                             mean_images=[mean_image_low, mean_image_high],
+                                                             scale_params=[scale_params_low, scale_params_high])
+                    self.logger.save_representation_of_model(self.model.model_name, str(self.model))
 
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
@@ -114,15 +128,16 @@ def main():
     trainer.fit(epochs=50)
     trainer.predict()
     #torch.save(trainer.model, "../../reports/model.pt")
-    trainer.log_model(model_name='small_model')
+    trainer.log_model(model_name=trainer.model.model_name)
     print('\n---------------------------')
 
     #fit the second model
     print('---------------------------')
     print('fitting second model')
     trainer.model = trainer.model_2
-    trainer.fit(epochs=50)
-    trainer.log_model(model_name='large_model')
+    print(trainer.model.model_name)
+    trainer.fit(epochs=15)
+    trainer.log_model(model_name=trainer.model.model_name)
     print('\n---------------------------')
     print('---------------------------')
 
