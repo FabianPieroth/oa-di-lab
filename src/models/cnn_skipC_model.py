@@ -15,7 +15,7 @@ class cnn_skipC_model(nn.Module):
                  optimizer=torch.optim.Adam,
                  ic1=1, oc1=4, oc2=8, oc3=16, oc4=32,
                  k_s=(7, 7), stride=2, pad=3,
-                 learning_rate=0.0005,
+                 learning_rate=0.01,
                  weight_decay=0):
 
         super(cnn_skipC_model, self).__init__()
@@ -71,7 +71,7 @@ class cnn_skipC_model(nn.Module):
             if current_epoch is not None:
                 sys.stdout.write('\r' + ' epoch ' + str(current_epoch) + ' |  loss : ' + str(loss.item()))
             else:
-                sys.stdout.write('\r |  loss : ' + str(loss.item()))
+                sys.stdout.write('\r  loss : ' + str(loss.item()))
             # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
             self.train_loss.append(loss.item())
             loss.backward()
