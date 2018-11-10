@@ -2,9 +2,10 @@ from data.data_loader import ProcessData
 import trainer.utils as utils
 from logger.logger import Logger
 import numpy as np
-from models import cnn_skipC_model
+from models import cnn_skipC_model, awesomeImageTranslator1000
 import torch
 import torch.nn as nn
+import datetime
 import matplotlib.pyplot as plt
 
 class CNN_skipCo_trainer(object):
@@ -14,6 +15,13 @@ class CNN_skipCo_trainer(object):
                                    do_augment=False, image_type='US', get_scale_center=False, single_sample=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
+            criterion=nn.MSELoss(),
+            optimizer=torch.optim.Adam,
+            learning_rate=0.01,
+            weight_decay=0
+        )
+
+        self.model_2 = awesomeImageTranslator1000.AwesomeImageTranslator1000(
             criterion=nn.MSELoss(),
             optimizer=torch.optim.Adam,
             learning_rate=0.01,
@@ -73,12 +81,12 @@ class CNN_skipCo_trainer(object):
                     target_tensor.cuda()
 
 
+                #self.model.train_model(input_tensor, target_tensor, current_epoch=e)
                 self.model.train_model(input_tensor, target_tensor, current_epoch=e)
-
 
                 # save model every 25 epochs
                 if e % 25 == 0:
-                    self.logger.save_model(self.model, model_name='epoch_'+str(e))
+                    self.logger.save_model(self.model, model_name=str(datetime.datetime.now())+'_epoch_' + str(e))
 
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
@@ -99,10 +107,24 @@ class CNN_skipCo_trainer(object):
 
 def main():
     trainer = CNN_skipCo_trainer()
-    trainer.fit(epochs=100)
+
+    #fit the first model
+    print('---------------------------')
+    print('fitting first model')
+    trainer.fit(epochs=50)
     trainer.predict()
     #torch.save(trainer.model, "../../reports/model.pt")
-    trainer.log_model()
+    trainer.log_model(model_name='small_model')
+    print('\n---------------------------')
+
+    #fit the second model
+    print('---------------------------')
+    print('fitting second model')
+    trainer.model = trainer.model_2
+    trainer.fit(epochs=50)
+    trainer.log_model(model_name='large_model')
+    print('\n---------------------------')
+    print('---------------------------')
 
 
 if __name__ == "__main__":
