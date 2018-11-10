@@ -1,5 +1,6 @@
 from data.data_loader import ProcessData
 import trainer.utils as utils
+from logger.logger import Logger
 import numpy as np
 from models import cnn_skipC_model
 import torch
@@ -19,7 +20,7 @@ class CNN_skipCo_trainer(object):
             weight_decay=0
         )
 
-        #self.logger = Logger(self)
+        self.logger = Logger()
 
     def fit(self, epochs=10):
         # get scale and center parameters
@@ -36,7 +37,6 @@ class CNN_skipCo_trainer(object):
         X = X[0,:,:]
         Y = Y[0,:,:]
         '''
-        epochs=100
         for e in range(0, epochs):
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=5)
@@ -53,15 +53,12 @@ class CNN_skipCo_trainer(object):
                 scale_center_X = np.array([scale_center_X])
                 scale_center_Y = np.array([scale_center_Y])
 
-                #print(scale_center_Y.shape)
                 # (C, N, H, W) to (N, C, H, W)
                 scale_center_X = scale_center_X.reshape(scale_center_X.shape[1], scale_center_X.shape[0],
                                                         scale_center_X.shape[2], scale_center_X.shape[3])
                 scale_center_Y = scale_center_Y.reshape(scale_center_Y.shape[1], scale_center_Y.shape[0],
                                                         scale_center_Y.shape[2], scale_center_Y.shape[3])
 
-                #print(scale_center_X.shape)
-                #print(scale_center_Y.shape)
 
                 input_tensor, target_tensor = torch.from_numpy(scale_center_X), torch.from_numpy(scale_center_Y)
 
@@ -79,7 +76,10 @@ class CNN_skipCo_trainer(object):
                 self.model.train_model(input_tensor, target_tensor, current_epoch=e)
 
 
-                #plt.savefig('epoch_'+str(e)+'_batch_'+str(i))
+                # save model every 25 epochs
+                if e % 25 == 0:
+                    self.logger.save_model(self.model, model_name='epoch_'+str(e))
+
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
                 #unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high, mean_image_high, image_type=self.dataset.image_type)
@@ -90,16 +90,18 @@ class CNN_skipCo_trainer(object):
         # see self.dataset.X_val and self.dataset.Y_val
         pass
 
-    def log_model(self):
-        #self.logger.log(self.model)
-        pass
+    def log_model(self, model_name=None):
+        self.logger.log(self.model,
+                        model_name=model_name,
+                        train_loss=self.model.train_loss,
+                        model_structure=str(self.model))
 
 
 def main():
     trainer = CNN_skipCo_trainer()
-    trainer.fit(epochs=50)
+    trainer.fit(epochs=100)
     trainer.predict()
-    torch.save(trainer.model, "../../reports/model.pt")
+    #torch.save(trainer.model, "../../reports/model.pt")
     trainer.log_model()
 
 

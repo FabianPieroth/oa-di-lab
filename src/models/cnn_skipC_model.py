@@ -1,14 +1,13 @@
-import numpy as np
 import sys
 import torch
-from torch.nn import Conv2d
-from torch.nn import ConvTranspose2d
 from torch import nn
-from torch.nn.functional import relu
+
 
 
 
 class cnn_skipC_model(nn.Module):
+    import torch
+    from torch import nn
 
     def __init__(self,
                  criterion=nn.MSELoss(),
@@ -24,13 +23,13 @@ class cnn_skipC_model(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=oc2, out_channels=oc3, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv4 = nn.Conv2d(in_channels=oc3, out_channels=oc4, kernel_size=k_s, stride=stride, padding=pad).double()
 
-        self.deconv1 = ConvTranspose2d(in_channels=oc4, out_channels=oc3, kernel_size=k_s, stride=stride,
+        self.deconv1 = nn.ConvTranspose2d(in_channels=oc4, out_channels=oc3, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
-        self.deconv2 = ConvTranspose2d(in_channels=oc3, out_channels=oc2, kernel_size=k_s, stride=stride,
+        self.deconv2 = nn.ConvTranspose2d(in_channels=oc3, out_channels=oc2, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
-        self.deconv3 = ConvTranspose2d(in_channels=oc2, out_channels=oc1, kernel_size=k_s, stride=stride,
+        self.deconv3 = nn.ConvTranspose2d(in_channels=oc2, out_channels=oc1, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
-        self.deconv4 = ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
+        self.deconv4 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
 
         self.relu = torch.nn.functional.relu
@@ -62,7 +61,7 @@ class cnn_skipC_model(nn.Module):
         out = self.relu(out)
         return out
 
-    def train_model(self, X, y, test_in=None, test_target=None, current_epoch=None):
+    def train_model(self, X, y, valid_in=None, valid_target=None, current_epoch=None):
 
         def closure():
             self.optimizer.zero_grad()
@@ -79,10 +78,10 @@ class cnn_skipC_model(nn.Module):
 
         self.optimizer.step(closure)
         # calculating the test_loss
-        if test_in is not None and test_target is not None:
+        if valid_in is not None and valid_target is not None:
             with torch.no_grad():
-                test_out = self.forward(test_in)
-                test_loss = self.criterion(test_out.reshape(-1, self.out_size), test_target)
+                test_out = self.forward(valid_in)
+                test_loss = self.criterion(test_out.reshape(-1, self.out_size), valid_target)
                 self.test_loss.append(test_loss.item())
         return
 
