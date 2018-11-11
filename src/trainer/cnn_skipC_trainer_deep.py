@@ -12,7 +12,9 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.dataset = ProcessData(train_ratio=0.9,process_raw_data=False,
-                                   do_augment=False, image_type='US', get_scale_center=True, single_sample=False)
+                                   do_augment=False, add_augment=True,
+                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
+                                   image_type='US', get_scale_center=True, single_sample=False)
 
         self.model = awesomeImageTranslator1000.AwesomeImageTranslator1000(
             criterion=nn.MSELoss(),
@@ -20,6 +22,10 @@ class CNN_skipCo_trainer(object):
             learning_rate=0.001,
             weight_decay=0
         )
+
+        if torch.cuda.is_available():
+            torch.cuda.current_device()
+            self.model.cuda()
 
         self.logger = Logger()
 
@@ -38,6 +44,24 @@ class CNN_skipCo_trainer(object):
         X = X[0,:,:]
         Y = Y[0,:,:]
         '''
+        X_val, Y_val = self.dataset.create_train_batches(self.dataset.val_file_names)
+
+        scale_center_X_val = utils.scale_and_center(X_val, scale_params_low, mean_image_low,
+                                                    image_type=self.dataset.image_type)
+        scale_center_Y_val = utils.scale_and_center(Y_val, scale_params_high, mean_image_high,
+                                                    image_type=self.dataset.image_type)
+
+        scale_center_X_val = np.array([scale_center_X_val])
+        scale_center_Y_val = np.array([scale_center_Y_val])
+
+        # (C, N, H, W) to (N, C, H, W)
+        scale_center_X_val = scale_center_X_val.reshape(scale_center_X_val.shape[1], scale_center_X_val.shape[0],
+                                                        scale_center_X_val.shape[2], scale_center_X_val.shape[3])
+        scale_center_Y_val = scale_center_Y_val.reshape(scale_center_Y_val.shape[1], scale_center_Y_val.shape[0],
+                                                        scale_center_Y_val.shape[2], scale_center_Y_val.shape[3])
+
+        input_tensor_val, target_tensor_val = torch.from_numpy(scale_center_X_val), torch.from_numpy(scale_center_Y_val)
+
         for e in range(0, epochs):
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=5)
@@ -70,8 +94,10 @@ class CNN_skipCo_trainer(object):
                     #print('device name ' + torch.cuda.get_device_name(cur_dev))
 
                     cur_dev = torch.cuda.current_device()
-                    input_tensor.cuda()
-                    target_tensor.cuda()
+                    input_tensor = input_tensor.cuda()
+                    target_tensor = target_tensor.cuda()
+                    input_tensor_val = input_tensor_val.cuda()
+                    target_tensor_val = target_tensor_val.cuda()
 
 
                 #self.model.train_model(input_tensor, target_tensor, current_epoch=e)

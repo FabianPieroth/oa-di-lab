@@ -23,6 +23,10 @@ class CNN_skipCo_trainer(object):
             weight_decay=0
         )
 
+        if torch.cuda.is_available():
+            torch.cuda.current_device()
+            self.model.cuda()
+
         self.logger = Logger()
 
     def fit(self, epochs=10):
@@ -93,10 +97,10 @@ class CNN_skipCo_trainer(object):
                     #print('device name ' + torch.cuda.get_device_name(cur_dev))
 
                     cur_dev = torch.cuda.current_device()
-                    input_tensor.cuda()
-                    target_tensor.cuda()
-                    input_tensor_val.cuda()
-                    target_tensor_val.cuda()
+                    input_tensor = input_tensor.cuda()
+                    target_tensor = target_tensor.cuda()
+                    input_tensor_val = input_tensor_val.cuda()
+                    target_tensor_val = target_tensor_val.cuda()
 
 
                 #self.model.train_model(input_tensor, target_tensor, current_epoch=e)

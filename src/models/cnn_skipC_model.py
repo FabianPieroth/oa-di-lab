@@ -40,15 +40,6 @@ class cnn_skipC_model(nn.Module):
         self.train_loss = []
         self.test_loss = []
         self.model_name = model_name
-        if torch.cuda.is_available():
-            self.conv1 = self.conv1.cuda()
-            self.conv2 = self.conv2.cuda()
-            self.conv3 = self.conv3.cuda()
-            self.conv4 = self.conv4.cuda()
-            self.deconv1 = self.deconv1.cuda()
-            self.deconv2 = self.deconv2.cuda()
-            self.deconv3 = self.deconv3.cuda()
-            self.deconv4 = self.deconv4.cuda()
 
     def forward(self, X):
         x = self.relu(self.conv1(X))

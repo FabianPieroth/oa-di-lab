@@ -60,28 +60,6 @@ class AwesomeImageTranslator1000(nn.Module):
         self.test_loss = []
         self.model_name = model_name
 
-        if torch.cuda.is_available():
-            self.conv1 = self.conv1.cuda()
-            self.conv2 = self.conv2.cuda()
-            self.conv3 = self.conv3.cuda()
-            self.conv4 = self.conv4.cuda()
-            self.conv5 = self.conv5.cuda()
-            self.conv6 = self.conv6.cuda()
-            self.conv7 = self.conv7.cuda()
-            self.conv8 = self.conv8.cuda()
-            self.conv9 = self.conv9.cuda()
-            self.conv10 = self.conv10.cuda()
-            self.deconv1 = self.deconv1.cuda()
-            self.deconv2 = self.deconv2.cuda()
-            self.deconv3 = self.deconv3.cuda()
-            self.deconv4 = self.deconv4.cuda()
-            self.deconv5 = self.deconv5.cuda()
-            self.deconv6 = self.deconv6.cuda()
-            self.deconv7 = self.deconv7.cuda()
-            self.deconv8 = self.deconv8.cuda()
-            self.deconv9 = self.deconv9.cuda()
-            self.deconv10 = self.deconv10.cuda()
-
     def forward(self, X):
         x1 = self.relu(self.conv1(X))
         x2 = self.relu(self.conv2(x1))
