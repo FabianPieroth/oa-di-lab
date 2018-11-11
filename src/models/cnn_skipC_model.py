@@ -2,9 +2,6 @@ import sys
 import torch
 from torch import nn
 
-
-
-
 class cnn_skipC_model(nn.Module):
     import torch
     from torch import nn
@@ -63,7 +60,7 @@ class cnn_skipC_model(nn.Module):
         out = self.relu(out)
         return out
 
-    def train_model(self, X, y, valid_in=None, valid_target=None, current_epoch=None):
+    def train_model(self, X, y, current_epoch=None):
 
         def closure():
             self.optimizer.zero_grad()
@@ -73,18 +70,11 @@ class cnn_skipC_model(nn.Module):
                 sys.stdout.write('\r' + ' epoch ' + str(current_epoch) + ' |  loss : ' + str(loss.item()))
             else:
                 sys.stdout.write('\r  loss : ' + str(loss.item()))
-            # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
             self.train_loss.append(loss.item())
             loss.backward()
             return loss
 
         self.optimizer.step(closure)
-        # calculating the test_loss
-        if valid_in is not None and valid_target is not None:
-            with torch.no_grad():
-                test_out = self.forward(valid_in)
-                test_loss = self.criterion(test_out, valid_target)
-                self.val_loss.append(test_loss.item())
         return
 
     def predic(self, X, y):

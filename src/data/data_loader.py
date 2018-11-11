@@ -6,6 +6,7 @@ import numpy as np
 import scipy.io
 import random
 import data.augmentation
+import torch
 
 
 class ProcessData(object):
@@ -14,7 +15,7 @@ class ProcessData(object):
     train_ratio:    Gives the train and validation split for the model
     process_raw:    Process the raw data in the input folder and load them into processed folder
     image_type:     Either 'US' or 'OA' to select which data should be loaded
-    do_augment:     Do the augmentation and save them in the correspodning folders
+    do_augment:     Do the augmentation and save them in the corresponding folders
     """
 
     def __init__(self,
@@ -24,12 +25,12 @@ class ProcessData(object):
                  add_augment=True,
                  do_augment=False,
                  process_raw_data=False,
-                 do_flip=False,
-                 do_deform=False,
+                 do_flip=True,
+                 do_deform=True,
                  num_deform = 3,
-                 do_blur=False,
-                 do_crop=False,
-                 get_scale_center=False):
+                 do_blur=True,
+                 do_crop=True,
+                 get_scale_center=True):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
@@ -45,13 +46,13 @@ class ProcessData(object):
         self.image_type = image_type
         self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
 
-        project_root_dir = str(Path().resolve().parents[1])  # root directory
-        # project_root_dir = '/mnt/local/mounted'
+        self.project_root_dir = str(Path().resolve().parents[1])  # root directory
+        # self.project_root_dir = '/mnt/local/mounted'
 
-        self.dir_raw_in = project_root_dir + '/data' + '/raw' + '/new_in'
-        self.dir_processed_all = project_root_dir + '/data' + '/processed' + '/processed_all'
-        self.dir_processed = project_root_dir + '/data' + '/processed'
-        self.dir_augmented = project_root_dir + '/data' + '/processed' + '/augmented'
+        self.dir_raw_in = self.project_root_dir + '/data' + '/raw' + '/new_in'
+        self.dir_processed_all = self.project_root_dir + '/data' + '/processed' + '/processed_all'
+        self.dir_processed = self.project_root_dir + '/data' + '/processed'
+        self.dir_augmented = self.project_root_dir + '/data' + '/processed' + '/augmented'
         self.all_folder = False  # check if raw folder was already processed
         self.process_oa = True  # process raw oa data
         self.process_us = True  # process raw us data
@@ -59,7 +60,7 @@ class ProcessData(object):
         self.augment_us = True  # augment processed us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
-        self.dir_params = project_root_dir + '/params'
+        self.dir_params = self.project_root_dir + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
         # run _prepare_data which calls the methods for preparartion, also augmentation etc.
@@ -89,6 +90,10 @@ class ProcessData(object):
             self._get_scale_center()
 
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
+
+    ##################################################################
+    ####### Data Loading and Preparation #############################
+    ##################################################################
 
     def batch_names(self, batch_size):
         # shuffle the train_file_names; this gets called every epoch
@@ -259,6 +264,10 @@ class ProcessData(object):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_params + '/' + folder_name + '/' + file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    ##################################################################
+    ####### Data Augmentation ########################################
+    ##################################################################
 
     def _augment_data(self):
         # set random seed
@@ -459,3 +468,117 @@ class ProcessData(object):
                 pickle.dump(OA_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
                 pickle.dump(OA_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        ##################################################################
+        ####### Data Normalization #######################################
+        ##################################################################
+
+    def scale_image(self, image, min_data, max_data, min_out=-1, max_out=1):
+        """ scales the input image from [min_data,max_data] to [min_out, max_out]
+            input: image: for US (H,W) array, for OA: (H,W,C) array
+                   min_data, max_data: minimum and maximum over the data set (channel by channel)
+                        for US: floats, for OA: arrays of shape (C,)
+                   image_type: 'US' or 'OA'
+            output: image_out: array with same shape as image
+        """
+
+        factor = (max_out - min_out) / (max_data - min_data)
+        additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
+        if self.image_type == 'US':
+            image_out = image * factor + additive
+        else:
+            image_out = image * factor[None, None, :] + additive[None, None, :]
+        return image_out
+
+    def scale_batch(self, batch, min_data, max_data, min_out=-1, max_out=1):
+        """ scales the input batch from [min_data,max_data] to [min_out, max_out]
+                input: batch: for US (N,H,W) array, for OA: (N,H,W,C) array
+                       min_data, max_data: minimum and maximum over the data set (channel by channel)
+                            for US: floats, for OA: arrays of shape (C,)
+                       image_type: 'US' or 'OA'
+                output: batch_out array with same shape as batch
+        """
+        factor = (max_out - min_out) / (max_data - min_data)
+        additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
+        if self.image_type == 'US':
+            batch_out = batch * factor + additive
+        else:
+            batch_out = batch * factor[None, None, None, :] + additive[None, None, None, :]
+        return batch_out
+
+    def scale_and_center(self, batch, scale_params, mean_image):
+        """ scales and centers the input batch given the scale_params and the mean_image
+                input: batch: for US (N,H,W) array, for OA: (N,H,W,C) array
+                       scale_params: minimum and maximum over the data set (channel by channel)
+                            for US: array of shape (2,), for OA: arrays of shape (2,C)
+                        mean_image: mean image for the whole data set
+                            for US: array of shape (H,W), for OA: (H,W,C)
+                       image_type: 'US' or 'OA'
+                output: batch_out array with same shape as batch"""
+        [min_data, max_data] = scale_params
+        mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
+        batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
+        batch_out = batch_out - mean_scaled
+        return batch_out
+
+    def scale_and_center_reverse(self, batch, scale_params, mean_image):
+        """ undoes the scaling and centering of the input batch given the scale_params and the mean_image
+                    input: batch: for US (N,H,W) array, for OA: (N,H,W,C) array
+                           scale_params: minimum and maximum over the data set (channel by channel)
+                                for US: array of shape (2,), for OA: arrays of shape (2,C)
+                            mean_image: mean image for the whole data set
+                                for US: array of shape (H,W), for OA: (H,W,C)
+                           image_type: 'US' or 'OA'
+                    output: batch_out array with same shape as batch"""
+        [min_data, max_data] = scale_params
+        mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
+        batch_out = batch + mean_scaled
+        batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
+                                max_out=max_data)
+        # just for not using the mean addition
+        # batch_out = scale_batch(batch, min_data=-1, max_data=1, image_type=image_type, min_out=min_data,
+        #                        max_out = max_data)
+        return batch_out
+
+    def load_params(self, param_type):
+        """ loads the specified parameters from file
+            input: image_type: 'US' or 'OA'
+                    param_type: 'scale' or 'mean_image' (maybe more options later)
+            output: params_low, params_high: the parameters."""
+        # dir_params = '/mnt/local/mounted'
+        dir_params = self.project_root_dir + '/' + 'params'
+        if param_type in ['scale_params', 'mean_images']:
+            file_name = self.image_type + '_' + param_type
+            filepath = dir_params + '/' + 'scale_and_center' + '/' + file_name
+            with open(filepath, 'rb') as handle:
+                params = pickle.load(handle)
+        else:
+            print('invalid parameter type')
+        dic_key_low = self.image_type + '_low'
+        dic_key_high = self.image_type + '_high'
+        params_low = params[dic_key_low]
+        params_high = params[dic_key_high]
+        return params_low, params_high
+
+    ##################################################################
+    ####### Torch tensor shaping #####################################
+    ##################################################################
+
+    def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
+                            mean_image_low, mean_image_high):
+        x, y = self.create_train_batches(batch_files)
+
+        scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
+        scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+        scale_center_x_val = np.array([scale_center_x_val])
+        scale_center_y_val = np.array([scale_center_y_val])
+
+        # (C, N, H, W) to (N, C, H, W)
+        scale_center_x_val = scale_center_x_val.reshape(scale_center_x_val.shape[1], scale_center_x_val.shape[0],
+                                                        scale_center_x_val.shape[2], scale_center_x_val.shape[3])
+        scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
+                                                        scale_center_y_val.shape[2], scale_center_y_val.shape[3])
+
+        input_tensor, target_tensor = torch.from_numpy(scale_center_x_val), torch.from_numpy(scale_center_y_val)
+
+        return input_tensor, target_tensor
