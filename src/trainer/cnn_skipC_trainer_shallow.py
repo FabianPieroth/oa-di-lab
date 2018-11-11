@@ -14,7 +14,7 @@ class CNN_skipCo_trainer(object):
         self.dataset = ProcessData(train_ratio=0.9,process_raw_data=False,
                                    do_augment=False, add_augment=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type='US', get_scale_center=True, single_sample=False)
+                                   image_type='US', get_scale_center=False, single_sample=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -67,7 +67,7 @@ class CNN_skipCo_trainer(object):
 
         for e in range(0, epochs):
             # separate names into random batches and shuffle every epoch
-            self.dataset.batch_names(batch_size=5)
+            self.dataset.batch_names(batch_size=16)
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 X, Y = self.dataset.create_train_batches(self.dataset.train_batch_chunks[i])
@@ -91,39 +91,27 @@ class CNN_skipCo_trainer(object):
                 input_tensor, target_tensor = torch.from_numpy(scale_center_X), torch.from_numpy(scale_center_Y)
 
                 if torch.cuda.is_available():
-                    #print('CUDA available')
-                    #print('current device ' + str(cur_dev))
-                    #print('device count ' + str(torch.cuda.device_count()))
-                    #print('device name ' + torch.cuda.get_device_name(cur_dev))
 
-                    cur_dev = torch.cuda.current_device()
                     input_tensor = input_tensor.cuda()
                     target_tensor = target_tensor.cuda()
                     input_tensor_val = input_tensor_val.cuda()
                     target_tensor_val = target_tensor_val.cuda()
 
-
-                #self.model.train_model(input_tensor, target_tensor, current_epoch=e)
-                self.model.train_model(input_tensor, target_tensor, valid_in=input_tensor_val,
-                                       valid_target=target_tensor_val,current_epoch=e)
+                self.model.train_model(input_tensor, target_tensor, valid_in=input_tensor_val, current_epoch=e)
 
                 # save model every x epochs
-                if e % 25 == 0:
-                    self.logger.save_model(self.model, model_name=self.model.model_name +'_' + str(datetime.datetime.now())+'_epoch_' + str(e))
-                    self.logger.save_loss(self.model.model_name, self.model.train_loss, self.model.test_loss)
+            if e % 25 == 0:
+                self.logger.save_model(self.model, model_name=self.model.model_name +'_' + str(datetime.datetime.now())+'_epoch_' + str(e))
+                self.logger.save_loss(self.model.model_name, self.model.train_loss, self.model.val_loss)
 
+            if e == 0:
+                self.logger.save_scale_center_params(model_name=self.model.model_name,
+                                                     mean_images=[mean_image_low, mean_image_high],
+                                                     scale_params=[scale_params_low, scale_params_high])
+                self.logger.save_representation_of_model(self.model.model_name, str(self.model))
 
-                    # save model every 50 epochs
-                    #if e % 50 == 0:
-                    #    self.logger.save_model(self.model, model_name=self.model.model_name + '_epoch_' + str(e))
-
-
-
-                if e == 0:
-                    self.logger.save_scale_center_params(model_name=self.model.model_name,
-                                                             mean_images=[mean_image_low, mean_image_high],
-                                                             scale_params=[scale_params_low, scale_params_high])
-                    self.logger.save_representation_of_model(self.model.model_name, str(self.model))
+            # write validation loss per epoch
+            self.model.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
 
                 ## how to undo the scaling:
                 #unscaled_X = utils.scale_and_center_reverse(scale_center_X, scale_params_low, mean_image_low, image_type = self.dataset.image_type)
@@ -139,7 +127,7 @@ class CNN_skipCo_trainer(object):
         self.logger.log(self.model,
                         model_name=model_name,
                         train_loss=self.model.train_loss,
-                        test_loss=self.model.test_loss,
+                        test_loss=self.model.val_loss,
                         model_structure=str(self.model))
 
 

@@ -38,7 +38,7 @@ class cnn_skipC_model(nn.Module):
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
-        self.test_loss = []
+        self.val_loss = []
         self.model_name = model_name
 
     def forward(self, X):
@@ -84,12 +84,20 @@ class cnn_skipC_model(nn.Module):
             with torch.no_grad():
                 test_out = self.forward(valid_in)
                 test_loss = self.criterion(test_out, valid_target)
-                self.test_loss.append(test_loss.item())
+                self.val_loss.append(test_loss.item())
         return
 
     def predic(self, X, y):
         return self.forward(X), y
 
+    def get_val_loss(self, val_in=None, val_target=None):
+        # do a forward pass with validation set for every epoch and get validation loss
+        if val_in is not None and val_target is not None:
+            with torch.no_grad():
+                val_out = self.forward(val_in)
+                val_loss = self.criterion(val_out, val_target)
+                self.val_loss.append(val_loss.item())
+        return
 
     def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         """
@@ -120,8 +128,8 @@ class cnn_skipC_model(nn.Module):
             if test_in is not None and test_target is not None:
                 with torch.no_grad():
                     test_out = self.forward(test_in)
-                    test_loss = self.criterion(test_out.reshape(-1, self.out_size), test_target)
-                    self.test_loss.append(test_loss.item())
+                    test_loss = self.criterion(test_out, test_target)
+                    self.val_loss.append(test_loss.item())
         print('\n-----------------------------------------')
         return
 
