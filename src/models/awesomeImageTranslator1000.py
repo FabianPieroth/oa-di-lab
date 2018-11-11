@@ -17,7 +17,7 @@ class AwesomeImageTranslator1000(nn.Module):
                  k_s=(7, 7), stride=2, pad=3,
                  learning_rate=0.05,
                  weight_decay=0,
-                 model_name='large_model'):
+                 model_name='deep_model'):
 
         super(AwesomeImageTranslator1000, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride, padding=pad).double()
