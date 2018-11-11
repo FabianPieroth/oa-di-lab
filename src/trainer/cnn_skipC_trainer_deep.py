@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
-        self.dataset = ProcessData(train_ratio=0.3,process_raw_data=False,
-                                   do_augment=False, image_type='US', get_scale_center=False, single_sample=True)
+        self.dataset = ProcessData(train_ratio=0.9,process_raw_data=False,
+                                   do_augment=False, image_type='US', get_scale_center=True, single_sample=False)
 
         self.model = awesomeImageTranslator1000.AwesomeImageTranslator1000(
             criterion=nn.MSELoss(),

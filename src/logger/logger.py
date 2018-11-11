@@ -17,7 +17,7 @@ class Logger(object):
         # This Method should save the model in a serialized folder structure
         # Serialize a model and its weights into json and h5 file.
         # serialize model to JSON
-        torch.save(model, self.base_dir+'/model_'+ model_name +'.pt')
+        torch.save(model.state_dict(), self.base_dir+'/model_'+ model_name +'.pt')
 
     def load_model(self, model_name):
         # Load a saved model
