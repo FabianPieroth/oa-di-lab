@@ -93,7 +93,6 @@ class cnn_skipC_model(nn.Module):
             with torch.no_grad():
                 test_out = self.forward(valid_in)
                 test_loss = self.criterion(test_out, valid_target)
-                print(test_loss)
                 self.test_loss.append(test_loss.item())
         return
 

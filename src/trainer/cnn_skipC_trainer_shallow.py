@@ -41,7 +41,7 @@ class CNN_skipCo_trainer(object):
         Y = Y[0,:,:]
         '''
         # load validation set, normalize and parse into tensor
-        print(len(self.dataset.val_file_names))
+
 
         X_val, Y_val = self.dataset.create_train_batches(self.dataset.val_file_names)
 
@@ -145,7 +145,7 @@ def main():
     #fit the first model
     print('---------------------------')
     print('fitting shallow model')
-    trainer.fit(epochs=1)
+    trainer.fit(epochs=50)
     trainer.predict()
     #torch.save(trainer.model, "../../reports/model.pt")
     trainer.log_model(model_name=trainer.model.model_name)

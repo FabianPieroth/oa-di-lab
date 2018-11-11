@@ -198,9 +198,6 @@ class ProcessData(object):
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
-        val_names
-        print(train_names)
-        names=train_names
 
         names = [s for s in train_names if not self._detect_val_in_augment(s, val_names)]
 
