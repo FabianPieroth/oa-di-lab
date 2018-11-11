@@ -38,6 +38,8 @@ class cnn_skipC_model(nn.Module):
         self.val_loss = []
         self.model_name = model_name
 
+        self.model_file_name = __file__  # save file name to copy file in logger into logging folder
+
     def forward(self, X):
         x = self.relu(self.conv1(X))
         x1 = self.relu(self.conv2(x))

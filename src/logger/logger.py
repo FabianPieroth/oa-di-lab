@@ -3,6 +3,7 @@ import torch
 import os
 import datetime
 import pickle
+import shutil
 
 class Logger(object):
     # This class...
@@ -88,3 +89,9 @@ class Logger(object):
             # only call this the first time, when training starts
             self.save_representation_of_model()
             self.save_scale_center_params(mean_images=mean_image_low, scale_params=mean_image_high)
+            # copy the data_loader file and the model file to make reproducible examples
+            data_loader_path = self.project_root_dir + '/src/data' + '/data_loader.py'
+            model_file_path = self.model.model_file_name
+
+            for f in [data_loader_path, model_file_path]:
+                shutil.copy(f, self.save_dir)
