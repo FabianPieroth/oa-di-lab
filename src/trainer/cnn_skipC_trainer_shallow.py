@@ -12,7 +12,9 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.dataset = ProcessData(train_ratio=0.9,process_raw_data=False,
-                                   do_augment=False, image_type='US', get_scale_center=True, single_sample=False)
+                                   do_augment=False, add_augment=True,
+                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
+                                   image_type='US', get_scale_center=True, single_sample=False)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -39,7 +41,7 @@ class CNN_skipCo_trainer(object):
         Y = Y[0,:,:]
         '''
         # load validation set, normalize and parse into tensor
-        print(self.dataset.val_file_names)
+        print(len(self.dataset.val_file_names))
 
         X_val, Y_val = self.dataset.create_train_batches(self.dataset.val_file_names)
 
@@ -143,7 +145,7 @@ def main():
     #fit the first model
     print('---------------------------')
     print('fitting shallow model')
-    trainer.fit(epochs=50)
+    trainer.fit(epochs=1)
     trainer.predict()
     #torch.save(trainer.model, "../../reports/model.pt")
     trainer.log_model(model_name=trainer.model.model_name)

@@ -17,7 +17,7 @@ class CNN_skipCo_trainer(object):
         self.model = awesomeImageTranslator1000.AwesomeImageTranslator1000(
             criterion=nn.MSELoss(),
             optimizer=torch.optim.Adam,
-            learning_rate=0.01,
+            learning_rate=0.001,
             weight_decay=0
         )
 
