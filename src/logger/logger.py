@@ -9,9 +9,11 @@ class Logger(object):
     # This class...
     def __init__(self,
                  project_root_dir,
-                 model=None):
+                 model=None,
+                 image_type='US'):
         self.project_root_dir = project_root_dir
         self.model = model  # give the model to the logger, so we have all needed variables in the self
+        self.image_type = image_type
 
         self.base_dir = '%s/reports' % (project_root_dir)
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
@@ -56,10 +58,13 @@ class Logger(object):
             np.save(self.save_dir + '/' + self.model.model_name + '_validation_loss', np.array(self.model.val_loss))
 
     def save_scale_center_params(self, mean_images, scale_params):
-        with open(self.save_dir + '/' + self.model.model_name + '_mean_images', 'wb') as handle:
-            pickle.dump(mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(self.save_dir + '/' + self.model.model_name + '_scale_params', 'wb') as handle:
-            pickle.dump(scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # write files into dictionary
+        scale_param = {self.image_type + '_low': scale_params[0], self.image_type + '_high': scale_params[1]}
+        mean_image = {self.image_type + '_low': mean_images[0], self.image_type + '_high': mean_images[1]}
+        with open(self.save_dir + '/' + self.image_type + '_mean_images', 'wb') as handle:
+            pickle.dump(mean_image, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.save_dir + '/' + self.image_type + '_scale_params', 'wb') as handle:
+            pickle.dump(scale_param, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def save_representation_of_model(self):
         text_file = open(self.save_dir + '/' + self.model.model_name + '_model_structure.txt', "w")
@@ -70,8 +75,8 @@ class Logger(object):
             save_appendix,
             current_epoch,
             epochs,
-            mean_image_low,
-            mean_image_high):
+            mean_images,
+            scale_params):
         # method to call the other methods and decide what should be saved, this should be called in the trainer
 
         if self.model is not None:
@@ -88,10 +93,17 @@ class Logger(object):
         if current_epoch == 0:
             # only call this the first time, when training starts
             self.save_representation_of_model()
-            self.save_scale_center_params(mean_images=mean_image_low, scale_params=mean_image_high)
+            self.save_scale_center_params(mean_images=mean_images, scale_params=scale_params)
+
             # copy the data_loader file and the model file to make reproducible examples
             data_loader_path = self.project_root_dir + '/src/data' + '/data_loader.py'
             model_file_path = self.model.model_file_name
+            augmentation_file_path = self.project_root_dir + '/src/data' + '/augmentation.py'
 
-            for f in [data_loader_path, model_file_path]:
-                shutil.copy(f, self.save_dir)
+            os.makedirs(self.save_dir + '/data')
+            os.makedirs(self.save_dir + '/models')
+
+            # copy the files in the corresponding folder
+            shutil.copy(data_loader_path, self.save_dir + '/data')
+            shutil.copy(augmentation_file_path, self.save_dir + '/data')
+            shutil.copy(model_file_path, self.save_dir + '/models')

@@ -9,10 +9,12 @@ import torch.nn as nn
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
+        self.image_type = 'US'
+
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type='US', get_scale_center=False, single_sample=True)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -25,8 +27,9 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir)
-        self.epochs = 50
+        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
+                             image_type = self.image_type)
+        self.epochs = 2
 
     def fit(self):
         # get scale and center parameters
@@ -81,8 +84,8 @@ class CNN_skipCo_trainer(object):
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
-                                mean_image_low=mean_image_low,
-                                mean_image_high=mean_image_high)
+                                mean_images=[mean_image_low, mean_image_high],
+                                scale_params=[scale_params_low, scale_params_high])
 
                 # how to undo the scaling:
                 # unscaled_X = utils.scale_and_center_reverse(scale_center_X,

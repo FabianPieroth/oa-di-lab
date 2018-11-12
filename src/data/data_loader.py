@@ -30,7 +30,8 @@ class ProcessData(object):
                  num_deform = 3,
                  do_blur=True,
                  do_crop=True,
-                 get_scale_center=True):
+                 get_scale_center=True,
+                 logger_call=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
@@ -63,8 +64,11 @@ class ProcessData(object):
         self.dir_params = self.project_root_dir + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
+        self.logger_call = logger_call  # initialise the data_loader but do nothing else
+
         # run _prepare_data which calls the methods for preparartion, also augmentation etc.
-        self._prepare_data()
+        if not self.logger_call:
+            self._prepare_data()
 
         # self.X_train, self.y_train, self.X_test, self.y_test, self.df_complete = self._prepare_data()
 
@@ -540,16 +544,17 @@ class ProcessData(object):
         #                        max_out = max_data)
         return batch_out
 
-    def load_params(self, param_type):
+    def load_params(self, param_type, dir_params=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
                     param_type: 'scale' or 'mean_image' (maybe more options later)
             output: params_low, params_high: the parameters."""
         # dir_params = '/mnt/local/mounted'
-        dir_params = self.project_root_dir + '/' + 'params'
+        if dir_params is None:
+            dir_params = self.project_root_dir + '/' + 'params' + '/' + 'scale_and_center/'
         if param_type in ['scale_params', 'mean_images']:
             file_name = self.image_type + '_' + param_type
-            filepath = dir_params + '/' + 'scale_and_center' + '/' + file_name
+            filepath = dir_params + file_name
             with open(filepath, 'rb') as handle:
                 params = pickle.load(handle)
         else:
