@@ -1,7 +1,7 @@
 from data.data_loader import ProcessData
 from logger.logger import Logger
 import numpy as np
-from models import cnn_skipC_model
+from models import awesomeImageTranslatorJunior
 import torch
 import torch.nn as nn
 
@@ -9,14 +9,12 @@ import torch.nn as nn
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
-        self.image_type = 'US'
-
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+                                   image_type='US', get_scale_center=False, single_sample=True)
 
-        self.model = cnn_skipC_model.cnn_skipC_model(
+        self.model = awesomeImageTranslatorJunior.AwesomeImageTranslatorJunior(
             criterion=nn.MSELoss(),
             optimizer=torch.optim.Adam,
             learning_rate=0.001,
@@ -27,9 +25,8 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type = self.image_type)
-        self.epochs = 2
+        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir)
+        self.epochs = 50
 
     def fit(self):
         # get scale and center parameters
@@ -83,8 +80,8 @@ class CNN_skipCo_trainer(object):
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
-                                mean_images=[mean_image_low, mean_image_high],
-                                scale_params=[scale_params_low, scale_params_high])
+                                mean_image_low=mean_image_low,
+                                mean_image_high=mean_image_high)
 
                 # how to undo the scaling:
                 # unscaled_X = utils.scale_and_center_reverse(scale_center_X,
@@ -92,7 +89,7 @@ class CNN_skipCo_trainer(object):
                 # unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high,
                 #  mean_image_high, image_type=self.dataset.image_type)
     def predict(self):
-        # self.model.predict()
+        #self.model.predict()
 
         # see self.dataset.X_val and self.dataset.Y_val
         pass
@@ -103,7 +100,7 @@ def main():
 
     # fit the first model
     print('---------------------------')
-    print('fitting shallow model')
+    print('fitting deep model')
     trainer.fit()
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
