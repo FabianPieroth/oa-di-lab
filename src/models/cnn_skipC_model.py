@@ -1,6 +1,7 @@
 import sys
 import torch
 from torch import nn
+import numpy as np
 
 class cnn_skipC_model(nn.Module):
     import torch
@@ -91,37 +92,13 @@ class cnn_skipC_model(nn.Module):
                 self.val_loss.append(val_loss.item())
         return
 
-    def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
-        """
-        legacy method; can be used to train with full data now
-        :param X: images input in the format (N, C, H, W)
-        :param y: target images in the format (N, C, H, W)
-        :param test_in: validation data input
-        :param test_target: validation data target
-        :param epochs: number of epochs to train
-        :return: model is trained
-        """
-        self.epochs = epochs
-        print('start training')
-        print('-----------------------------------------')
-        for i in range(epochs):
-            def closure():
-                self.optimizer.zero_grad()
-                out = self.forward(X)
-                loss = self.criterion(out, y)
-                sys.stdout.write('\r' + 'epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
-                # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
-                self.train_loss.append(loss.item())
-                loss.backward()
-                return loss
 
-            self.optimizer.step(closure)
-            # calculating the test_loss
-            if test_in is not None and test_target is not None:
-                with torch.no_grad():
-                    test_out = self.forward(test_in)
-                    test_loss = self.criterion(test_out, test_target)
-                    self.val_loss.append(test_loss.item())
-        print('\n-----------------------------------------')
-        return
+    def set_learning_rate(self, learning_rate):
+        """
+        setting the learning rate. Can be explicitly done to have another learning rate without new initialization
+        :param learning_rate: learning rate to be set
+        """
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = learning_rate
+
 
