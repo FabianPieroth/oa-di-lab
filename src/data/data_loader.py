@@ -66,7 +66,7 @@ class ProcessData(object):
 
         self.logger_call = logger_call  # initialise the data_loader but do nothing else
 
-        # run _prepare_data which calls the methods for preparartion, also augmentation etc.
+        # run _prepare_data which calls the methods for preparation, also augmentation etc.
         if not self.logger_call:
             self._prepare_data()
 
