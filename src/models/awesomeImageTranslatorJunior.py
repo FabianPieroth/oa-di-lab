@@ -2,9 +2,6 @@ import sys
 import torch
 from torch import nn
 
-
-
-
 class AwesomeImageTranslatorJunior(nn.Module):
     import torch
     from torch import nn
@@ -12,21 +9,21 @@ class AwesomeImageTranslatorJunior(nn.Module):
     def __init__(self,
                  criterion=nn.MSELoss(),
                  optimizer=torch.optim.Adam,
-                 ic1=1, oc1=2, oc2=4, oc3=8, oc4=16, oc5=32,
-                 oc6=64, oc7=128, oc8=256, oc9=512, oc10=1024,
+                 ic1=1, oc1=8, oc2=16, oc3=32, oc4=64, oc5=128,
+                 oc6=256, oc7=512, oc8=256, oc9=512, oc10=1024,
                  k_s=(7, 7), stride=2, pad=3,
-                 learning_rate=0.05,
+                 learning_rate=0.005,
                  weight_decay=0,
-                 model_name='deep_model'):
+                 model_name='deep_model2'):
 
-        super(AwesomeImageTranslator1000, self).__init__()
+        super(AwesomeImageTranslatorJunior, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv2 = nn.Conv2d(in_channels=oc1, out_channels=oc2, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv3 = nn.Conv2d(in_channels=oc2, out_channels=oc3, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv4 = nn.Conv2d(in_channels=oc3, out_channels=oc4, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv5 = nn.Conv2d(in_channels=oc4, out_channels=oc5, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv6 = nn.Conv2d(in_channels=oc5, out_channels=oc6, kernel_size=k_s, stride=stride, padding=pad).double()
-        #self.conv7 = nn.Conv2d(in_channels=oc6, out_channels=oc7, kernel_size=k_s, stride=stride, padding=pad).double()
+        self.conv7 = nn.Conv2d(in_channels=oc6, out_channels=oc7, kernel_size=k_s, stride=stride, padding=pad).double()
         #self.conv8 = nn.Conv2d(in_channels=oc7, out_channels=oc8, kernel_size=k_s, stride=stride, padding=pad).double()
         #self.conv9 = nn.Conv2d(in_channels=oc8, out_channels=oc9, kernel_size=k_s, stride=stride, padding=pad).double()
         #self.conv10 = nn.Conv2d(in_channels=oc9, out_channels=oc10, kernel_size=k_s, stride=stride, padding=pad).double()
@@ -37,8 +34,8 @@ class AwesomeImageTranslatorJunior(nn.Module):
         #                               padding=3, output_padding=1).double()
         #self.deconv3 = nn.ConvTranspose2d(in_channels=oc8, out_channels=oc7, kernel_size=k_s, stride=stride,
         #                               padding=pad, output_padding=1).double()
-        #self.deconv4 = nn.ConvTranspose2d(in_channels=oc7, out_channels=oc6, kernel_size=k_s, stride=stride,
-        #                               padding=pad).double()
+        self.deconv4 = nn.ConvTranspose2d(in_channels=oc7, out_channels=oc6, kernel_size=k_s, stride=stride,
+                                       padding=pad).double()
         self.deconv5 = nn.ConvTranspose2d(in_channels=oc6, out_channels=oc5, kernel_size=k_s, stride=stride,
                                           padding=pad).double()
         self.deconv6 = nn.ConvTranspose2d(in_channels=oc5, out_channels=oc4, kernel_size=k_s, stride=stride,
@@ -57,8 +54,10 @@ class AwesomeImageTranslatorJunior(nn.Module):
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
-        self.test_loss = []
+        self.val_loss = []
         self.model_name = model_name
+
+        self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
     def forward(self, X):
         x1 = self.relu(self.conv1(X))
@@ -115,7 +114,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
 
         return out
 
-    def train_model(self, X, y, valid_in=None, valid_target=None, current_epoch=None):
+    def train_model(self, X, y, current_epoch=None):
 
         def closure():
             self.optimizer.zero_grad()
@@ -125,23 +124,24 @@ class AwesomeImageTranslatorJunior(nn.Module):
                 sys.stdout.write('\r' + ' epoch ' + str(current_epoch) + ' |  loss : ' + str(loss.item()))
             else:
                 sys.stdout.write('\r  loss : ' + str(loss.item()))
-            # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
             self.train_loss.append(loss.item())
             loss.backward()
             return loss
 
         self.optimizer.step(closure)
-        # calculating the test_loss
-        if valid_in is not None and valid_target is not None:
-            with torch.no_grad():
-                test_out = self.forward(valid_in)
-                test_loss = self.criterion(test_out.reshape(-1, self.out_size), valid_target)
-                self.test_loss.append(test_loss.item())
         return
 
     def predic(self, X, y):
         return self.forward(X), y
 
+    def get_val_loss(self, val_in=None, val_target=None):
+        # do a forward pass with validation set for every epoch and get validation loss
+        if val_in is not None and val_target is not None:
+            with torch.no_grad():
+                val_out = self.forward(val_in)
+                val_loss = self.criterion(val_out, val_target)
+                self.val_loss.append(val_loss.item())
+        return
 
     def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         """
@@ -172,8 +172,8 @@ class AwesomeImageTranslatorJunior(nn.Module):
             if test_in is not None and test_target is not None:
                 with torch.no_grad():
                     test_out = self.forward(test_in)
-                    test_loss = self.criterion(test_out.reshape(-1, self.out_size), test_target)
-                    self.test_loss.append(test_loss.item())
+                    test_loss = self.criterion(test_out, test_target)
+                    self.val_loss.append(test_loss.item())
         print('\n-----------------------------------------')
         return
 
