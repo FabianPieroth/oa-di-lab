@@ -26,9 +26,9 @@ class CNN_skipCo_trainer(object):
             self.model.cuda()
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir)
-        self.epochs = 50
+        self.epochs = 250
 
-    def fit(self):
+    def fit(self, learning_rate, use_one_cycle=False):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
@@ -54,7 +54,23 @@ class CNN_skipCo_trainer(object):
             input_tensor_val = input_tensor_val.cuda()
             target_tensor_val = target_tensor_val.cuda()
 
+        if use_one_cycle:
+            higher_rate = learning_rate
+            lower_rate = 1 / 10 * higher_rate
+
+            num_epochs = self.epochs
+            up_num = int((num_epochs-50)/2)
+            down_num = up_num
+            ann_num = num_epochs - up_num - down_num
+            lr_up = np.linspace(lower_rate, higher_rate, num=up_num)
+            lr_down = np.linspace(higher_rate, lower_rate, num=down_num)
+            lr_anihilating = np.linspace(lower_rate, 0, num=ann_num)
+            learning_rates = np.append(np.append(lr_up, lr_down), lr_anihilating)
+
         for e in range(0, self.epochs):
+            if use_one_cycle:
+                lr = learning_rates[e]
+                self.model.set_learning_rate(lr)
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=32)
             # in self.batch_number is the number of batches in the training set
@@ -80,8 +96,8 @@ class CNN_skipCo_trainer(object):
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
-                                mean_image_low=mean_image_low,
-                                mean_image_high=mean_image_high)
+                                mean_images=[mean_image_low, mean_image_high],
+                                scale_params=[scale_params_low, scale_params_high])
 
                 # how to undo the scaling:
                 # unscaled_X = utils.scale_and_center_reverse(scale_center_X,
@@ -101,7 +117,7 @@ def main():
     # fit the first model
     print('---------------------------')
     print('fitting deep model')
-    trainer.fit()
+    trainer.fit(learning_rate=0.05, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)

@@ -9,7 +9,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
     def __init__(self,
                  criterion=nn.MSELoss(),
                  optimizer=torch.optim.Adam,
-                 ic1=1, oc1=8, oc2=16, oc3=32, oc4=64, oc5=128,
+                 ic1=1, oc1=32, oc2=64, oc3=128, oc4=128, oc5=256,
                  oc6=256, oc7=512, oc8=256, oc9=512, oc10=1024,
                  k_s=(7, 7), stride=2, pad=3,
                  learning_rate=0.005,
@@ -142,6 +142,15 @@ class AwesomeImageTranslatorJunior(nn.Module):
                 val_loss = self.criterion(val_out, val_target)
                 self.val_loss.append(val_loss.item())
         return
+
+
+    def set_learning_rate(self, learning_rate):
+        """
+        setting the learning rate. Can be explicitly done to have another learning rate without new initialization
+        :param learning_rate: learning rate to be set
+        """
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = learning_rate
 
     def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         """
