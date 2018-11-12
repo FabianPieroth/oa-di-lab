@@ -80,8 +80,8 @@ class CNN_skipCo_trainer(object):
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
-                                mean_image_low=mean_image_low,
-                                mean_image_high=mean_image_high)
+                                mean_images=[mean_image_low, mean_image_high],
+                                scale_params=[scale_params_low, scale_params_high])
 
                 # how to undo the scaling:
                 # unscaled_X = utils.scale_and_center_reverse(scale_center_X,
