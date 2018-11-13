@@ -30,6 +30,8 @@ class CNN_skipCo_trainer(object):
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type = self.image_type)
         self.epochs = 2
+        self.batch_size = 32
+        self.log_period = 50
 
     def fit(self):
         # get scale and center parameters
@@ -59,11 +61,11 @@ class CNN_skipCo_trainer(object):
 
         for e in range(0, self.epochs):
             # separate names into random batches and shuffle every epoch
-            self.dataset.batch_names(batch_size=32)
+            self.dataset.batch_names(batch_size=self.batch_size)
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
-                                                batch_files=self.dataset.val_file_names,
+                                                batch_files=self.dataset.train_batch_chunks[i],
                                                 scale_params_low=scale_params_low,
                                                 scale_params_high=scale_params_high,
                                                 mean_image_low=mean_image_low,
@@ -79,7 +81,7 @@ class CNN_skipCo_trainer(object):
             # calculate the validation loss and add to validation history
             self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
             # save model every x epochs
-            if e % 25 == 0 or e == self.epochs - 1:
+            if e % self.log_period == 0 or e == self.epochs - 1:
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
