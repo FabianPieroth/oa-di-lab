@@ -571,18 +571,27 @@ class ProcessData(object):
 
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                             mean_image_low, mean_image_high):
+
         x, y = self.create_train_batches(batch_files)
 
         scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
         scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
-        scale_center_x_val = np.array([scale_center_x_val])
-        scale_center_y_val = np.array([scale_center_y_val])
 
-        # (C, N, H, W) to (N, C, H, W)
-        scale_center_x_val = scale_center_x_val.reshape(scale_center_x_val.shape[1], scale_center_x_val.shape[0],
+        if self.image_type == 'US':
+            scale_center_x_val = np.array([scale_center_x_val])
+            scale_center_y_val = np.array([scale_center_y_val])
+
+
+            # (C, N, H, W) to (N, C, H, W)
+            scale_center_x_val = scale_center_x_val.reshape(scale_center_x_val.shape[1], scale_center_x_val.shape[0],
                                                         scale_center_x_val.shape[2], scale_center_x_val.shape[3])
-        scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
+            scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
                                                         scale_center_y_val.shape[2], scale_center_y_val.shape[3])
+
+        else:
+            # (N, H, W, C) to (N, C, H, W)
+            scale_center_x_val = np.moveaxis(scale_center_x_val,[0,1,2,3],[0,2,3,1])
+            scale_center_y_val = np.moveaxis(scale_center_y_val,[0,1,2,3],[0,2,3,1])
 
         input_tensor, target_tensor = torch.from_numpy(scale_center_x_val), torch.from_numpy(scale_center_y_val)
 
