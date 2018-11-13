@@ -9,7 +9,7 @@ import torch.nn as nn
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
-        self.image_type = 'US'
+        self.image_type = 'OA'
 
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=True,
@@ -64,7 +64,7 @@ class CNN_skipCo_trainer(object):
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
-                                                batch_files=self.dataset.val_file_names,
+                                                batch_files=self.dataset.train_batch_chunks[i],
                                                 scale_params_low=scale_params_low,
                                                 scale_params_high=scale_params_high,
                                                 mean_image_low=mean_image_low,
