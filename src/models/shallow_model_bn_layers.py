@@ -32,16 +32,16 @@ class shallow_model_bn_layer(nn.Module):
                                        padding=pad).double()
 
 
-        self.bn0 = nn.BatchNorm2d(num_features=ic1)
-        self.bn1 = nn.BatchNorm2d(num_features=oc1)
-        self.bn2 = nn.BatchNorm2d(num_features=oc2)
-        self.bn3 = nn.BatchNorm2d(num_features=oc3)
-        self.bn4 = nn.BatchNorm2d(num_features=oc4)
+        self.bn0 = nn.BatchNorm2d(num_features=ic1).double()
+        self.bn1 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn2 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn3 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn4 = nn.BatchNorm2d(num_features=oc4).double()
 
-        self.bn5 = nn.BatchNorm2d(num_features=oc4)
-        self.bn6 = nn.BatchNorm2d(num_features=oc3)
-        self.bn7 = nn.BatchNorm2d(num_features=oc2)
-        self.bn8 = nn.BatchNorm2d(num_features=oc1)
+        self.bn5 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn6 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn7 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn8 = nn.BatchNorm2d(num_features=ic1).double()
 
         self.relu = torch.nn.functional.relu
 
