@@ -35,7 +35,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
         #self.deconv3 = nn.ConvTranspose2d(in_channels=oc8, out_channels=oc7, kernel_size=k_s, stride=stride,
         #                               padding=pad, output_padding=1).double()
         self.deconv4 = nn.ConvTranspose2d(in_channels=oc7, out_channels=oc6, kernel_size=k_s, stride=stride,
-                                       padding=pad).double()
+                                          padding=pad).double()
         self.deconv5 = nn.ConvTranspose2d(in_channels=oc6, out_channels=oc5, kernel_size=k_s, stride=stride,
                                           padding=pad).double()
         self.deconv6 = nn.ConvTranspose2d(in_channels=oc5, out_channels=oc4, kernel_size=k_s, stride=stride,
@@ -47,7 +47,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
         self.deconv9 = nn.ConvTranspose2d(in_channels=oc2, out_channels=oc1, kernel_size=k_s, stride=stride,
                                           padding=pad).double()
         self.deconv10 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
-                                          padding=pad).double()
+                                           padding=pad).double()
 
         self.relu = torch.nn.functional.relu
 

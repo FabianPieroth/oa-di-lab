@@ -13,9 +13,9 @@ class CNN_skipCo_trainer(object):
         self.image_type = 'US'
 
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=True,
+                                   do_augment=False, add_augment=False,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=False)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -73,16 +73,22 @@ class CNN_skipCo_trainer(object):
 
         else:
             self.model.set_learning_rate(learning_rate)
+
+        print('training file names: ', self.dataset.train_file_names)
+        print('RESETTING THE SINGLE IMAGE')
+        self.dataset.train_file_names = ['/Users/Boss/di_lab_project/di-lab/data/processed/processed_all/ultrasound/US_Study_26_Scan_16_ch3']
+        print('training file names: ', self.dataset.train_file_names)
         for e in range(0, self.epochs):
             if use_one_cycle:
                 lr = learning_rates[e]
                 self.model.set_learning_rate(lr)
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=32)
+
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
-                                                batch_files=self.dataset.val_file_names,
+                                                batch_files=self.dataset.train_batch_chunks[i],
                                                 scale_params_low=scale_params_low,
                                                 scale_params_high=scale_params_high,
                                                 mean_image_low=mean_image_low,
@@ -121,7 +127,6 @@ class CNN_skipCo_trainer(object):
         """
         learning rate finder. goes through multiple learning rates and does one forward pass with each and tracks the loss.
         it returns the learning rates and losses so one can make an image of the loss from which one can find a suitable learning rate. Pick the highest one on which the loss is still decreasing (so not the minimum)
-        (adapted from S.Gugger function of the fast.ai course)
         :param train_in: training data input
         :param target: training data target
         :param init_value: inital value which the learning rate start with. init_value < final_value. Default: 1e-8
@@ -208,7 +213,7 @@ def main():
     # fit the first model
     print('---------------------------')
     print('fitting shallow model')
-    trainer.fit(learning_rate=0.05, use_one_cycle=True)
+    trainer.fit(learning_rate=0.001, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
@@ -218,7 +223,7 @@ def main():
     #trainer.find_lr()
 
 
-    print('finished')
+    print('\nfinished')
 
 if __name__ == "__main__":
     main()

@@ -10,7 +10,7 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=True,
+                                   do_augment=False, add_augment=False,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
                                    image_type='US', get_scale_center=False, single_sample=True)
 
@@ -26,7 +26,7 @@ class CNN_skipCo_trainer(object):
             self.model.cuda()
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir)
-        self.epochs = 250
+        self.epochs = 100
 
     def fit(self, learning_rate, use_one_cycle=False):
         # get scale and center parameters
@@ -117,7 +117,7 @@ def main():
     # fit the first model
     print('---------------------------')
     print('fitting deep model')
-    trainer.fit(learning_rate=0.05, use_one_cycle=True)
+    trainer.fit(learning_rate=0.1, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
