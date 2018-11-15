@@ -10,7 +10,7 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False,
+                                   do_augment=False, add_augment=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
                                    image_type='US', get_scale_center=False, single_sample=True)
 
@@ -76,7 +76,7 @@ class CNN_skipCo_trainer(object):
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
-                                                batch_files=self.dataset.val_file_names,
+                                                batch_files=self.dataset.train_batch_chunks[i],
                                                 scale_params_low=scale_params_low,
                                                 scale_params_high=scale_params_high,
                                                 mean_image_low=mean_image_low,
@@ -117,7 +117,7 @@ def main():
     # fit the first model
     print('---------------------------')
     print('fitting deep model')
-    trainer.fit(learning_rate=0.1, use_one_cycle=True)
+    trainer.fit(learning_rate=0.001, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
