@@ -54,7 +54,6 @@ class shallow_model_u_bn(nn.Module):
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
     def forward(self, X):
-        X = self.bn0(X)
         x = self.relu(self.bn1(self.conv1(X)))
         x1 = self.relu(self.bn2(self.conv2(x)))
         # doing relu before saving the result tfor the skip connection
