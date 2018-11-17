@@ -213,7 +213,7 @@ def main():
     # fit the first model
     print('---------------------------')
     print('fitting shallow model')
-    trainer.fit(learning_rate=0.001, use_one_cycle=True)
+    trainer.fit(learning_rate=0.01, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)

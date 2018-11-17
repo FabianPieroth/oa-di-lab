@@ -31,7 +31,6 @@ class shallow_model_u_bn(nn.Module):
         self.deconv4 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride2,
                                           padding=pad).double()
 
-
         self.bn0 = nn.BatchNorm2d(num_features=ic1).double()
         self.bn1 = nn.BatchNorm2d(num_features=oc1).double()
         self.bn2 = nn.BatchNorm2d(num_features=oc2).double()
@@ -54,7 +53,6 @@ class shallow_model_u_bn(nn.Module):
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
     def forward(self, X):
-        X = self.bn0(X)
         x = self.relu(self.bn1(self.conv1(X)))
         x1 = self.relu(self.bn2(self.conv2(x)))
         # doing relu before saving the result tfor the skip connection
