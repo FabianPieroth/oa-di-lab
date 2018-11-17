@@ -74,10 +74,6 @@ class CNN_skipCo_trainer(object):
         else:
             self.model.set_learning_rate(learning_rate)
 
-        print('training file names: ', self.dataset.train_file_names)
-        print('RESETTING THE SINGLE IMAGE')
-        self.dataset.train_file_names = ['/Users/Boss/di_lab_project/di-lab/data/processed/processed_all/ultrasound/US_Study_26_Scan_16_ch3']
-        print('training file names: ', self.dataset.train_file_names)
         for e in range(0, self.epochs):
             if use_one_cycle:
                 lr = learning_rates[e]
