@@ -15,7 +15,7 @@ class deep_model(nn.Module):
                  k_s=(7, 7), stride1=1, stride2=2, pad=3,
                  learning_rate=0.01,
                  weight_decay=0,
-                 model_name='shallow_model_u_bn'):
+                 model_name='deep_model'):
 
         super(deep_model, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride1, padding=pad).double()
