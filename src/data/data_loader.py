@@ -204,6 +204,10 @@ class ProcessData(object):
             if self.do_flip:
                 self.train_file_names = self._names_to_list(folder_name=path_augmented + '/flip' + '/' + end_folder,
                                                             name_list=self.train_file_names)
+            if self.do_crop:
+                self.train_file_names = self._names_to_list(folder_name=path_augmented + '/crop' + '/' + end_folder,
+                                                            name_list=self.train_file_names)
+
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
