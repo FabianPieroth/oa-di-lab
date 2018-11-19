@@ -209,7 +209,7 @@ def main():
 
     # fit the first model
     print('---------------------------')
-    print('fitting shallow model')
+    print('fitting deep model')
     trainer.fit(learning_rate=0.01, use_one_cycle=True)
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
