@@ -1,7 +1,7 @@
 from data.data_loader import ProcessData
 from logger.logger import Logger
 import numpy as np
-from models import awesomeImageTranslatorJunior
+from models import cnn_toy_model
 import torch
 import torch.nn as nn
 
@@ -9,12 +9,14 @@ import torch.nn as nn
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
+        self.image_type = 'OA'
+
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type='US', get_scale_center=False, single_sample=True)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
 
-        self.model = awesomeImageTranslatorJunior.AwesomeImageTranslatorJunior(
+        self.model = cnn_toy_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
             optimizer=torch.optim.Adam,
             learning_rate=0.001,
@@ -25,13 +27,15 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir)
-        self.epochs = 100
+        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
+                             image_type = self.image_type)
+        self.epochs = 2
 
-    def fit(self, learning_rate, use_one_cycle=False):
+    def fit(self):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+
 
         # currently for one image:
         '''
@@ -54,23 +58,7 @@ class CNN_skipCo_trainer(object):
             input_tensor_val = input_tensor_val.cuda()
             target_tensor_val = target_tensor_val.cuda()
 
-        if use_one_cycle:
-            higher_rate = learning_rate
-            lower_rate = 1 / 10 * higher_rate
-
-            num_epochs = self.epochs
-            up_num = int((num_epochs-50)/2)
-            down_num = up_num
-            ann_num = num_epochs - up_num - down_num
-            lr_up = np.linspace(lower_rate, higher_rate, num=up_num)
-            lr_down = np.linspace(higher_rate, lower_rate, num=down_num)
-            lr_anihilating = np.linspace(lower_rate, 0, num=ann_num)
-            learning_rates = np.append(np.append(lr_up, lr_down), lr_anihilating)
-
         for e in range(0, self.epochs):
-            if use_one_cycle:
-                lr = learning_rates[e]
-                self.model.set_learning_rate(lr)
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=32)
             # in self.batch_number is the number of batches in the training set
@@ -105,7 +93,7 @@ class CNN_skipCo_trainer(object):
                 # unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high,
                 #  mean_image_high, image_type=self.dataset.image_type)
     def predict(self):
-        #self.model.predict()
+        # self.model.predict()
 
         # see self.dataset.X_val and self.dataset.Y_val
         pass
@@ -116,8 +104,8 @@ def main():
 
     # fit the first model
     print('---------------------------')
-    print('fitting deep model')
-    trainer.fit(learning_rate=0.001, use_one_cycle=True)
+    print('fitting shallow model')
+    trainer.fit()
     trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)

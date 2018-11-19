@@ -9,12 +9,12 @@ class AwesomeImageTranslatorJunior(nn.Module):
     def __init__(self,
                  criterion=nn.MSELoss(),
                  optimizer=torch.optim.Adam,
-                 ic1=1, oc1=8, oc2=16, oc3=32, oc4=64, oc5=128,
+                 ic1=1, oc1=64, oc2=64, oc3=128, oc4=128, oc5=256,
                  oc6=256, oc7=512, oc8=256, oc9=512, oc10=1024,
                  k_s=(7, 7), stride=2, pad=3,
                  learning_rate=0.005,
                  weight_decay=0,
-                 model_name='deep_model2'):
+                 model_name='deep_model2_bn'):
 
         super(AwesomeImageTranslatorJunior, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride, padding=pad).double()
@@ -35,7 +35,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
         #self.deconv3 = nn.ConvTranspose2d(in_channels=oc8, out_channels=oc7, kernel_size=k_s, stride=stride,
         #                               padding=pad, output_padding=1).double()
         self.deconv4 = nn.ConvTranspose2d(in_channels=oc7, out_channels=oc6, kernel_size=k_s, stride=stride,
-                                       padding=pad).double()
+                                          padding=pad).double()
         self.deconv5 = nn.ConvTranspose2d(in_channels=oc6, out_channels=oc5, kernel_size=k_s, stride=stride,
                                           padding=pad).double()
         self.deconv6 = nn.ConvTranspose2d(in_channels=oc5, out_channels=oc4, kernel_size=k_s, stride=stride,
@@ -47,7 +47,25 @@ class AwesomeImageTranslatorJunior(nn.Module):
         self.deconv9 = nn.ConvTranspose2d(in_channels=oc2, out_channels=oc1, kernel_size=k_s, stride=stride,
                                           padding=pad).double()
         self.deconv10 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
-                                          padding=pad).double()
+                                           padding=pad).double()
+
+        self.bn0 = nn.BatchNorm2d(num_features=ic1).double()
+        self.bn1 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn2 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn3 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn4 = nn.BatchNorm2d(num_features=oc4).double()
+
+        self.bn5 = nn.BatchNorm2d(num_features=oc5).double()
+        self.bn6 = nn.BatchNorm2d(num_features=oc6).double()
+        self.bn7 = nn.BatchNorm2d(num_features=oc7).double()
+
+        self.bn8 = nn.BatchNorm2d(num_features=oc6).double()
+        self.bn9 = nn.BatchNorm2d(num_features=oc5).double()
+        self.bn10 = nn.BatchNorm2d(num_features=oc4).double()
+        self.bn11 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn12 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn13 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn14 = nn.BatchNorm2d(num_features=ic1).double()
 
         self.relu = torch.nn.functional.relu
 
@@ -60,20 +78,20 @@ class AwesomeImageTranslatorJunior(nn.Module):
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
     def forward(self, X):
-        x1 = self.relu(self.conv1(X))
-        x2 = self.relu(self.conv2(x1))
+        x1 = self.relu(self.bn1(self.conv1(X)))
+        x2 = self.relu(self.bn2(self.conv2(x1)))
         # doing relu before saving the result before the skip connection
         skip2 = x2.clone()
 
-        x3 = self.relu(self.conv3(x2))
-        x4 = self.relu(self.conv4(x3))
+        x3 = self.relu(self.bn3(self.conv3(x2)))
+        x4 = self.relu(self.bn4(self.conv4(x3)))
         skip3 = x4.clone()
 
-        x5 = self.relu(self.conv5(x4))
-        x6 = self.relu(self.conv6(x5))
+        x5 = self.relu(self.bn5(self.conv5(x4)))
+        x6 = self.relu(self.bn6(self.conv6(x5)))
         skip4 = x6.clone()
 
-        x7 = self.relu(self.conv7(x6))
+        x7 = self.relu(self.bn7(self.conv7(x6)))
 
         #############
         # x8 = self.relu(self.conv8(x7))
@@ -87,7 +105,7 @@ class AwesomeImageTranslatorJunior(nn.Module):
 
         # x13 = self.relu(x12 + skip5)
 
-        x13new = self.deconv4(x7)
+        x13new = self.bn8(self.deconv4(x7))
 
         # x13 = self.relu(self.deconv3(x13))
         # x14 = self.deconv4(x13)
@@ -97,18 +115,18 @@ class AwesomeImageTranslatorJunior(nn.Module):
 
         #############
 
-        x15 = self.relu(self.deconv5(x15))
-        x16 = self.deconv6(x15)
+        x15 = self.relu(self.bn9(self.deconv5(x15)))
+        x16 = self.bn10(self.deconv6(x15))
 
         x17 = self.relu(x16 + skip3)
 
-        x17 = self.relu(self.deconv7(x17))
-        x18 = self.deconv8(x17)
+        x17 = self.relu(self.bn11(self.deconv7(x17)))
+        x18 = self.bn12(self.deconv8(x17))
 
         x19 = self.relu(x18 + skip2)
 
-        x19 = self.relu(self.deconv9(x19))
-        x20 = self.deconv10(x19)
+        x19 = self.relu(self.bn13(self.deconv9(x19)))
+        x20 = self.bn14(self.deconv10(x19))
 
         out = self.relu(x20 + X)
 
@@ -142,6 +160,15 @@ class AwesomeImageTranslatorJunior(nn.Module):
                 val_loss = self.criterion(val_out, val_target)
                 self.val_loss.append(val_loss.item())
         return
+
+
+    def set_learning_rate(self, learning_rate):
+        """
+        setting the learning rate. Can be explicitly done to have another learning rate without new initialization
+        :param learning_rate: learning rate to be set
+        """
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = learning_rate
 
     def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         """

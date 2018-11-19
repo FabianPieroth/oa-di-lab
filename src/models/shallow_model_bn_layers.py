@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import numpy as np
 
-class cnn_skipC_model(nn.Module):
+class shallow_model_bn_layer(nn.Module):
     import torch
     from torch import nn
 
@@ -16,7 +16,7 @@ class cnn_skipC_model(nn.Module):
                  weight_decay=0,
                  model_name='shallow_model'):
 
-        super(cnn_skipC_model, self).__init__()
+        super(shallow_model_bn_layer, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv2 = nn.Conv2d(in_channels=oc1, out_channels=oc2, kernel_size=k_s, stride=stride, padding=pad).double()
         self.conv3 = nn.Conv2d(in_channels=oc2, out_channels=oc3, kernel_size=k_s, stride=stride, padding=pad).double()
@@ -31,6 +31,18 @@ class cnn_skipC_model(nn.Module):
         self.deconv4 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
 
+
+        self.bn0 = nn.BatchNorm2d(num_features=ic1).double()
+        self.bn1 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn2 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn3 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn4 = nn.BatchNorm2d(num_features=oc4).double()
+
+        self.bn5 = nn.BatchNorm2d(num_features=oc3).double()
+        self.bn6 = nn.BatchNorm2d(num_features=oc2).double()
+        self.bn7 = nn.BatchNorm2d(num_features=oc1).double()
+        self.bn8 = nn.BatchNorm2d(num_features=ic1).double()
+
         self.relu = torch.nn.functional.relu
 
         self.criterion = criterion
@@ -42,22 +54,23 @@ class cnn_skipC_model(nn.Module):
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
     def forward(self, X):
-        x = self.relu(self.conv1(X))
-        x1 = self.relu(self.conv2(x))
+        X = self.bn0(X)
+        x = self.relu(self.bn1(self.conv1(X)))
+        x1 = self.relu(self.bn2(self.conv2(x)))
         # doing relu before saving the result tfor the skip connection
         x2 = x1.clone()
 
-        x3 = self.relu(self.conv3(x1))
-        x3 = self.relu(self.conv4(x3))
+        x3 = self.relu(self.bn3(self.conv3(x1)))
+        x3 = self.relu(self.bn4(self.conv4(x3)))
 
-        x3 = self.relu(self.deconv1(x3))
-        x3 = self.deconv2(x3)
+        x3 = self.relu(self.bn5(self.deconv1(x3)))
+        x3 = self.bn6(self.deconv2(x3))
 
         x4 = x2 + x3
         x4 = self.relu(x4)
 
-        x5 = self.relu(self.deconv3(x4))
-        x5 = self.deconv4(x5)
+        x5 = self.relu(self.bn7(self.deconv3(x4)))
+        x5 = self.bn8(self.deconv4(x5))
 
         out = x5 + X
         out = self.relu(out)

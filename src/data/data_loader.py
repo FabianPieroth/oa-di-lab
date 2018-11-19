@@ -66,7 +66,7 @@ class ProcessData(object):
 
         self.logger_call = logger_call  # initialise the data_loader but do nothing else
 
-        # run _prepare_data which calls the methods for preparartion, also augmentation etc.
+        # run _prepare_data which calls the methods for preparation, also augmentation etc.
         if not self.logger_call:
             self._prepare_data()
 
@@ -204,6 +204,10 @@ class ProcessData(object):
             if self.do_flip:
                 self.train_file_names = self._names_to_list(folder_name=path_augmented + '/flip' + '/' + end_folder,
                                                             name_list=self.train_file_names)
+            if self.do_crop:
+                self.train_file_names = self._names_to_list(folder_name=path_augmented + '/crop' + '/' + end_folder,
+                                                            name_list=self.train_file_names)
+
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
@@ -571,18 +575,27 @@ class ProcessData(object):
 
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                             mean_image_low, mean_image_high):
+
         x, y = self.create_train_batches(batch_files)
 
         scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
         scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
-        scale_center_x_val = np.array([scale_center_x_val])
-        scale_center_y_val = np.array([scale_center_y_val])
 
-        # (C, N, H, W) to (N, C, H, W)
-        scale_center_x_val = scale_center_x_val.reshape(scale_center_x_val.shape[1], scale_center_x_val.shape[0],
+        if self.image_type == 'US':
+            scale_center_x_val = np.array([scale_center_x_val])
+            scale_center_y_val = np.array([scale_center_y_val])
+
+
+            # (C, N, H, W) to (N, C, H, W)
+            scale_center_x_val = scale_center_x_val.reshape(scale_center_x_val.shape[1], scale_center_x_val.shape[0],
                                                         scale_center_x_val.shape[2], scale_center_x_val.shape[3])
-        scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
+            scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
                                                         scale_center_y_val.shape[2], scale_center_y_val.shape[3])
+
+        else:
+            # (N, H, W, C) to (N, C, H, W)
+            scale_center_x_val = np.moveaxis(scale_center_x_val,[0,1,2,3],[0,2,3,1])
+            scale_center_y_val = np.moveaxis(scale_center_y_val,[0,1,2,3],[0,2,3,1])
 
         input_tensor, target_tensor = torch.from_numpy(scale_center_x_val), torch.from_numpy(scale_center_y_val)
 

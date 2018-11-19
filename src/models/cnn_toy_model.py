@@ -1,7 +1,6 @@
 import sys
 import torch
 from torch import nn
-import numpy as np
 
 class cnn_skipC_model(nn.Module):
     import torch
@@ -10,24 +9,14 @@ class cnn_skipC_model(nn.Module):
     def __init__(self,
                  criterion=nn.MSELoss(),
                  optimizer=torch.optim.Adam,
-                 ic1=1, oc1=32, oc2=64, oc3=128, oc4=256,
+                 ic1=28, oc1=32, oc2=64, oc3=128, oc4=256,
                  k_s=(7, 7), stride=2, pad=3,
                  learning_rate=0.01,
                  weight_decay=0,
-                 model_name='shallow_model'):
+                 model_name='toy_model'):
 
         super(cnn_skipC_model, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=ic1, out_channels=oc1, kernel_size=k_s, stride=stride, padding=pad).double()
-        self.conv2 = nn.Conv2d(in_channels=oc1, out_channels=oc2, kernel_size=k_s, stride=stride, padding=pad).double()
-        self.conv3 = nn.Conv2d(in_channels=oc2, out_channels=oc3, kernel_size=k_s, stride=stride, padding=pad).double()
-        self.conv4 = nn.Conv2d(in_channels=oc3, out_channels=oc4, kernel_size=k_s, stride=stride, padding=pad).double()
-
-        self.deconv1 = nn.ConvTranspose2d(in_channels=oc4, out_channels=oc3, kernel_size=k_s, stride=stride,
-                                       padding=pad).double()
-        self.deconv2 = nn.ConvTranspose2d(in_channels=oc3, out_channels=oc2, kernel_size=k_s, stride=stride,
-                                       padding=pad).double()
-        self.deconv3 = nn.ConvTranspose2d(in_channels=oc2, out_channels=oc1, kernel_size=k_s, stride=stride,
-                                       padding=pad).double()
         self.deconv4 = nn.ConvTranspose2d(in_channels=oc1, out_channels=ic1, kernel_size=k_s, stride=stride,
                                        padding=pad).double()
 
@@ -43,21 +32,21 @@ class cnn_skipC_model(nn.Module):
 
     def forward(self, X):
         x = self.relu(self.conv1(X))
-        x1 = self.relu(self.conv2(x))
+        #x1 = self.relu(self.conv2(x))
         # doing relu before saving the result tfor the skip connection
-        x2 = x1.clone()
+        #x2 = x1.clone()
 
-        x3 = self.relu(self.conv3(x1))
-        x3 = self.relu(self.conv4(x3))
+        #x3 = self.relu(self.conv3(x1))
+        #x3 = self.relu(self.conv4(x3))
 
-        x3 = self.relu(self.deconv1(x3))
-        x3 = self.deconv2(x3)
+        #x3 = self.relu(self.deconv1(x3))
+        #x3 = self.deconv2(x3)
 
-        x4 = x2 + x3
-        x4 = self.relu(x4)
+        #x4 = x2 + x3
+        #x4 = self.relu(x4)
 
-        x5 = self.relu(self.deconv3(x4))
-        x5 = self.deconv4(x5)
+        #x5 = self.relu(self.deconv3(x4))
+        x5 = self.deconv4(x)
 
         out = x5 + X
         out = self.relu(out)
@@ -92,13 +81,37 @@ class cnn_skipC_model(nn.Module):
                 self.val_loss.append(val_loss.item())
         return
 
-
-    def set_learning_rate(self, learning_rate):
+    def train_model_premat(self, X, y, test_in=None, test_target=None, epochs=100):
         """
-        setting the learning rate. Can be explicitly done to have another learning rate without new initialization
-        :param learning_rate: learning rate to be set
+        legacy method; can be used to train with full data now
+        :param X: images input in the format (N, C, H, W)
+        :param y: target images in the format (N, C, H, W)
+        :param test_in: validation data input
+        :param test_target: validation data target
+        :param epochs: number of epochs to train
+        :return: model is trained
         """
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = learning_rate
+        self.epochs = epochs
+        print('start training')
+        print('-----------------------------------------')
+        for i in range(epochs):
+            def closure():
+                self.optimizer.zero_grad()
+                out = self.forward(X)
+                loss = self.criterion(out, y)
+                sys.stdout.write('\r' + 'epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
+                # print('epoch ' + str(i) + ' |  loss : ' + str(loss.item()))
+                self.train_loss.append(loss.item())
+                loss.backward()
+                return loss
 
+            self.optimizer.step(closure)
+            # calculating the test_loss
+            if test_in is not None and test_target is not None:
+                with torch.no_grad():
+                    test_out = self.forward(test_in)
+                    test_loss = self.criterion(test_out, test_target)
+                    self.val_loss.append(test_loss.item())
+        print('\n-----------------------------------------')
+        return
 
