@@ -9,8 +9,6 @@ import random
 import skimage.filters as skf
 
 
-
-
 ##### Elastic Deformation #######
 
 # deform function
@@ -26,7 +24,7 @@ def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
     Output: the deformed image (shape (N,M,C))
     """
 
-    ## Preliminaries
+    # Preliminaries
     # dimensions of the input image
     shape = image.shape
 
