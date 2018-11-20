@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy import interpolate as ipol
+import re
+import scipy.io
+import os
 
 from skimage.transform import resize
 
@@ -191,3 +194,40 @@ def flip(image1,image2):
 
     return np.flip(image1,axis=1), np.flip(image2,axis=1)
 
+# Load random channels from raw data
+
+
+def _extract_info_from_filename(filename):
+    # extract image_type, new_in folder, Scan number and channel
+    list_of_infos = filename.split('_')
+    image_type = list_of_infos[0]
+    read_folder = list_of_infos[1]
+    scan = list_of_infos[2] + '_' + list_of_infos[3]
+    channel = int(re.search(r'\d+', list_of_infos[4]).group())
+
+    return image_type, read_folder, scan, channel
+
+def rchannels(filename, dir_raw_in, num_rchannels=2):
+    image_type, read_folder, scan, channel = _extract_info_from_filename(filename)
+
+    in_dir = dir_raw_in + '/' + read_folder + '/' + scan
+    in_files = os.listdir(in_dir)
+    raw_file_name = [s for s in in_files if image_type + '_' in s][0]
+    raw_file = scipy.io.loadmat(in_dir + '/' + raw_file_name)
+    range_to_sample_from = np.delete(np.array(range(raw_file[image_type + '_low'].shape[2])), [channel])
+    sample_number = min(num_rchannels, raw_file[image_type + '_low'].shape[2])
+    if sample_number < num_rchannels:
+        print("Chosen number of channels for augemented is higher than some maximum number of channels.")
+    sampled_channels = np.random.choice(a=range_to_sample_from, size=sample_number, replace=False)
+    ret_list = []
+    ret_save_names = []
+    for i in sampled_channels:
+        name_low = image_type + '_low_' + read_folder + '_' + scan + '_ch' + str(i)
+        name_high = image_type + '_high_' + read_folder + '_' + scan + '_ch' + str(i)
+        name_save = image_type + '_' + read_folder + '_' + scan + '_ch' + str(i)
+        dict_single = {name_low: raw_file[image_type + '_low'][:, :, i],
+                       name_high: raw_file[image_type + '_high'][:, :, i]}
+        ret_save_names.append(name_save)
+        ret_list.append(dict_single)
+
+    return ret_list, ret_save_names

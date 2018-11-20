@@ -12,10 +12,10 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False,
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
+                                   do_augment=True, add_augment=True, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+                                   image_type=self.image_type, get_scale_center=True, single_sample=False)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -77,10 +77,6 @@ class CNN_skipCo_trainer(object):
 
         else:
             self.model.set_learning_rate(learning_rate)
-
-        print('training file names: ', self.dataset.train_file_names)
-        print('RESETTING THE SINGLE IMAGE')
-        self.dataset.train_file_names = ['/Users/Boss/di_lab_project/di-lab/data/processed/processed_all/ultrasound/US_Study_26_Scan_16_ch3']
         print('training file names: ', self.dataset.train_file_names)
         for e in range(0, self.epochs):
             if use_one_cycle:
