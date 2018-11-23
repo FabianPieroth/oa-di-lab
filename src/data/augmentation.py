@@ -215,9 +215,9 @@ def rchannels(filename, dir_raw_in, num_rchannels=2):
     raw_file_name = [s for s in in_files if image_type + '_' in s][0]
     raw_file = scipy.io.loadmat(in_dir + '/' + raw_file_name)
     range_to_sample_from = np.delete(np.array(range(raw_file[image_type + '_low'].shape[2])), [channel])
-    sample_number = min(num_rchannels, raw_file[image_type + '_low'].shape[2])
+    sample_number = min(num_rchannels, raw_file[image_type + '_low'].shape[2] - 1)
     if sample_number < num_rchannels:
-        print("Chosen number of channels for augemented is higher than some maximum number of channels.")
+        print("Chosen number of channels for augmented is higher than some maximum number of channels.")
     sampled_channels = np.random.choice(a=range_to_sample_from, size=sample_number, replace=False)
     ret_list = []
     ret_save_names = []
