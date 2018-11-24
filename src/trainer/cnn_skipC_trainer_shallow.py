@@ -12,9 +12,9 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
                                    do_augment=True, add_augment=True, do_rchannels=True,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
+                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
                                    image_type=self.image_type, get_scale_center=True, single_sample=False)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
