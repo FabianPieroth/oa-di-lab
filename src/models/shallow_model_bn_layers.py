@@ -50,6 +50,7 @@ class shallow_model_bn_layer(nn.Module):
         self.train_loss = []
         self.val_loss = []
         self.model_name = model_name
+        self.learning_rate = learning_rate
 
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
