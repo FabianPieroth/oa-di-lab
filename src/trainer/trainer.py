@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
-        self.image_type = 'US'
+        self.image_type = 'OA'
 
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=False,
@@ -18,7 +18,7 @@ class CNN_skipCo_trainer(object):
                                    image_type=self.image_type, get_scale_center=False, single_sample=True)
         self.model = ImageTranslator(conv_channels=[1, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type)
+                             image_type=self.image_type, dataset=self.dataset)
 
         if torch.cuda.is_available():
             torch.cuda.current_device()
