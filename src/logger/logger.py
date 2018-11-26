@@ -45,7 +45,7 @@ class Logger(object):
         self.model.load_state_dict(torch.load(self.load_dir + '_' + time_stamp + '/' + self.model.model_name + '__' + save_appendix + '.pt'))
         # set the state of the model to eval()
         self.model.eval()
-        predict = self.model(input_tensor)
+        predict = self.model(input_tensor) # self.model.predict(input_tensor)
         return predict
 
 

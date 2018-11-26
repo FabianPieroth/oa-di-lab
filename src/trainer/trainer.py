@@ -7,6 +7,7 @@ import torch.nn as nn
 import sys
 
 class CNN_skipCo_trainer(object):
+
     def __init__(self):
 
         self.image_type = 'OA'
@@ -16,7 +17,9 @@ class CNN_skipCo_trainer(object):
                                    do_flip=False, do_blur=False, do_deform=False, do_crop=False,
                                    image_type=self.image_type, get_scale_center=False, single_sample=True)
 
-        self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
+        self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3],
+                                     model_name='awesome_model')
+
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset)
 
@@ -85,11 +88,8 @@ class CNN_skipCo_trainer(object):
                                 scale_params=[scale_params_low, scale_params_high])
 
 
-    def predict(self):
-        # self.model.predict()
-
-        # see self.dataset.X_val and self.dataset.Y_val
-        pass
+    def predict(self, x):
+        return self.model(x)
 
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
@@ -215,6 +215,7 @@ def main():
     #trainer.find_lr()
     # fit the first model
     print('\n---------------------------')
+    print(trainer.model)
     print('fitting model')
     trainer.fit(learning_rate=0.001, lr_method='one_cycle')
     #trainer.predict()

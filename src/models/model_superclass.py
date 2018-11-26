@@ -78,10 +78,8 @@ class ImageTranslator(nn.Module):
                 skip_connection += [x]
             else:
                 skip_connection += [0]
-
             l = self.conv_layers[i]
             x = l(x)
-        # adding a 0 for the last 'connection' between conv and deconv
 
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
