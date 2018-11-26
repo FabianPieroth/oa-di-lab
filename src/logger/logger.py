@@ -4,20 +4,24 @@ import os
 import datetime
 import pickle
 import shutil
+import json
 
 class Logger(object):
     # This class...
     def __init__(self,
                  project_root_dir,
+                 dataset,
                  model=None,
                  image_type='US'):
         self.project_root_dir = project_root_dir
         self.model = model  # give the model to the logger, so we have all needed variables in the self
         self.image_type = image_type
+        self.dataset=dataset
 
         self.base_dir = '%s/reports' % (project_root_dir)
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
         self.save_dir = self.base_dir + '/' + self.model.model_name + '_' +  timestamp
+        self.load_dir = self.base_dir + '/' + self.model.model_name
         os.makedirs(self.save_dir)
 
     def save_model(self, save_appendix):
@@ -36,6 +40,26 @@ class Logger(object):
         print("Loaded model from disk")
         return torch.load(self.save_dir + '/' + self.model.model_name + '_' + save_appendix + '.pt')
     '''
+
+    def load_predict(self, save_appendix, time_stamp, input_tensor, target_tensor):
+        self.model.load_state_dict(torch.load(self.load_dir + '_' + time_stamp + '/' + self.model.model_name + '__' + save_appendix + '.pt'))
+        # set the state of the model to eval()
+        self.model.eval()
+        predict = self.model(input_tensor)
+        return predict
+
+
+    def save_us_channel(self, im_input, im_target, im_predict, i, time_stamp):
+
+        input = {"input_image"+str(i) : im_input}
+        target = {"target_image"+str(i) : im_target}
+        predict = {"predict_image"+str(i) : im_predict}
+        with open(self.load_dir + '_' + time_stamp + '/input', 'wb') as handle:
+            pickle.dump(input, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.load_dir + '_' + time_stamp + '/target', 'wb') as handle:
+            pickle.dump(target, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.load_dir + '_' + time_stamp + '/predict', 'wb') as handle:
+            pickle.dump(predict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def calculate_metrics(self, model):
         # Methods calculates all the metrics that we want for the evaluation
@@ -107,3 +131,38 @@ class Logger(object):
             shutil.copy(data_loader_path, self.save_dir + '/data')
             shutil.copy(augmentation_file_path, self.save_dir + '/data')
             shutil.copy(model_file_path, self.save_dir + '/models')
+
+    def save_json_file(self, batch_size, epochs):
+
+        config = {
+
+
+            "batch_size" : batch_size,
+            "model_name" : self.model.model_name,
+            "nr_epochs" : epochs,
+            "applied_augmentations" : {
+                "process_raw_data" : self.dataset.process_raw,
+                "do_augment" : self.dataset.do_augment,
+                "add_augment" : self.dataset.add_augment ,
+                "do_flip" : self.dataset.do_flip,
+                "do_blur" : self.dataset.do_blur,
+                "do_deform" : self.dataset.do_deform,
+                "do_crop" : self.dataset.do_crop,
+                "image_type" : self.dataset.image_type,
+                "get_scale_center" : self.dataset.get_scale_center,
+                "single_sample" : self.dataset.single_sample
+            },
+            "train_valid_split" : self.dataset.train_ratio,
+            "loss_function" : str(self.model.criterion),
+            "train_files" : self.dataset.train_file_names,
+            "val_files" : self.dataset.val_file_names,
+            "learning_rate": self.model.learning_rate
+        }
+        file_path = self.save_dir + '/config.json'
+        with open(file_path, 'w') as outfile:
+            json.dump(config, outfile)
+
+
+
+
+
