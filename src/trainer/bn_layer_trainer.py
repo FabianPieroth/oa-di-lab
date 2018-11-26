@@ -5,6 +5,7 @@ from models import shallow_model_bn_layers
 import torch
 import torch.nn as nn
 import sys
+import json
 
 
 class CNN_skipCo_trainer(object):
@@ -20,7 +21,7 @@ class CNN_skipCo_trainer(object):
         self.model = shallow_model_bn_layers.shallow_model_bn_layer(
             criterion=nn.MSELoss(),
             optimizer=torch.optim.Adam,
-            learning_rate=0.001,
+            learning_rate=0.1,
             weight_decay=0
         )
 
@@ -29,13 +30,19 @@ class CNN_skipCo_trainer(object):
             self.model.cuda()
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type)
+                             image_type=self.image_type, dataset=self.dataset)
         self.epochs = 250
+        self.batch_size=16
+
+
 
     def fit(self, learning_rate, use_one_cycle=False):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+
+        print("lr", self.model.learning_rate)
+        print("batch", self.batch_size)
 
         # currently for one image:
         '''
@@ -100,19 +107,56 @@ class CNN_skipCo_trainer(object):
             # calculate the validation loss and add to validation history
             self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
             # save model every x epochs
-            if e % 25 == 0 or e == self.epochs - 1:
+            if e % 2 == 0 or e == self.epochs - 1:
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high])
 
+        slef.logger.save_json_file(batch_size,epochs)
+
+
+
                 # how to undo the scaling:
                 # unscaled_X = utils.scale_and_center_reverse(scale_center_X,
                 #  scale_params_low, mean_image_low, image_type = self.dataset.image_type)
                 # unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high,
                 #  mean_image_high, image_type=self.dataset.image_type)
-    def predict(self):
+
+    def predict(self, save_appendix, time_stamp):
+
+        scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
+        mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+        input_val, target_val = self.dataset._load_processed_data(full_file_names=self.dataset.val_file_names)
+
+        input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
+            batch_files=self.dataset.val_file_names,
+            scale_params_low=scale_params_low,
+            scale_params_high=scale_params_high,
+            mean_image_low=mean_image_low,
+            mean_image_high=mean_image_high)
+
+        if torch.cuda.is_available():
+            input_tensor_val = input_tensor_val.cuda()
+            target_tensor_val = target_tensor_val.cuda()
+
+        #print("Input val images", input_val.shape)
+
+        for i in range(input_val.shape[0]):
+            predict = self.logger.load_predict(save_appendix=save_appendix,
+                                               time_stamp=time_stamp,
+                                               input_tensor=input_tensor_val,
+                                               target_tensor=target_tensor_val)
+            predict_new = predict.detach().cpu().numpy()[0, :, :, :]
+            #print(predict_new.shape)
+
+            predict_unscaled = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
+                                                                     mean_image_high)
+
+
+            self.logger.save_us_channel(input_val[i, :, :], target_val[i, :, :], predict_unscaled[0, :, :], i,
+                                        time_stamp)
         # self.model.predict()
 
         # see self.dataset.X_val and self.dataset.Y_val
@@ -206,11 +250,13 @@ class CNN_skipCo_trainer(object):
 def main():
     trainer = CNN_skipCo_trainer()
 
+    #trainer =  CNN_skipCo_trainer(json_file='config.json')
+
     # fit the first model
     print('---------------------------')
     print('fitting shallow model')
     trainer.fit(learning_rate=0.01, use_one_cycle=True)
-    trainer.predict()
+    #trainer.predict('epoch_0', time_stamp='2018_11_14_13_57')
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
     #print('\n---------------------------')

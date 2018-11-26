@@ -11,11 +11,10 @@ class CNN_skipCo_trainer(object):
     def __init__(self):
 
         self.image_type = 'US'
-
-        self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
+                                   do_augment=True, add_augment=True, do_rchannels=True,
+                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
+                                   image_type=self.image_type, get_scale_center=True, single_sample=False)
 
         self.model = cnn_skipC_model.cnn_skipC_model(
             criterion=nn.MSELoss(),
@@ -30,6 +29,7 @@ class CNN_skipCo_trainer(object):
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type = self.image_type)
+
 
 
         self.batch_size = 32
@@ -77,17 +77,15 @@ class CNN_skipCo_trainer(object):
 
         else:
             self.model.set_learning_rate(learning_rate)
-
-        print('training file names: ', self.dataset.train_file_names)
-        print('RESETTING THE SINGLE IMAGE')
-        self.dataset.train_file_names = ['/Users/Boss/di_lab_project/di-lab/data/processed/processed_all/ultrasound/US_Study_26_Scan_16_ch3']
         print('training file names: ', self.dataset.train_file_names)
         for e in range(0, self.epochs):
             if use_one_cycle:
                 lr = learning_rates[e]
                 self.model.set_learning_rate(lr)
             # separate names into random batches and shuffle every epoch
+
             self.dataset.batch_names(batch_size=self.batch_size)
+
             # in self.batch_number is the number of batches in the training set
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
