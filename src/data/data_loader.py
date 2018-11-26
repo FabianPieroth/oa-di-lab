@@ -513,7 +513,7 @@ class ProcessData(object):
             output: params_low, params_high: the parameters."""
         # dir_params = '/mnt/local/mounted'
         if dir_params is None:
-            dir_params = self.project_root_dir + '/' + 'params' + '/' + 'scale_and_center/'
+            dir_params = self.dir_params + '/' + 'scale_and_center/'
         if param_type in ['scale_params', 'mean_images']:
             file_name = self.image_type + '_' + param_type
             filepath = dir_params + file_name

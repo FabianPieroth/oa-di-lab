@@ -5,25 +5,27 @@ from models.model_superclass import ImageTranslator
 import torch
 import torch.nn as nn
 import sys
-import matplotlib.pyplot as plt
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
 
-        self.image_type = 'US'
+        self.image_type = 'OA'
 
-        self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
+                                   do_augment=False, add_augment=False, do_rchannels=False,
+                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
                                    image_type=self.image_type, get_scale_center=False, single_sample=True)
-        self.model = ImageTranslator(conv_channels=[1, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
+
+        self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type)
+                             image_type=self.image_type, dataset=self.dataset)
 
         if torch.cuda.is_available():
             torch.cuda.current_device()
             self.model.cuda()
 
+        self.batch_size = 32
+        self.log_period = 50
         self.epochs = 250
         self.learning_rates = [0 for i in range(self.epochs)]
 
@@ -53,7 +55,7 @@ class CNN_skipCo_trainer(object):
             self.model.set_learning_rate(lr)
 
             # separate names into random batches and shuffle every epoch
-            self.dataset.batch_names(batch_size=32)
+            self.dataset.batch_names(batch_size=self.batch_size)
 
             # in self.batch_number is the number of batches in the training set
             # go through all the batches
@@ -75,7 +77,7 @@ class CNN_skipCo_trainer(object):
             self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
 
             # save model every x epochs
-            if e % 25 == 0 or e == self.epochs - 1:
+            if e % self.log_period == 0 or e == self.epochs - 1:
                 self.logger.log(save_appendix='_epoch_' + str(e),
                                 current_epoch=e,
                                 epochs=self.epochs,
@@ -160,6 +162,7 @@ class CNN_skipCo_trainer(object):
             self.model.optimizer.param_groups[0]['lr'] = lr
 
         # Plot the results
+        '''
         lrs = 10 ** np.array(log_lrs)
         fig, ax = plt.subplots(1)
         ax.plot(lrs, losses)
@@ -167,7 +170,7 @@ class CNN_skipCo_trainer(object):
         #ax.set_xlim((1e-8, 100))
         ax.figure.show()
         ax.figure.savefig('learning_rate_finder.png')
-
+        '''
         return log_lrs, losses
 
 
