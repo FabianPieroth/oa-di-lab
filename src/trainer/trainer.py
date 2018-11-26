@@ -15,32 +15,24 @@ class CNN_skipCo_trainer(object):
         self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=False,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=False)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+        self.model = ImageTranslator(conv_channels=[1, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
+        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
+                             image_type=self.image_type)
 
-        self.model = ImageTranslator(conv_channels=[1, 32, 64, 128, 256])
         if torch.cuda.is_available():
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type)
         self.epochs = 250
+        self.learning_rates = [0 for i in range(self.epochs)]
 
-    def fit(self, learning_rate, use_one_cycle=False):
+    def fit(self, learning_rate, lr_method='standard'):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
 
-        # currently for one image:
-        '''
-        self.dataset.batch_names(batch_size=5)
-        X, Y = self.dataset.create_train_batches(self.dataset.train_batch_chunks[1])
-        print(X.shape)
-        X = X[0,:,:]
-        Y = Y[0,:,:]
-        '''
         # load validation set, normalize and parse into tensor
-
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
             batch_files=self.dataset.val_file_names,
             scale_params_low=scale_params_low,
@@ -52,31 +44,19 @@ class CNN_skipCo_trainer(object):
             input_tensor_val = input_tensor_val.cuda()
             target_tensor_val = target_tensor_val.cuda()
 
-        if use_one_cycle:
-            higher_rate = learning_rate
-            lower_rate = 1 / 10 * higher_rate
 
-            num_epochs = self.epochs
-            up_num = int((num_epochs -50 ) /2)
-            down_num = up_num
-            ann_num = num_epochs - up_num - down_num
-            lr_up = np.linspace(lower_rate, higher_rate, num=up_num)
-            lr_down = np.linspace(higher_rate, lower_rate, num=down_num)
-            lr_anihilating = np.linspace(lower_rate, 0, num=ann_num)
-            learning_rates = np.append(np.append(lr_up, lr_down), lr_anihilating)
-
-        else:
-            self.model.set_learning_rate(learning_rate)
-
+        self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
 
         for e in range(0, self.epochs):
-            if use_one_cycle:
-                lr = learning_rates[e]
-                self.model.set_learning_rate(lr)
+            # setting the learning rate each epoch
+            lr = self.learning_rates[e]
+            self.model.set_learning_rate(lr)
+
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=32)
 
             # in self.batch_number is the number of batches in the training set
+            # go through all the batches
             for i in range(self.dataset.batch_number):
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
@@ -86,7 +66,6 @@ class CNN_skipCo_trainer(object):
                     mean_image_high=mean_image_high)
 
                 if torch.cuda.is_available():
-
                     input_tensor = input_tensor.cuda()
                     target_tensor = target_tensor.cuda()
 
@@ -94,6 +73,7 @@ class CNN_skipCo_trainer(object):
 
             # calculate the validation loss and add to validation history
             self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
+
             # save model every x epochs
             if e % 25 == 0 or e == self.epochs - 1:
                 self.logger.log(save_appendix='_epoch_' + str(e),
@@ -102,11 +82,7 @@ class CNN_skipCo_trainer(object):
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high])
 
-                # how to undo the scaling:
-                # unscaled_X = utils.scale_and_center_reverse(scale_center_X,
-                #  scale_params_low, mean_image_low, image_type = self.dataset.image_type)
-                # unscaled_Y = utils.scale_and_center_reverse(scale_center_Y, scale_params_high,
-                #  mean_image_high, image_type=self.dataset.image_type)
+
     def predict(self):
         # self.model.predict()
 
@@ -130,24 +106,19 @@ class CNN_skipCo_trainer(object):
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
 
-        from torch.autograd import variable as Variable
         import math
         self.dataset.batch_names(batch_size=2)
         print('number of files: ', len(self.dataset.train_file_names))
-        num = self.dataset.batch_number - 1
+        num = self.dataset.batch_number-1
         mult = (final_value / init_value) ** (1 / num)
         lr = init_value
         self.model.optimizer.param_groups[0]['lr'] = lr
-        avg_loss = 0.
-        best_loss = 0.
-        batch_num = 0
-        losses = []
-        log_lrs = []
-        # for i in range(1, train_in.shape[0]):
+        avg_loss = 0.; best_loss = 0.; batch_num = 0; losses = []; log_lrs = []
         # in self.batch_number is the number of batches in the training set
         print('batch numbers: ', self.dataset.batch_number)
+
         for i in range(self.dataset.batch_number):
-            sys.stdout.write('\r  current iteration : ' + str(i))
+            sys.stdout.write('\r' + 'current iteration : ' + str(i))
 
             input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                 batch_files=self.dataset.val_file_names,
@@ -163,8 +134,10 @@ class CNN_skipCo_trainer(object):
             batch_num += 1
             # As before, get the loss for this mini-batch of inputs/outputs
             self.model.optimizer.zero_grad()
+            print('lr: ', lr)
             outputs = self.model.forward(input_tensor)
             loss = self.model.criterion(outputs, target_tensor)
+
             # Compute the smoothed loss
             avg_loss = beta * avg_loss + (1 - beta) * loss.item()
             smoothed_loss = avg_loss / (1 - beta ** batch_num)
@@ -183,29 +156,65 @@ class CNN_skipCo_trainer(object):
             self.model.optimizer.step()
             # Update the lr for the next step
             lr *= mult
+
             self.model.optimizer.param_groups[0]['lr'] = lr
 
         # Plot the results
-
-
         lrs = 10 ** np.array(log_lrs)
         fig, ax = plt.subplots(1)
         ax.plot(lrs, losses)
         ax.set_xscale('log')
-        ax.set_xlim((1e-8, 1))
+        #ax.set_xlim((1e-8, 100))
         ax.figure.show()
         ax.figure.savefig('learning_rate_finder.png')
 
         return log_lrs, losses
 
+
+    def get_learning_rate(self, learning_rate, epochs, method):
+        """
+        Method creating the learning rates corresponding to the corresponding adaptive-method.
+        :param learning_rate: base learning rate. Used as max rate for one_cycle and cosine_annealing
+        :param epochs: number of epochs the model is trained
+        :param method: adaptive-method which should be used: standard, one_cycle, cosine_annealing
+        :return: learning_rates as a list
+        """
+        lrs = []
+
+        if method=='standard' or method is None:
+            lrs = [learning_rate for i in range(epochs)]
+
+        elif method=='one_cycle':
+            higher_rate = learning_rate
+            lower_rate = 1 / 10 * higher_rate
+
+            ann_frac = min(50, int(epochs/3))
+
+            up_num = int((epochs - ann_frac) / 2)
+            down_num = up_num
+            ann_num = epochs - up_num - down_num
+
+            lr_up = np.linspace(lower_rate, higher_rate, num=up_num)
+            lr_down = np.linspace(higher_rate, lower_rate, num=down_num)
+            lr_anihilating = np.linspace(lower_rate, 0, num=ann_num)
+
+            lrs = np.append(np.append(lr_up, lr_down), lr_anihilating)
+
+        elif method=='cosine_annealing':
+            pass
+
+        return lrs
+
+
+
 def main():
     trainer = CNN_skipCo_trainer()
-    trainer.find_lr()
+    #trainer.find_lr()
     # fit the first model
-    print('---------------------------')
-    print('fitting deep model')
-    trainer.fit(learning_rate=0.001, use_one_cycle=True)
-    trainer.predict()
+    print('\n---------------------------')
+    print('fitting model')
+    trainer.fit(learning_rate=0.001, lr_method='one_cycle')
+    #trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
     # print('\n---------------------------')
@@ -215,6 +224,7 @@ def main():
 
 
     print('\nfinished')
+
 
 if __name__ == "__main__":
     main()
