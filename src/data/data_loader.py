@@ -25,6 +25,7 @@ class ProcessData(object):
                  single_sample=False,
                  add_augment=True,
                  do_augment=False,
+                 do_heavy_augment=False,
                  process_raw_data=False,
                  pro_and_augm_only_image_type=False,
                  do_flip=True,
@@ -60,6 +61,7 @@ class ProcessData(object):
         self.names_of_augment = [self.all_augment[i] for i in range(len(self.all_augment)) if self.bool_augment[i]]
 
         self.add_augment = add_augment  # bool if augmented data should be included in training
+        self.do_heavy_augment = do_heavy_augment
 
         self.image_type = image_type
         self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
@@ -343,6 +345,10 @@ class ProcessData(object):
                 # additionally to the processed_all files the flipped ones are done for some augmentations
                 flipped_to_be_aug = [s for s in os.listdir(
                     self.dir_processed + '/augmented/flip/' + end_folder) if '.' not in s]
+                if self.do_heavy_augment:
+                    r_channels_to_be_aug = [s for s in os.listdir(
+                    self.dir_processed + '/augmented/rchannels/' + end_folder) if '.' not in s]
+                    flipped_to_be_aug = flipped_to_be_aug + r_channels_to_be_aug
                 for filename in flipped_to_be_aug:
                     print('augmenting file', filename)
                     x = self._load_file_to_numpy(
