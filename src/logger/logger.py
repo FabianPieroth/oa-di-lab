@@ -20,7 +20,7 @@ class Logger(object):
 
         self.base_dir = '%s/reports' % (project_root_dir)
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
-        self.save_dir = self.base_dir + '/' + self.model.model_name + '_' +  timestamp
+        self.save_dir = self.base_dir + '/' + self.model.model_name + '_' + timestamp
         self.load_dir = self.base_dir + '/' + self.model.model_name
         os.makedirs(self.save_dir)
 

@@ -13,11 +13,13 @@ class CNN_skipCo_trainer(object):
         self.image_type = 'US'
 
         self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False, do_rchannels=False,
-                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
+                                   pro_and_augm_only_image_type=True,
+                                   do_augment=False, add_augment=True, do_rchannels=True,
+                                   do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    image_type=self.image_type, get_scale_center=False, single_sample=True)
 
-        self.model = ImageTranslator(conv_channels=[1, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3],
+        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 256], strides=[1, 2, 1, 2],
+                                     kernels=[(7,7) for i in range(4)], padding=[3,3,3,3],
                                      model_name='awesome_model')
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
