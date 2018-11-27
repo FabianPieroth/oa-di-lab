@@ -26,6 +26,7 @@ class ProcessData(object):
                  add_augment=True,
                  do_augment=False,
                  process_raw_data=False,
+                 pro_and_augm_only_image_type=False,
                  do_flip=True,
                  do_deform=True,
                  num_deform=3,
@@ -71,10 +72,11 @@ class ProcessData(object):
         self.dir_processed_all = self.dir_processed + '/processed_all'
         self.dir_augmented = self.project_root_dir + '/data' + '/' + self.data_type + '/processed' + '/augmented'
         self.all_folder = False  # check if raw folder was already processed
-        self.process_oa = True  # process raw oa data
-        self.process_us = True  # process raw us data
-        self.augment_oa = True  # augment processed oa data
-        self.augment_us = True  # augment processed us data
+        self.pro_and_augm_only_image_type = pro_and_augm_only_image_type
+        self.process_oa = not self.pro_and_augm_only_image_type or \
+                          (self.pro_and_augm_only_image_type and self.image_type == 'OA')  # process raw oa data
+        self.process_us = not self.pro_and_augm_only_image_type or \
+                          (self.pro_and_augm_only_image_type and self.image_type == 'US')  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
@@ -141,7 +143,7 @@ class ProcessData(object):
     def _process_raw_data(self):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         in_directories = [s for s in os.listdir(self.dir_raw_in) if '.' not in s]
-        print('Preprocess raw data')
+        print('Process raw data')
         if not self.all_folder:
             skip_dirs = []
             for sub in in_directories:
@@ -159,7 +161,8 @@ class ProcessData(object):
             np.random.seed(self.set_random_seed)  # at the moment set_random_seed = 42
             for sample_folder in sample_directories:
                 if self.data_type == self.accepted_data_types[0]:
-                    in_files = os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
+                    in_files =[s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
+                               if '._' not in s]
                     us_file = [s for s in in_files if 'US_' in s]
                     oa_file = [s for s in in_files if 'OA_' in s]
 
@@ -193,6 +196,10 @@ class ProcessData(object):
                 end_folder = 'ultrasound'
             else:
                 end_folder = 'optoacoustic'
+
+        if len([s for s in os.listdir(self.dir_processed_all + '/' + end_folder) if '.DS_' not in s]) == 0:
+            sys.exit('There are no Files in the processed Folder, please run again with process_raw_data=True.')
+
         file_names = []
         # original images
         file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + end_folder, name_list=file_names)
@@ -225,18 +232,25 @@ class ProcessData(object):
         # a small helper function to get the file name from the whole path
         # needed because we can't use os.path on server
         filename = ''
+        channel = ''
         found_slash = True
+        found_underscore =True
         for i in reversed(range(len(string))):
             sub = string[i]
             if sub == '/':
                 found_slash = False
+            if sub == '_':
+                found_underscore = False
             if found_slash:
                 filename = sub + filename
+            if found_underscore:
+                channel = sub + channel
+        filename = filename[:-len(channel)]
         return filename
 
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
-        file_names = [s for s in os.listdir(folder_name) if '.DS_' not in s]
+        file_names = [s for s in os.listdir(folder_name) if ('.DS_' not in s and '._' not in s)]
         # add path to file names and add them to list
         name_list.extend([str(folder_name) + '/' + s for s in file_names])
         return name_list
@@ -287,6 +301,8 @@ class ProcessData(object):
                     file_prefix = 'US'
                 else:
                     file_prefix = 'OA'
+                if self.pro_and_augm_only_image_type and not self.image_type == file_prefix:
+                    continue
                 if len(to_be_aug_files) == 0:
                     sys.exit('There are no processed files to be augmented, restart with pre process = True')
 
