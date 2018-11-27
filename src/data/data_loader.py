@@ -36,6 +36,7 @@ class ProcessData(object):
                  do_rchannels=True,
                  num_rchannels=2,
                  get_scale_center=True,
+                 do_scale_center=True,
                  logger_call=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
@@ -81,6 +82,7 @@ class ProcessData(object):
                           (self.pro_and_augm_only_image_type and self.image_type == 'US')  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
+        self.do_scale_center = do_scale_center # applies scale and center to the data
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
@@ -390,12 +392,8 @@ class ProcessData(object):
     def _get_scale_center(self):
         # Initialize values
         i = 0
-        if self.image_type == 'US':
-            temp = 1
-            shape_for_mean_image = [401, 401]
-        else:
-            temp = np.ones(28)
-            shape_for_mean_image = [401, 401, 28]
+        temp = 1
+        shape_for_mean_image = [401, 401]
         max_data_high = -np.inf * temp
         min_data_high = np.inf * temp
         max_data_low = -np.inf * temp
@@ -408,32 +406,30 @@ class ProcessData(object):
             # get high image
             image = self._load_file_to_numpy(file, image_sign)
             # get maximums/minimums of the image
-            if self.image_type == 'US':
-                maxs = np.max(image)
-                mins = np.min(image)
-            else:
-                maxs = np.amax(image, axis=(0, 1))
-                mins = np.amin(image, axis=(0, 1))
+            maxs = np.max(image)
+            mins = np.min(image)
             # update maximums
             max_data_high = np.maximum(maxs, max_data_high)
             min_data_high = np.minimum(mins, min_data_high)
             # add image to sum (for mean)
-            sum_image_high += image
+            if self.image_type == 'US':
+                sum_image_high += image
+            else:
+                sum_image_high += np.mean(image, axis=2)
 
             image_sign = self.image_type + '_low'
             # get low image
             image = self._load_file_to_numpy(file, image_sign)
-            if self.image_type == 'US':
-                maxs = np.max(image)
-                mins = np.min(image)
-            else:
-                maxs = np.amax(image, axis=(0, 1))
-                mins = np.amin(image, axis=(0, 1))
+            maxs = np.max(image)
+            mins = np.min(image)
             # update maximums
             max_data_low = np.maximum(maxs, max_data_low)
             min_data_low = np.minimum(mins, min_data_low)
             # add image to sum (for mean)
-            sum_image_low += image
+            if self.image_type == 'US':
+                sum_image_low += image
+            else:
+                sum_image_low += np.mean(image, axis=2)
             # increase counter
             i += 1
         # calculate mean images
@@ -472,10 +468,7 @@ class ProcessData(object):
 
         factor = (max_out - min_out) / (max_data - min_data)
         additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
-        if self.image_type == 'US':
-            image_out = image * factor + additive
-        else:
-            image_out = image * factor[None, None, :] + additive[None, None, :]
+        image_out = image * factor + additive
         return image_out
 
     def scale_batch(self, batch, min_data, max_data, min_out=-1, max_out=1):
@@ -488,10 +481,7 @@ class ProcessData(object):
         """
         factor = (max_out - min_out) / (max_data - min_data)
         additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
-        if self.image_type == 'US':
-            batch_out = batch * factor + additive
-        else:
-            batch_out = batch * factor[None, None, None, :] + additive[None, None, None, :]
+        batch_out = batch * factor + additive
         return batch_out
 
     def scale_and_center(self, batch, scale_params, mean_image):
@@ -506,7 +496,10 @@ class ProcessData(object):
         [min_data, max_data] = scale_params
         mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
         batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
-        batch_out = batch_out - mean_scaled
+        if self.image_type == 'US':
+            batch_out = batch_out - mean_scaled
+        else:
+            batch_out = batch_out - mean_scaled[None, :, :, None]
         return batch_out
 
     def scale_and_center_reverse(self, batch, scale_params, mean_image):
@@ -520,7 +513,10 @@ class ProcessData(object):
                     output: batch_out array with same shape as batch"""
         [min_data, max_data] = scale_params
         mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
-        batch_out = batch + mean_scaled
+        if self.image_type == 'US':
+            batch_out = batch + mean_scaled
+        else:
+            batch_out = batch + mean_scaled[None, :, :, None]
         batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
                                      max_out=max_data)
         # just for not using the mean addition
@@ -556,10 +552,16 @@ class ProcessData(object):
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
 
+
         x, y = self.create_train_batches(batch_files)
 
-        scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
-        scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+        if self.do_scale_center == True:
+            scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
+            scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+        else:
+            scale_center_x_val = x
+            scale_center_y_val = y
+
 
         if self.image_type == 'US':
             scale_center_x_val = np.array([scale_center_x_val])
