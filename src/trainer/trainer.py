@@ -6,18 +6,20 @@ import torch
 import torch.nn as nn
 import sys
 
+
 class CNN_skipCo_trainer(object):
 
     def __init__(self):
 
-        self.image_type = 'OA'
+        self.image_type = 'US'
 
         self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
                                    do_augment=False, add_augment=False, do_rchannels=False,
                                    do_flip=False, do_blur=False, do_deform=False, do_crop=False,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
+                                   do_scale_center=True)
 
-        self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3],
+        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(1,1) for i in range(4)], padding=[3,3,3,3],
                                      model_name='awesome_model')
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
@@ -27,7 +29,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.batch_size = 32
+        self.batch_size = 2
         self.log_period = 50
         self.epochs = 250
         self.learning_rates = [0 for i in range(self.epochs)]
@@ -36,6 +38,7 @@ class CNN_skipCo_trainer(object):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+
 
         # load validation set, normalize and parse into tensor
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
@@ -86,7 +89,6 @@ class CNN_skipCo_trainer(object):
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high])
-
 
     def predict(self, x):
         return self.model(x)
