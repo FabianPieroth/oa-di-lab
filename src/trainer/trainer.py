@@ -14,15 +14,15 @@ class CNN_skipCo_trainer(object):
         self.image_type = 'US'
 
         self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
-                                   pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=True, add_augment=True, do_rchannels=True,
+                                   pro_and_augm_only_image_type=False, do_heavy_augment=False,
+                                   do_augment=False, add_augment=False, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=False,
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
                                    do_scale_center=True)
 
-        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 256], strides=[1, 2, 1, 2],
-                                     kernels=[(7,7) for i in range(4)], padding=[3,3,3,3],
-                                     model_name='awesome_model')
+        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
+                                     output_padding=[0, 0, 1, 0, 0, 1, 0],
+                                     model_name='deep_2_model')
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset)
@@ -221,7 +221,7 @@ def main():
     print('\n---------------------------')
     #print(trainer.model)
     print('fitting model')
-    trainer.fit(learning_rate=0.001, lr_method='one_cycle')
+    trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
     #trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
