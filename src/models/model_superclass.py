@@ -14,9 +14,10 @@ class ConvLayer(nn.Module):
 
 class DeConvLayer(nn.Module):
     """ No RELU BEHIND DECONV DUE TO THE SKIP CONNECTIONS"""
-    def __init__(self, c_in, c_out, stride=2, kernel_size=(5,5), padding=2):
+    def __init__(self, c_in, c_out, stride=2, kernel_size=(5,5), padding=2, output_padding=0):
         super().__init__()
-        self.deconv = nn.ConvTranspose2d(c_in, c_out, stride=stride, kernel_size=kernel_size, padding=padding).double()
+        self.deconv = nn.ConvTranspose2d(c_in, c_out, stride=stride, kernel_size=kernel_size,
+                                         padding=padding, output_padding=output_padding).double()
         self.bn = nn.BatchNorm2d(c_out).double()
 
     def forward(self, x):
@@ -25,7 +26,7 @@ class DeConvLayer(nn.Module):
 
 class ImageTranslator(nn.Module):
 
-    def __init__(self, conv_channels, strides=None, kernels=None, padding=None,
+    def __init__(self, conv_channels, strides=None, kernels=None, padding=None, output_padding=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam, learning_rate=0.01, model_name='shallow_model'):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
@@ -45,11 +46,15 @@ class ImageTranslator(nn.Module):
             default_stride = 2
             strides = [default_stride for i in range(len(conv_channels))]
         if kernels is None:
-            # initialize list with default kernels (5,5)
-            default_kernel = (5,5)
+            # initialize list with default kernels (7,7)
+            default_kernel = (7,7)
             kernels = [default_kernel for i in range(len(conv_channels))]
         if padding is None:
-            padding = [2 for i in range(len(conv_channels))]
+            padding = [3 for i in range(len(conv_channels))]
+        if output_padding is not None:
+            self.output_padding = output_padding
+        else:
+            self.output_padding = [0 for i in range(len(conv_channels))]
 
         deconv_strides, deconv_kernels, padding, opad = self.compute_strides_and_kernels(strides, kernels, padding)
 
@@ -60,7 +65,8 @@ class ImageTranslator(nn.Module):
 
         deconv_channels = conv_channels[::-1]
         self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels[i], deconv_channels[i + 1],
-                                                        deconv_strides[i], deconv_kernels[i])
+                                                        deconv_strides[i], deconv_kernels[i],
+                                                        output_padding=self.output_padding[i])
                                             for i in range(len(deconv_channels) - 1)])
 
         self.criterion = criterion
@@ -118,4 +124,8 @@ class ImageTranslator(nn.Module):
 
     def compute_strides_and_kernels(self, strides, kernels, padding):
         #TODO
-        return strides[::-1], kernels[::-1], padding[::-1], [0 for i in range(len(strides))]
+        if self.output_padding is not None:
+            opad = [0 for i in range(len(strides))]
+        else:
+            opad = self.output_padding
+        return strides[::-1], kernels[::-1], padding[::-1], opad
