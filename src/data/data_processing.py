@@ -26,14 +26,20 @@ def pre_us_homo(new_in_folder, study_folder, filename, scan_num, save_folder):
                           folder_name=save_folder + '/ultrasound', file_name=name_us_save)
 
 
-def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder):
+def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cut_half=True, height_channel=200):
     oa_raw = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                               scan_num + '/' + filename)
     name_oa_low = 'OA_low_' + study_folder + '_' + scan_num
     name_oa_high = 'OA_high_' + study_folder + '_' + scan_num
     name_oa_save = 'OA_' + study_folder + '_' + scan_num
-    dict_oa = {name_oa_low: oa_raw['OA_low'],
-               name_oa_high: oa_raw['OA_high']}
+    if cut_half:
+        oa_low = oa_raw['OA_low'][:height_channel,:,:]
+        oa_high = oa_raw['OA_high'][:height_channel,:,:]
+    else:
+        oa_low = oa_raw['OA_low']
+        oa_high = oa_raw['OA_high']
+    dict_oa = {name_oa_low: oa_low,
+               name_oa_high: oa_high}
     save_dict_with_pickle(file=dict_oa, folder_name=save_folder + '/optoacoustic',
                           file_name=name_oa_save)
 

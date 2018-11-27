@@ -176,7 +176,8 @@ class ProcessData(object):
 
                     if oa_file and self.process_oa:
                         dp.pre_oa_homo(new_in_folder=self.dir_raw_in, study_folder=chunk_folder,
-                                       filename=oa_file[0], scan_num=sample_folder, save_folder=self.dir_processed_all)
+                                       filename=oa_file[0], scan_num=sample_folder, save_folder=self.dir_processed_all,
+                                       cut_half=True, height_channel=200)
 
                 elif self.data_type == self.accepted_data_types[1]:
                     print('The new data set is to be processed here. Not done yet.')
@@ -201,7 +202,8 @@ class ProcessData(object):
             else:
                 end_folder = 'optoacoustic'
 
-        if len([s for s in os.listdir(self.dir_processed_all + '/' + end_folder) if '.DS_' not in s]) == 0:
+        if len([s for s in os.listdir(self.dir_processed_all + '/' + end_folder)
+                if '.DS_' not in s and '._' not in s]) == 0:
             sys.exit('There are no Files in the processed Folder, please run again with process_raw_data=True.')
 
         file_names = []
@@ -300,7 +302,8 @@ class ProcessData(object):
                 print('No blur augmentation for OA data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
-                to_be_aug_files = [s for s in os.listdir(self.dir_processed_all + '/' + end_folder) if '.' not in s]
+                to_be_aug_files = [s for s in os.listdir(self.dir_processed_all + '/' + end_folder)
+                                   if '.DS_' not in s and '._' not in s]
                 if end_folder == 'ultrasound':
                     file_prefix = 'US'
                 else:
@@ -346,10 +349,10 @@ class ProcessData(object):
 
                 # additionally to the processed_all files the flipped ones are done for some augmentations
                 flipped_to_be_aug = [s for s in os.listdir(
-                    self.dir_processed + '/augmented/flip/' + end_folder) if '.' not in s]
+                    self.dir_processed + '/augmented/flip/' + end_folder) if '.DS_' not in s and '._' not in s]
                 if self.do_heavy_augment:
                     r_channels_to_be_aug = [s for s in os.listdir(
-                    self.dir_processed + '/augmented/rchannels/' + end_folder) if '.' not in s]
+                    self.dir_processed + '/augmented/rchannels/' + end_folder) if '.DS_' not in s and '._' not in s]
                     flipped_to_be_aug = flipped_to_be_aug + r_channels_to_be_aug
                 for filename in flipped_to_be_aug:
                     print('augmenting file', filename)

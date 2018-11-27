@@ -11,11 +11,11 @@ class CNN_skipCo_trainer(object):
 
     def __init__(self):
 
-        self.image_type = 'US'
+        self.image_type = 'OA'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=True, add_augment=True, do_rchannels=True,
+                                   do_augment=False, add_augment=True, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    image_type=self.image_type, get_scale_center=False, single_sample=False,
                                    do_scale_center=True)
@@ -31,7 +31,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.batch_size = 2
+        self.batch_size = 64
         self.log_period = 50
         self.epochs = 250
         self.learning_rates = [0 for i in range(self.epochs)]
