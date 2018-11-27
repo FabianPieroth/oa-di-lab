@@ -67,7 +67,7 @@ class ProcessData(object):
         self.image_type = image_type
         self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
 
-        self.project_root_dir = str(Path().resolve().parents[1])  # root directory
+        self.project_root_dir = str(Path().resolve().parents[0])  # root directory
         # self.project_root_dir = '/mnt/local/mounted'
 
         self.dir_raw_in = self.project_root_dir + '/data' + '/' + self.data_type + '/raw' + '/new_in'
@@ -82,7 +82,7 @@ class ProcessData(object):
                           (self.pro_and_augm_only_image_type and self.image_type == 'US')  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
-        self.do_scale_center = do_scale_center # applies scale and center to the data
+        self.do_scale_center = do_scale_center  # applies scale and center to the data
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
@@ -116,8 +116,7 @@ class ProcessData(object):
         if self.get_scale_center:
             self._get_scale_center()
 
-        print(self.train_file_names)
-        print(self.val_file_names)
+        print('There are ' + str(len(self.train_file_names)) + ' files in the training set')
 
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
 
@@ -165,8 +164,8 @@ class ProcessData(object):
             np.random.seed(self.set_random_seed)  # at the moment set_random_seed = 42
             for sample_folder in sample_directories:
                 if self.data_type == self.accepted_data_types[0]:
-                    in_files =[s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
-                               if '._' not in s]
+                    in_files = [s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
+                                if '._' not in s]
                     us_file = [s for s in in_files if 'US_' in s]
                     oa_file = [s for s in in_files if 'OA_' in s]
 
@@ -234,13 +233,13 @@ class ProcessData(object):
         contained_in_val = any(self._extract_name_from_path(name) in string for name in val_list)
         return contained_in_val
 
-    def _extract_name_from_path(self, string):
+    def _extract_name_from_path(self, string, without_ch=True):
         # a small helper function to get the file name from the whole path
         # needed because we can't use os.path on server
         filename = ''
         channel = ''
         found_slash = True
-        found_underscore =True
+        found_underscore = True
         for i in reversed(range(len(string))):
             sub = string[i]
             if sub == '/':
@@ -251,7 +250,8 @@ class ProcessData(object):
                 filename = sub + filename
             if found_underscore:
                 channel = sub + channel
-        filename = filename[:-len(channel)]
+        if without_ch:
+            filename = filename[:-len(channel)]
         return filename
 
     def _names_to_list(self, folder_name, name_list):
@@ -281,7 +281,6 @@ class ProcessData(object):
         sample_array = [value for key, value in sample.items() if image_sign in key][0]
         return sample_array
 
-
     def _save_params_with_pickle(self, file, folder_name, file_name):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_params + '/' + folder_name + '/' + file_name, 'wb') as handle:
@@ -302,7 +301,9 @@ class ProcessData(object):
                 print('No blur augmentation for OA data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
-                to_be_aug_files = [s for s in os.listdir(self.dir_processed_all + '/' + end_folder)
+                # TODO: put the creation of the full filename list in a function!
+                to_be_aug_files = [self.dir_processed_all + '/' + end_folder + '/' + s for s in
+                                   os.listdir(self.dir_processed_all + '/' + end_folder)
                                    if '.DS_' not in s and '._' not in s]
                 if end_folder == 'ultrasound':
                     file_prefix = 'US'
@@ -316,66 +317,74 @@ class ProcessData(object):
                 # flip first as some other augmentations are also done on flipped images
                 # rchannels also done on same images
                 for filename in to_be_aug_files:
-                    print('augmenting file', filename)
-                    x = self._load_file_to_numpy(
-                        full_file_name=str(self.dir_processed_all + '/' + end_folder) + '/' + filename,
-                        image_sign=file_prefix + '_low')
-                    y = self._load_file_to_numpy(
-                        full_file_name=str(self.dir_processed_all + '/' + end_folder) + '/' + filename,
-                        image_sign=file_prefix + '_high')
+                    print('augmenting file', self._extract_name_from_path(filename, without_ch=False))
+                    x = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
                     if self.do_flip:
-                        dp.do_flip(x=x, y=y, file_prefix=file_prefix, filename=filename, end_folder=end_folder,
+                        dp.do_flip(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder,
                                    path_to_augment=self.dir_augmented)
 
                     # the additional channels are only taken from the processed_all folder
                     if self.do_rchannels and end_folder == 'ultrasound':
-                        dp.do_rchannels(end_folder=end_folder, filename=filename, read_in_folder=self.dir_raw_in,
+                        dp.do_rchannels(end_folder=end_folder,
+                                        filename=self._extract_name_from_path(filename, without_ch=False),
+                                        read_in_folder=self.dir_raw_in,
                                         num_channels=self.num_rchannels, path_to_augment=self.dir_augmented)
 
                     if self.do_blur and end_folder == 'ultrasound':
-                        dp.do_blur(x=x, y=y, file_prefix=file_prefix, filename=filename,
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params)
 
                     if self.do_deform:
                         for i in range(self.num_deform):
-                            dp.do_deform(x=x, y=y, file_prefix=file_prefix, filename=filename, end_folder=end_folder,
+                            dp.do_deform(x=x, y=y, file_prefix=file_prefix,
+                                         filename=self._extract_name_from_path(filename, without_ch=False),
+                                         end_folder=end_folder,
                                          path_to_augment=self.dir_augmented, path_to_params=self.dir_params,
                                          num_deform=i)
 
                     if self.do_crop:
-                        dp.do_crop(x=x, y=y, file_prefix=file_prefix, filename=filename, end_folder=end_folder,
-                                   path_to_augment=self.dir_augmented, path_to_params=self.dir_params)
+                        dp.do_crop(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params)
 
                 # additionally to the processed_all files the flipped ones are done for some augmentations
-                flipped_to_be_aug = [s for s in os.listdir(
+                flipped_to_be_aug = [self.dir_processed + '/augmented/flip/' + end_folder + '/' + s for s in os.listdir(
                     self.dir_processed + '/augmented/flip/' + end_folder) if '.DS_' not in s and '._' not in s]
                 if self.do_heavy_augment:
-                    r_channels_to_be_aug = [s for s in os.listdir(
-                    self.dir_processed + '/augmented/rchannels/' + end_folder) if '.DS_' not in s and '._' not in s]
+                    r_channels_to_be_aug = [self.dir_processed + '/augmented/rchannels/' + end_folder + '/' + s for s in
+                                            os.listdir(
+                                                self.dir_processed + '/augmented/rchannels/' + end_folder) if
+                                            '.DS_' not in s and '._' not in s]
                     flipped_to_be_aug = flipped_to_be_aug + r_channels_to_be_aug
                 for filename in flipped_to_be_aug:
-                    print('augmenting file', filename)
-                    x = self._load_file_to_numpy(
-                        full_file_name=self.dir_processed + '/augmented/flip/' + end_folder + '/' + filename,
-                        image_sign=file_prefix + '_low')
-                    y = self._load_file_to_numpy(
-                        full_file_name=self.dir_processed + '/augmented/flip/' + end_folder + '/' + filename,
-                        image_sign=file_prefix + '_high')
+                    print('augmenting file', self._extract_name_from_path(filename, without_ch=False))
+                    x = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
 
                     if self.do_deform:
                         for i in range(self.num_deform):
-                            dp.do_deform(x=x, y=y, file_prefix=file_prefix, filename=filename, end_folder=end_folder,
+                            dp.do_deform(x=x, y=y, file_prefix=file_prefix,
+                                         filename=self._extract_name_from_path(filename, without_ch=False),
+                                         end_folder=end_folder,
                                          path_to_augment=self.dir_augmented, path_to_params=self.dir_params,
                                          num_deform=i)
 
                     if self.do_blur and end_folder == 'ultrasound':
-                        dp.do_blur(x=x, y=y, file_prefix=file_prefix, filename=filename,
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params)
 
                     if self.do_crop:
-                        dp.do_crop(x=x, y=y, file_prefix=file_prefix, filename=filename, end_folder=end_folder,
+                        dp.do_crop(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder,
                                    path_to_augment=self.dir_augmented, path_to_params=self.dir_params)
 
         elif self.data_type == self.accepted_data_types[1]:
@@ -555,7 +564,6 @@ class ProcessData(object):
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
 
-
         x, y = self.create_train_batches(batch_files)
 
         if self.do_scale_center == True:
@@ -564,7 +572,6 @@ class ProcessData(object):
         else:
             scale_center_x_val = x
             scale_center_y_val = y
-
 
         if self.image_type == 'US':
             scale_center_x_val = np.array([scale_center_x_val])
