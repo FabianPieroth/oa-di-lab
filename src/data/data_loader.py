@@ -28,6 +28,7 @@ class ProcessData(object):
                  do_heavy_augment=False,
                  process_raw_data=False,
                  pro_and_augm_only_image_type=False,
+                 height_channel_oa=200,
                  do_flip=True,
                  do_deform=True,
                  num_deform=3,
@@ -56,6 +57,8 @@ class ProcessData(object):
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
 
+        self.height_channel_oa = height_channel_oa
+
         # the order of the following two lists has to be the same and has to be extended if new augmentations are done
         self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels']
         self.bool_augment = [self.do_flip, self.do_deform, self.do_blur, self.do_crop, self.do_rchannels]
@@ -67,7 +70,7 @@ class ProcessData(object):
         self.image_type = image_type
         self.single_sample = single_sample  # if this is True only a single image will be loaded in the batch (dev)
 
-        self.project_root_dir = str(Path().resolve().parents[0])  # root directory
+        self.project_root_dir = str(Path().resolve().parents[1])  # root directory
         # self.project_root_dir = '/mnt/local/mounted'
 
         self.dir_raw_in = self.project_root_dir + '/data' + '/' + self.data_type + '/raw' + '/new_in'
@@ -117,6 +120,8 @@ class ProcessData(object):
             self._get_scale_center()
 
         print('There are ' + str(len(self.train_file_names)) + ' files in the training set')
+
+        print('There are ' + str(len(self.val_file_names)) + ' files in the validation set')
 
         self.X_val, self.Y_val = self._load_processed_data(full_file_names=self.val_file_names)
 
@@ -176,7 +181,7 @@ class ProcessData(object):
                     if oa_file and self.process_oa:
                         dp.pre_oa_homo(new_in_folder=self.dir_raw_in, study_folder=chunk_folder,
                                        filename=oa_file[0], scan_num=sample_folder, save_folder=self.dir_processed_all,
-                                       cut_half=True, height_channel=200)
+                                       cut_half=True, height_channel=self.height_channel_oa)
 
                 elif self.data_type == self.accepted_data_types[1]:
                     print('The new data set is to be processed here. Not done yet.')
@@ -223,6 +228,19 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(
                     folder_name=path_augmented + '/' + aug_name + '/' + end_folder,
                     name_list=self.train_file_names)
+
+    def _get_file_names_from_path(self, path, full_names = True):
+        if full_names:
+            file_names_list = [path + '/' + s for s in os.listdir(path)
+                           if self._check_for_redundant_files(s)]
+        return file_names_list
+
+
+    def _check_for_redundant_files(self, string):
+        bool1 = ('.DS_' in string)
+        bool2 = ('._' in string)
+
+        return not any([bool1, bool2])
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
@@ -393,6 +411,7 @@ class ProcessData(object):
             print('This should be an empty else, to be stopped before coming here.')
 
     def _clear_aug_directories(self):
+        # TODO: make that differencing for oa and us
         # delete all files from the chosen augmented directories
         for aug_dir in self.names_of_augment:
             for im_dir in ['ultrasound', 'optoacoustic']:

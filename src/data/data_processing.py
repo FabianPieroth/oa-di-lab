@@ -31,7 +31,7 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
                               scan_num + '/' + filename)
     name_oa_low = 'OA_low_' + study_folder + '_' + scan_num
     name_oa_high = 'OA_high_' + study_folder + '_' + scan_num
-    name_oa_save = 'OA_' + study_folder + '_' + scan_num
+    name_oa_save = 'OA_' + study_folder + '_' + scan_num + '_ch0'
     if cut_half:
         oa_low = oa_raw['OA_low'][:height_channel,:,:]
         oa_high = oa_raw['OA_high'][:height_channel,:,:]
