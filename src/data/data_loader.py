@@ -38,6 +38,8 @@ class ProcessData(object):
                  num_rchannels=2,
                  get_scale_center=True,
                  do_scale_center=True,
+                 do_truncate = True,
+                 trunc_points = (0.0001, 0.9999),
                  logger_call=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
@@ -86,6 +88,8 @@ class ProcessData(object):
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.do_scale_center = do_scale_center  # applies scale and center to the data
+        self.do_truncate = do_truncate # get mean and variance for truncated OA data, truncate data when parsed to tensor
+        self.trunc_points = trunc_points # quantiles at which to truncate
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
@@ -114,8 +118,8 @@ class ProcessData(object):
             self.train_file_names, self.val_file_names = self._train_val_split(
                 original_file_names=self.original_file_names)
             self._add_augmented_file_names_to_train()
-            self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
-                                                                    train_names=self.train_file_names)
+            #self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
+            #                                                        train_names=self.train_file_names)
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -420,52 +424,92 @@ class ProcessData(object):
                 for f in filelist:
                     os.remove(os.path.join(path_to_dir, f))
 
-    def _get_scale_center(self):
-        # Initialize values
-        i = 0
-        temp = 1
-        shape_for_mean_image = [401, 401]
-        max_data_high = -np.inf * temp
-        min_data_high = np.inf * temp
-        max_data_low = -np.inf * temp
-        min_data_low = np.inf * temp
-        sum_image_high = np.zeros(shape_for_mean_image)
-        sum_image_low = np.zeros(shape_for_mean_image)
-        # do loop:
-        for file in self.train_file_names:
-            image_sign = self.image_type + '_high'
-            # get high image
-            image = self._load_file_to_numpy(file, image_sign)
-            # get maximums/minimums of the image
-            maxs = np.max(image)
-            mins = np.min(image)
-            # update maximums
-            max_data_high = np.maximum(maxs, max_data_high)
-            min_data_high = np.minimum(mins, min_data_high)
-            # add image to sum (for mean)
-            if self.image_type == 'US':
-                sum_image_high += image
-            else:
-                sum_image_high += np.mean(image, axis=2)
+    def update_mean_var(self, prev_agg, data):
+        (n_prev_obs, prev_mean, prev_var) = prev_agg
+        m = n_prev_obs
+        n = 1
+        for dim_shape in data.shape:
+            n = n * dim_shape
 
-            image_sign = self.image_type + '_low'
-            # get low image
-            image = self._load_file_to_numpy(file, image_sign)
-            maxs = np.max(image)
-            mins = np.min(image)
-            # update maximums
-            max_data_low = np.maximum(maxs, max_data_low)
-            min_data_low = np.minimum(mins, min_data_low)
-            # add image to sum (for mean)
-            if self.image_type == 'US':
-                sum_image_low += image
-            else:
-                sum_image_low += np.mean(image, axis=2)
-            # increase counter
-            i += 1
-        # calculate mean images
-        mean_image_high = sum_image_high / i
-        mean_image_low = sum_image_low / i
+        newmean = data.mean()
+        newvar = data.var()
+        n_obs = m + n
+
+        mean = m / (n_obs) * prev_mean + n / (n_obs) * newmean
+        var = m / (n_obs) * prev_var + n / (n_obs) * newvar + m * n / (n_obs) ** 2 * (prev_mean - newmean) ** 2
+
+        return (n_obs, mean, var)
+
+    def _get_scale_center(self):
+        print('Calculates scaling parameters')
+        # Initialize values
+        if self.image_type == 'US':
+            i = 0
+            temp = 1
+            shape_for_mean_image = [401, 401]
+            max_data_high = -np.inf * temp
+            min_data_high = np.inf * temp
+            max_data_low = -np.inf * temp
+            min_data_low = np.inf * temp
+            sum_image_high = np.zeros(shape_for_mean_image)
+            sum_image_low = np.zeros(shape_for_mean_image)
+            # do loop:
+            for file in self.train_file_names:
+                image_sign = self.image_type + '_high'
+                # get high image
+                image = self._load_file_to_numpy(file, image_sign)
+                # get maximums/minimums of the image
+                maxs = np.max(image)
+                mins = np.min(image)
+                # update maximums
+                max_data_high = np.maximum(maxs, max_data_high)
+                min_data_high = np.minimum(mins, min_data_high)
+                # add image to sum (for mean)
+                if self.image_type == 'US':
+                    sum_image_high += image
+                else:
+                    sum_image_high += np.mean(image, axis=2)
+
+                image_sign = self.image_type + '_low'
+                # get low image
+                image = self._load_file_to_numpy(file, image_sign)
+                maxs = np.max(image)
+                mins = np.min(image)
+                # update maximums
+                max_data_low = np.maximum(maxs, max_data_low)
+                min_data_low = np.minimum(mins, min_data_low)
+                # add image to sum (for mean)
+                if self.image_type == 'US':
+                    sum_image_low += image
+                else:
+                    sum_image_low += np.mean(image, axis=2)
+                # increase counter
+                i += 1
+            # calculate mean images
+            mean_image_high = sum_image_high / i
+            mean_image_low = sum_image_low / i
+        else:
+            low_mean = 0
+            low_var = 0
+            count_low = 0
+            high_mean = 0
+            high_var = 0
+            count_high = 0
+            for file in self.train_file_names:
+                image_sign = self.image_type + '_high'
+                image_high = self._load_file_to_numpy(file, image_sign)
+                image_sign = self.image_type + '_low'
+                image_low = self._load_file_to_numpy(file, image_sign)
+                # truncating images
+                lq = np.quantile(image_low, self.trunc_points)
+                hq = np.quantile(image_high, self.trunc_points)
+                trunc_low = image_low.clip(lq[0], lq[1])
+                trunc_high = image_high.clip(hq[0], hq[1])
+                # update values
+                low_aggr = self.update_mean_var((count_low, low_mean, low_var), trunc_low)
+                (count_low, low_mean, low_var) = low_aggr
+                high_aggr = self.update_mean_var((count_high, high_mean, high_var), trunc_high)
+                (count_high, high_mean, high_var) = high_aggr
 
         # construct dictionaries and save parameters
         if self.image_type == 'US':
@@ -476,9 +520,8 @@ class ProcessData(object):
             with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
                 pickle.dump(us_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            oa_scale_params = {'OA_low': [min_data_low, max_data_low], 'OA_high': [min_data_high, max_data_high]}
-            oa_mean_images = {'OA_low': mean_image_low, 'OA_high': mean_image_high}
-            # CAUTION: the OA mean image gets stored in the (C,N,N) shape!!!! (that's what the moveaxis is doing)
+            oa_scale_params = {'OA_low': low_var, 'OA_high': high_var, 'trunc_points': self.trunc_points}
+            oa_mean_images = {'OA_low': low_mean, 'OA_high': high_mean, 'trunc_points': self.trunc_points}
             with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
                 pickle.dump(oa_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
@@ -487,7 +530,7 @@ class ProcessData(object):
         ##################################################################
         # ###### Data Normalization ######################################
         ##################################################################
-
+    # TODO: change scaling functions
     def scale_image(self, image, min_data, max_data, min_out=-1, max_out=1):
         """ scales the input image from [min_data,max_data] to [min_out, max_out]
             input: image: for US (H,W) array, for OA: (H,W,C) array
@@ -524,13 +567,13 @@ class ProcessData(object):
                             for US: array of shape (H,W), for OA: (H,W,C)
                        image_type: 'US' or 'OA'
                 output: batch_out array with same shape as batch"""
-        [min_data, max_data] = scale_params
-        mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
-        batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
         if self.image_type == 'US':
+            [min_data, max_data] = scale_params
+            mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
+            batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
             batch_out = batch_out - mean_scaled
         else:
-            batch_out = batch_out - mean_scaled[None, :, :, None]
+            batch_out = (batch - mean_image)/np.sqrt(scale_params)
         return batch_out
 
     def scale_and_center_reverse(self, batch, scale_params, mean_image):
@@ -542,19 +585,17 @@ class ProcessData(object):
                                 for US: array of shape (H,W), for OA: (H,W,C)
                            image_type: 'US' or 'OA'
                     output: batch_out array with same shape as batch"""
-        [min_data, max_data] = scale_params
-        mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
         if self.image_type == 'US':
+            [min_data, max_data] = scale_params
+            mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
             batch_out = batch + mean_scaled
+            batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
+                                         max_out=max_data)
         else:
-            batch_out = batch + mean_scaled[None, :, :, None]
-        batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
-                                     max_out=max_data)
-        # just for not using the mean addition
-        # batch_out = scale_batch(batch, min_data=-1, max_data=1, image_type=image_type, min_out=min_data,
-        #                        max_out = max_data)
-        return batch_out
+            batch_out = batch*np.sqrt(scale_params) + mean_image
 
+        return batch_out
+    # TODO: change load params function
     def load_params(self, param_type, dir_params=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
@@ -574,16 +615,34 @@ class ProcessData(object):
         dic_key_high = self.image_type + '_high'
         params_low = params[dic_key_low]
         params_high = params[dic_key_high]
+        if self.image_type == 'OA':
+            params_trunc_points = params['trunc_points']
+            if self.trunc_points != params_trunc_points:
+                sys.exit('Truncation of saved parameters does not fit the chosen truncation. Truncation of saved parameters is ' + str(params_trunc_points))
         return params_low, params_high
 
     ##################################################################
     # ###### Torch tensor shaping ####################################
     ##################################################################
 
+    def truncate_images_in_batch(self, batch, trunc_points):
+        n_images = batch.shape[0]
+        for im_ind in range(n_images):
+            image = batch[im_ind, :, :, :]
+            quantiles = np.quantile(image, trunc_points)
+            batch[im_ind, :, :, :] = image.clip(quantiles[0], quantiles[1])
+        return batch
+
+
+
+    # TODO: check scale_and_parse to center
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
 
         x, y = self.create_train_batches(batch_files)
+        if self.image_type == 'OA':
+                x = self.truncate_images_in_batch(x, self.trunc_points)
+                y = self.truncate_images_in_batch(y, self.trunc_points)
 
         if self.do_scale_center == True:
             scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)

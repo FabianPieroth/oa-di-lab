@@ -13,16 +13,16 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'OA'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
+        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=True, do_rchannels=True,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=False,
+                                   do_augment=False, add_augment=False, do_rchannels=True,
+                                   do_flip=True, do_blur=False, do_deform=True, do_crop=False,
                                    image_type=self.image_type, get_scale_center=True, single_sample=False,
+                                   do_truncate = True, trunc_points = (0,1),
                                    do_scale_center=True, height_channel_oa=401)
 
-        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
-                                     output_padding=[0, 0, 1, 0, 0, 1, 0],
-                                     model_name='deep_2_model')
+        self.model = ImageTranslator(conv_channels=[28, 1],
+                                     model_name='toy_model')
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset)
@@ -31,7 +31,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.batch_size = 1
+        self.batch_size = 2
         self.log_period = 50
         self.epochs = 250
         self.learning_rates = [0 for i in range(self.epochs)]
@@ -41,8 +41,8 @@ class CNN_skipCo_trainer(object):
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
 
-
         # load validation set, normalize and parse into tensor
+        # TODO: check if the import is working
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
             batch_files=self.dataset.val_file_names,
             scale_params_low=scale_params_low,
@@ -68,6 +68,7 @@ class CNN_skipCo_trainer(object):
             # in self.batch_number is the number of batches in the training set
             # go through all the batches
             for i in range(self.dataset.batch_number):
+                # TODO: check if the import is working
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
