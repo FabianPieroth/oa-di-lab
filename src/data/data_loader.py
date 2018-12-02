@@ -38,7 +38,6 @@ class ProcessData(object):
                  num_rchannels=2,
                  get_scale_center=True,
                  do_scale_center=True,
-                 do_truncate = True,
                  trunc_points = (0.0001, 0.9999),
                  logger_call=False):
 
@@ -88,8 +87,7 @@ class ProcessData(object):
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.do_scale_center = do_scale_center  # applies scale and center to the data
-        self.do_truncate = do_truncate # get mean and variance for truncated OA data, truncate data when parsed to tensor
-        self.trunc_points = trunc_points # quantiles at which to truncate
+        self.trunc_points = trunc_points # quantiles at which to truncate OA data
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
@@ -118,8 +116,8 @@ class ProcessData(object):
             self.train_file_names, self.val_file_names = self._train_val_split(
                 original_file_names=self.original_file_names)
             self._add_augmented_file_names_to_train()
-            #self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
-            #                                                        train_names=self.train_file_names)
+            self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
+                                                                    train_names=self.train_file_names)
         if self.get_scale_center:
             self._get_scale_center()
 

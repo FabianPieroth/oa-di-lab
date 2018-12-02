@@ -17,8 +17,8 @@ class CNN_skipCo_trainer(object):
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=False, do_rchannels=True,
                                    do_flip=True, do_blur=False, do_deform=True, do_crop=False,
-                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
-                                   do_truncate = True, trunc_points = (0,1),
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
+                                   trunc_points=(0.0001, 0.9999),
                                    do_scale_center=True, height_channel_oa=401)
 
         self.model = ImageTranslator(conv_channels=[28, 1],
