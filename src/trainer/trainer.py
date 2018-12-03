@@ -1,7 +1,7 @@
 from data.data_loader import ProcessData
 from logger.logger import Logger
 import numpy as np
-#from models.model_superclass import ImageTranslator
+from models.model_superclass import ImageTranslator
 from models.dilated_conv import DilatedTranslator
 import torch
 import torch.nn as nn
@@ -14,7 +14,7 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
+        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=False, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
@@ -22,11 +22,12 @@ class CNN_skipCo_trainer(object):
                                    image_type=self.image_type, get_scale_center=False, single_sample=True,
                                    do_scale_center=True, height_channel_oa=201)
 
-        #self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
-        #                             output_padding=[0, 0, 1, 0, 0, 1, 0],
-        #                             model_name='deep_2_model')
-        self.model = DilatedTranslator(conv_channels=[1, 32, 32, 32, 32, 32], dilations=[1, 2, 4, 8, 16])
+        # TODO: if data_type='hetero' it should not upsample to the same size
+        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
+                                     output_padding=[0, 0, 1, 0, 0, 1, 0],
+                                     model_name='deep_2_model')
 
+        # self.model = DilatedTranslator(conv_channels=[1, 32, 32, 32, 32, 32], dilations=[1, 2, 4, 8, 16])
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset)
