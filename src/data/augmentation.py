@@ -178,7 +178,7 @@ def blur_helper(image, sigma = 2):
         transformed_image = np.empty_like(image)
         for channel in range(shape[2]):
             transformed_image[:,:,channel] = skf.gaussian(image[:,:,channel], sigma = sigma)
-    return(transformed_image)
+    return transformed_image
 
 
 def blur(image1, image2, lower_lim = 1, upper_lim = 3):
@@ -235,3 +235,30 @@ def rchannels(filename, dir_raw_in, num_rchannels=2):
         ret_list.append(dict_single)
 
     return ret_list, ret_save_names
+
+########### Speckle Noise ####################
+
+
+def speckle_noise_helper(image, mult_noise):
+    """ """
+    transformed_image = image * mult_noise
+    return transformed_image
+
+
+def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, data_type='homo'):
+    """ """
+    stdev = np.random.random(1)*(upper_lim_stdev - lower_lim_stdev) + lower_lim_stdev
+    shape = image1.shape
+    dim = shape[0] * shape[1]
+    eta = np.random.randn(dim) * stdev + 1
+    eta = eta.reshape(shape)
+    if data_type == 'hetero':
+        input_image1 = image1[:,:,0]
+        transformed_image1_temp = speckle_noise_helper(input_image1, mult_noise=eta)
+        image1[:,:,0] = transformed_image1_temp
+        transformed_image1 = image1
+    else:
+        transformed_image1 = speckle_noise_helper(image1, mult_noise=eta)
+    return transformed_image1, image2, eta
+
+

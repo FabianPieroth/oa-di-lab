@@ -36,6 +36,7 @@ class ProcessData(object):
                  do_crop=True,
                  do_rchannels=True,
                  num_rchannels=2,
+                 do_speckle_noise=True,
                  get_scale_center=True,
                  do_scale_center=True,
                  trunc_points = (0.0001, 0.9999),
@@ -57,12 +58,14 @@ class ProcessData(object):
         self.do_crop = do_crop
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
+        self.do_speckle_noise = do_speckle_noise
 
         self.height_channel_oa = height_channel_oa
 
         # the order of the following two lists has to be the same and has to be extended if new augmentations are done
-        self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels']
-        self.bool_augment = [self.do_flip, self.do_deform, self.do_blur, self.do_crop, self.do_rchannels]
+        self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels', 'speckle_noise']
+        self.bool_augment = [self.do_flip, self.do_deform, self.do_blur, self.do_crop, self.do_rchannels,
+                             self.do_speckle_noise]
         self.names_of_augment = [self.all_augment[i] for i in range(len(self.all_augment)) if self.bool_augment[i]]
 
         self.add_augment = add_augment  # bool if augmented data should be included in training
@@ -320,6 +323,8 @@ class ProcessData(object):
         if self.data_type == self.accepted_data_types[0]:
             if self.image_type == 'OA' and self.do_blur:
                 print('No blur augmentation for OA data')
+            if self.image_type == 'OA' and self.do_speckle_noise:
+                print('No speckle noise augmentation for OA data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
                 to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
@@ -372,6 +377,13 @@ class ProcessData(object):
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params)
 
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params)
+
+
                 # additionally to the processed_all files the flipped ones are done for some augmentations
                 flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
                                                                end_folder, full_names=True)
@@ -404,6 +416,12 @@ class ProcessData(object):
                                    filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder,
                                    path_to_augment=self.dir_augmented, path_to_params=self.dir_params)
+
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                            filename=self._extract_name_from_path(filename, without_ch=False),
+                                            end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                            path_to_params=self.dir_params)
 
         elif self.data_type == self.accepted_data_types[1]:
             print('The new data set is to be augmented here. Not done yet.')
