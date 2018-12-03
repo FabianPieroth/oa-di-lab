@@ -47,19 +47,20 @@ def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
     # combine deformation and anker points to coarse grid
     x_coord_coarse = np.append(x_coord, x_coord_anker_points)
     y_coord_coarse = np.append(y_coord, y_coord_anker_points)
-    coord_coarse = np.array(list(zip(x_coord_coarse, y_coord_coarse)))
+    coord_coarse = np.array(list(zip(y_coord_coarse, x_coord_coarse)))
 
     dx_coarse = np.append(dx, dx_anker_points)
     dy_coarse = np.append(dy, dy_anker_points)
 
     ## Interpolation onto fine grid
     # coordinates of fine grid
-    coord_fine = [[x, y] for x in range(shape[1]) for y in range(shape[0])]
+    coord_fine = [[y, x] for y in range(shape[0]) for x in range(shape[1])]
     # interpolate displacement in both x and y direction
     dx_fine = ipol.griddata(coord_coarse, dx_coarse, coord_fine,
                             method='cubic')  # cubic works better but takes longer (?)
     dy_fine = ipol.griddata(coord_coarse, dy_coarse, coord_fine, method='cubic')  # other options: 'linear'
     # get the displacements into shape of the input image (the same values in each channel)
+
 
     if len(shape) == 3:
         dx_fine = dx_fine.reshape(shape[0:2])
@@ -69,15 +70,16 @@ def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
 
         ## Deforming the image: apply the displacement grid
         # base grid
-        x, y, z = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), np.arange(shape[2]))
+        x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
         # add displacement to base grid (-> new coordinates)
         indices = np.reshape(y + dy_fine, (-1, 1)), np.reshape(x + dx_fine, (-1, 1)), np.reshape(z, (-1, 1))
+
     else:
         dx_fine = dx_fine.reshape(shape)
         dy_fine = dy_fine.reshape(shape)
         ## Deforming the image: apply the displacement grid
         # base grid
-        x, y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]))
+        x, y = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
         # add displacement to base grid (-> new coordinates)
         indices = np.reshape(y + dy_fine, (-1, 1)), np.reshape(x + dx_fine, (-1, 1))
     # evaluate the image at the new coordinates
@@ -88,12 +90,13 @@ def elastic_deform_helper(image, x_coord, y_coord, dx, dy):
 
 
 # wrapper function
-def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformation_points_location_fac=0.5):
+def elastic_deform(image1, image2, n_points=1, stdev_displacement_fac=0.05, deformation_points_location_fac=0.7):
     """ Generates random points and displacements and performs elastic deformation
         on the two input images with these deformation points
         Input: image1, image2: arrays of shape (N,M,C), C being the number of channels
                n_points: number of deformation points
-               stdev_displacement: standard deviation of the discplacement values
+               stdev_displacement_fac: factor that is multiplied with the smaller x or y dimension
+                            of the input image to get the standard deviation of the discplacement values
                deformation_points_location_fac: value in (0,1), gives size of box in which the random points are generated
         Output: the deformed images (shape (N,M,C))
                """
@@ -116,6 +119,7 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement=20, deformatio
     y_coord = np.random.randint(upper_limit, lower_limit, n_points)
 
     # displacement values
+    stdev_displacement = stdev_displacement_fac*min(shape[0], shape[1])
     dx = np.random.randn(n_points) * stdev_displacement
     dy = np.random.randn(n_points) * stdev_displacement
 

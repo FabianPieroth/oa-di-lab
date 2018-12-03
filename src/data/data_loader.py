@@ -528,7 +528,6 @@ class ProcessData(object):
         ##################################################################
         # ###### Data Normalization ######################################
         ##################################################################
-    # TODO: change scaling functions
     def scale_image(self, image, min_data, max_data, min_out=-1, max_out=1):
         """ scales the input image from [min_data,max_data] to [min_out, max_out]
             input: image: for US (H,W) array, for OA: (H,W,C) array
@@ -593,7 +592,6 @@ class ProcessData(object):
             batch_out = batch*np.sqrt(scale_params) + mean_image
 
         return batch_out
-    # TODO: change load params function
     def load_params(self, param_type, dir_params=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
@@ -633,7 +631,6 @@ class ProcessData(object):
 
 
 
-    # TODO: check scale_and_parse to center
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
 

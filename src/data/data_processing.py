@@ -62,8 +62,8 @@ def do_flip(x, y, file_prefix, filename, end_folder, path_to_augment):
 
 
 def do_deform(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, num_deform):
-    aug_x, aug_y, params = data.augmentation.elastic_deform(x, y)
 
+    aug_x, aug_y, params = data.augmentation.elastic_deform(x, y)
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='deform')
 
     save_dict_with_pickle(dict_save, path_to_augment + "/deform/" + end_folder, name_save + str(num_deform))

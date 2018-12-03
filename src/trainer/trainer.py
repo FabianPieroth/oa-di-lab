@@ -16,10 +16,10 @@ class CNN_skipCo_trainer(object):
         self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=False, do_rchannels=True,
-                                   do_flip=True, do_blur=False, do_deform=True, do_crop=False,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
+                                   do_flip=True, do_blur=True, do_deform=True, do_crop=False,
+                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   do_scale_center=True, height_channel_oa=401)
+                                   do_scale_center=True, height_channel_oa=201)
 
         self.model = ImageTranslator(conv_channels=[28, 1],
                                      model_name='toy_model')
@@ -42,7 +42,6 @@ class CNN_skipCo_trainer(object):
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
 
         # load validation set, normalize and parse into tensor
-        # TODO: check if the import is working
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
             batch_files=self.dataset.val_file_names,
             scale_params_low=scale_params_low,
@@ -68,7 +67,6 @@ class CNN_skipCo_trainer(object):
             # in self.batch_number is the number of batches in the training set
             # go through all the batches
             for i in range(self.dataset.batch_number):
-                # TODO: check if the import is working
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
