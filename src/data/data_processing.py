@@ -23,6 +23,7 @@ def filter_hidden_files(string):
 
 # homo
 
+
 def pre_us_homo(new_in_folder, study_folder, filename, scan_num, save_folder):
     us_raw = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                               scan_num + '/' + filename)
@@ -38,7 +39,7 @@ def pre_us_homo(new_in_folder, study_folder, filename, scan_num, save_folder):
                           folder_name=save_folder + '/ultrasound', file_name=name_us_save)
 
 
-def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cut_half=True, height_channel=200):
+def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cut_half=True, height_channel=201):
     oa_raw = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                               scan_num + '/' + filename)
     name_oa_low = 'OA_low_' + study_folder + '_' + scan_num
