@@ -2,21 +2,33 @@ from data.data_loader import ProcessData
 from logger.logger import Logger
 import numpy as np
 from models.model_superclass import ImageTranslator
+from models.dilated_conv import DilatedTranslator
 import torch
 import torch.nn as nn
 import sys
 
+
 class CNN_skipCo_trainer(object):
+
     def __init__(self):
 
-        self.image_type = 'OA'
+        self.image_type = 'US'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=False,
-                                   do_augment=False, add_augment=False, do_rchannels=False,
-                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
+                                   pro_and_augm_only_image_type=True, do_heavy_augment=False,
+                                   do_augment=False, add_augment=False, do_rchannels=True,
+                                   do_flip=True, do_blur=True, do_deform=True, do_crop=False,
+                                   trunc_points=(0.0001, 0.9999),
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
+                                   do_scale_center=True, height_channel_oa=201)
 
-        self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
+        # TODO: if data_type='hetero' it should not upsample to the same size
+        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
+                                     output_padding=[0, 0, 1, 0, 0, 1, 0],
+                                     model_name='deep_2_model')
+
+        # self.model = DilatedTranslator(conv_channels=[1, 32, 32, 32, 32, 32], dilations=[1, 2, 4, 8, 16])
+
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset)
 
@@ -24,7 +36,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.batch_size = 32
+        self.batch_size = 2
         self.log_period = 50
         self.epochs = 250
         self.learning_rates = [0 for i in range(self.epochs)]
@@ -84,12 +96,8 @@ class CNN_skipCo_trainer(object):
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high])
 
-
-    def predict(self):
-        # self.model.predict()
-
-        # see self.dataset.X_val and self.dataset.Y_val
-        pass
+    def predict(self, x):
+        return self.model(x)
 
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
@@ -215,8 +223,10 @@ def main():
     #trainer.find_lr()
     # fit the first model
     print('\n---------------------------')
+    print(trainer.model)
+    #print(trainer.model)
     print('fitting model')
-    trainer.fit(learning_rate=0.001, lr_method='one_cycle')
+    trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
     #trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)

@@ -20,7 +20,7 @@ class Logger(object):
 
         self.base_dir = '%s/reports' % (project_root_dir)
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
-        self.save_dir = self.base_dir + '/' + self.model.model_name + '_' +  timestamp
+        self.save_dir = self.base_dir + '/' + self.model.model_name + '_' + timestamp
         self.load_dir = self.base_dir + '/' + self.model.model_name
         os.makedirs(self.save_dir)
 
@@ -45,7 +45,7 @@ class Logger(object):
         self.model.load_state_dict(torch.load(self.load_dir + '_' + time_stamp + '/' + self.model.model_name + '__' + save_appendix + '.pt'))
         # set the state of the model to eval()
         self.model.eval()
-        predict = self.model(input_tensor)
+        predict = self.model(input_tensor) # self.model.predict(input_tensor)
         return predict
 
 
