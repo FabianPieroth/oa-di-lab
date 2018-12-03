@@ -19,7 +19,7 @@ class CNN_skipCo_trainer(object):
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    image_type=self.image_type, get_scale_center=True, single_sample=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   do_scale_center=True, height_channel_oa=201)
+                                   do_scale_center=True, height_channel_oa=401)
 
         self.model = ImageTranslator(conv_channels=[28, 1],
                                      model_name='toy_model')
