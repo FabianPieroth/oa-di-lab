@@ -11,15 +11,16 @@ class CNN_skipCo_trainer(object):
 
     def __init__(self):
 
-        self.image_type = 'OA'
+        self.image_type = 'US'
 
-        self.dataset = ProcessData(data_type="homo", train_ratio=0.9, process_raw_data=True,
+        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=True, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    image_type=self.image_type, get_scale_center=True, single_sample=False,
-                                   do_scale_center=True, height_channel_oa=401)
+                                   do_scale_center=False, height_channel_oa=201)
 
+        # TODO: if data_type='hetero' it should not upsample to the same size
         self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
                                      output_padding=[0, 0, 1, 0, 0, 1, 0],
                                      model_name='deep_2_model')

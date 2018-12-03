@@ -28,7 +28,7 @@ class ProcessData(object):
                  do_heavy_augment=False,
                  process_raw_data=False,
                  pro_and_augm_only_image_type=False,
-                 height_channel_oa=200,
+                 height_channel_oa=201,
                  do_flip=True,
                  do_deform=True,
                  num_deform=3,
@@ -133,6 +133,9 @@ class ProcessData(object):
         # shuffle the train_file_names; this gets called every epoch
         self.set_random_seed = self.set_random_seed + 1
         random.seed(self.set_random_seed)
+        if len(self.train_file_names) == 0:
+            sys.exit('There are no files in the training set,' +
+                     ' consider changing training_ratio or you have to debug.')
         self.train_file_names = random.sample(self.train_file_names, len(self.train_file_names))
 
         if self.single_sample:
@@ -150,7 +153,7 @@ class ProcessData(object):
 
     def _process_raw_data(self):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
-        in_directories = [s for s in os.listdir(self.dir_raw_in) if '.' not in s]
+        in_directories = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in, full_names=False)
         print('Process raw data')
         if not self.all_folder:
             skip_dirs = []
@@ -164,13 +167,15 @@ class ProcessData(object):
             in_directories = list(set(skip_dirs) ^ set(in_directories))
 
         for chunk_folder in in_directories:
-            sample_directories = [s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder) if '.' not in s]
+            sample_directories = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' + chunk_folder,
+                                                            full_names=False)
             print('Processing data from raw input folder: ' + chunk_folder)
             np.random.seed(self.set_random_seed)  # at the moment set_random_seed = 42
             for sample_folder in sample_directories:
                 if self.data_type == self.accepted_data_types[0]:
-                    in_files = [s for s in os.listdir(self.dir_raw_in + '/' + chunk_folder + '/' + sample_folder)
-                                if '._' not in s]
+                    in_files = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' +
+                                                                      chunk_folder + '/' + sample_folder,
+                                                            full_names=False)
                     us_file = [s for s in in_files if 'US_' in s]
                     oa_file = [s for s in in_files if 'OA_' in s]
 
@@ -184,7 +189,16 @@ class ProcessData(object):
                                        cut_half=True, height_channel=self.height_channel_oa)
 
                 elif self.data_type == self.accepted_data_types[1]:
-                    print('The new data set is to be processed here. Not done yet.')
+                    if not self.image_type == 'US':
+                        sys.exit('There is only Ultrasound images in the hetero data set.')
+                    in_files = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' +
+                                                                      chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
+                    us_low_samples = [s for s in in_files if 'US_low' in s]
+                    us_high_samples = [s for s in in_files if 'US_high' in s]
+                    dp.pre_us_hetero(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
+                                     filename_low=us_low_samples[0], filename_high=us_high_samples[0],
+                                     save_folder=self.dir_processed_all)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -206,8 +220,8 @@ class ProcessData(object):
             else:
                 end_folder = 'optoacoustic'
 
-        if len([s for s in os.listdir(self.dir_processed_all + '/' + end_folder)
-                if '.DS_' not in s and '._' not in s]) == 0:
+        if len(dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
+                                          full_names=False)) == 0:
             sys.exit('There are no Files in the processed Folder, please run again with process_raw_data=True.')
 
         file_names = []
@@ -228,19 +242,6 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(
                     folder_name=path_augmented + '/' + aug_name + '/' + end_folder,
                     name_list=self.train_file_names)
-
-    def _get_file_names_from_path(self, path, full_names = True):
-        if full_names:
-            file_names_list = [path + '/' + s for s in os.listdir(path)
-                           if self._check_for_redundant_files(s)]
-        return file_names_list
-
-
-    def _check_for_redundant_files(self, string):
-        bool1 = ('.DS_' in string)
-        bool2 = ('._' in string)
-
-        return not any([bool1, bool2])
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
@@ -274,7 +275,7 @@ class ProcessData(object):
 
     def _names_to_list(self, folder_name, name_list):
         # extract file names from folder and add path name to it
-        file_names = [s for s in os.listdir(folder_name) if ('.DS_' not in s and '._' not in s)]
+        file_names = dp.ret_all_files_in_folder(folder_path=folder_name, full_names=False)
         # add path to file names and add them to list
         name_list.extend([str(folder_name) + '/' + s for s in file_names])
         return name_list
@@ -319,10 +320,8 @@ class ProcessData(object):
                 print('No blur augmentation for OA data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
-                # TODO: put the creation of the full filename list in a function!
-                to_be_aug_files = [self.dir_processed_all + '/' + end_folder + '/' + s for s in
-                                   os.listdir(self.dir_processed_all + '/' + end_folder)
-                                   if '.DS_' not in s and '._' not in s]
+                to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
+                                          full_names=True)
                 if end_folder == 'ultrasound':
                     file_prefix = 'US'
                 else:
@@ -372,13 +371,12 @@ class ProcessData(object):
                                    path_to_params=self.dir_params)
 
                 # additionally to the processed_all files the flipped ones are done for some augmentations
-                flipped_to_be_aug = [self.dir_processed + '/augmented/flip/' + end_folder + '/' + s for s in os.listdir(
-                    self.dir_processed + '/augmented/flip/' + end_folder) if '.DS_' not in s and '._' not in s]
+                flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
+                                                               end_folder, full_names=True)
                 if self.do_heavy_augment:
-                    r_channels_to_be_aug = [self.dir_processed + '/augmented/rchannels/' + end_folder + '/' + s for s in
-                                            os.listdir(
-                                                self.dir_processed + '/augmented/rchannels/' + end_folder) if
-                                            '.DS_' not in s and '._' not in s]
+                    r_channels_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed +
+                                                                      '/augmented/rchannels/' + end_folder,
+                                                                      full_names=True)
                     flipped_to_be_aug = flipped_to_be_aug + r_channels_to_be_aug
                 for filename in flipped_to_be_aug:
                     print('augmenting file', self._extract_name_from_path(filename, without_ch=False))
@@ -411,14 +409,20 @@ class ProcessData(object):
             print('This should be an empty else, to be stopped before coming here.')
 
     def _clear_aug_directories(self):
-        # TODO: make that differencing for oa and us
         # delete all files from the chosen augmented directories
         for aug_dir in self.names_of_augment:
             for im_dir in ['ultrasound', 'optoacoustic']:
+                if im_dir == 'ultrasound':
+                    file_prefix = 'US'
+                else:
+                    file_prefix = 'OA'
+                if self.pro_and_augm_only_image_type and not self.image_type == file_prefix:
+                    continue
                 path_to_dir = self.dir_augmented + '/' + aug_dir + '/' + im_dir
                 filelist = os.listdir(path_to_dir)
                 for f in filelist:
                     os.remove(os.path.join(path_to_dir, f))
+
 
     def _get_scale_center(self):
         # Initialize values
@@ -561,6 +565,9 @@ class ProcessData(object):
                     param_type: 'scale' or 'mean_image' (maybe more options later)
             output: params_low, params_high: the parameters."""
         # dir_params = '/mnt/local/mounted'
+        if not self.do_scale_center:
+            print('No Scaling done due to parameter do_scale_center=False.')
+            return None, None
         if dir_params is None:
             dir_params = self.dir_params + '/' + 'scale_and_center/'
         if param_type in ['scale_params', 'mean_images']:
@@ -592,7 +599,7 @@ class ProcessData(object):
             scale_center_x_val = x
             scale_center_y_val = y
 
-        if self.image_type == 'US':
+        if self.image_type == 'US' and self.data_type == 'homo':
             scale_center_x_val = np.array([scale_center_x_val])
             scale_center_y_val = np.array([scale_center_y_val])
 
