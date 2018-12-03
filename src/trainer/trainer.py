@@ -17,17 +17,20 @@ class CNN_skipCo_trainer(object):
                                    image_type=self.image_type, get_scale_center=False, single_sample=True)
 
         self.model = ImageTranslator(conv_channels=[28, 32, 64, 128, 256], strides=[1, 2, 1, 2], kernels=[(7,7) for i in range(4)], padding=[3,3,3,3])
-        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type, dataset=self.dataset)
+
 
         if torch.cuda.is_available():
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.batch_size = 32
-        self.log_period = 50
-        self.epochs = 250
+        self.batch_size = 8
+        self.log_period = 2
+        self.epochs = 12
         self.learning_rates = [0 for i in range(self.epochs)]
+
+        self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
+                             image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
+                             epochs=self.epochs,learning_rates=self.learning_rates)
 
     def fit(self, learning_rate, lr_method='standard'):
         # get scale and center parameters
@@ -82,7 +85,9 @@ class CNN_skipCo_trainer(object):
                                 current_epoch=e,
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
+
                                 scale_params=[scale_params_low, scale_params_high])
+
 
 
     def predict(self):
