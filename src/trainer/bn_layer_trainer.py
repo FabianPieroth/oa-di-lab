@@ -114,7 +114,6 @@ class CNN_skipCo_trainer(object):
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high])
 
-        slef.logger.save_json_file(batch_size,epochs)
 
 
 

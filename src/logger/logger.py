@@ -11,17 +11,24 @@ class Logger(object):
     def __init__(self,
                  project_root_dir,
                  dataset,
+                 epochs,
+                 batch_size,
+                 learning_rates,
                  model=None,
                  image_type='US'):
         self.project_root_dir = project_root_dir
         self.model = model  # give the model to the logger, so we have all needed variables in the self
         self.image_type = image_type
-        self.dataset=dataset
+        self.dataset = dataset
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.learning_rates = learning_rates
 
         self.base_dir = '%s/reports' % (project_root_dir)
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
-        self.save_dir = self.base_dir + '/' + self.model.model_name + '_' + timestamp
-        self.load_dir = self.base_dir + '/' + self.model.model_name
+
+        self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name + '_' +  timestamp
+        self.load_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name
         os.makedirs(self.save_dir)
 
     def save_model(self, save_appendix):
@@ -118,11 +125,14 @@ class Logger(object):
             # only call this the first time, when training starts
             self.save_representation_of_model()
             self.save_scale_center_params(mean_images=mean_images, scale_params=scale_params)
+            self.save_json_file(batch_size=self.batch_size, epochs=self.epochs,
+                                       learning_rates=self.learning_rates)
 
             # copy the data_loader file and the model file to make reproducible examples
-            data_loader_path = self.project_root_dir + '/src/data' + '/data_loader.py'
+            data_loader_path = self.project_root_dir + '/src/data/' + '/data_loader.py'
             model_file_path = self.model.model_file_name
             augmentation_file_path = self.project_root_dir + '/src/data' + '/augmentation.py'
+            data_processing_file_path = self.project_root_dir + '/src/data' +'/data_processing.py'
 
             os.makedirs(self.save_dir + '/data')
             os.makedirs(self.save_dir + '/models')
@@ -130,16 +140,19 @@ class Logger(object):
             # copy the files in the corresponding folder
             shutil.copy(data_loader_path, self.save_dir + '/data')
             shutil.copy(augmentation_file_path, self.save_dir + '/data')
+            shutil.copy(data_processing_file_path, self.save_dir + '/data')
             shutil.copy(model_file_path, self.save_dir + '/models')
 
-    def save_json_file(self, batch_size, epochs):
+    def save_json_file(self, batch_size, epochs,learning_rates):
 
         config = {
 
 
-            "batch_size" : batch_size,
+            "batch_size" : self.batch_size,
             "model_name" : self.model.model_name,
-            "nr_epochs" : epochs,
+            "image_type" : self.dataset.image_type,
+            "data_type" : self.dataset.data_type,
+            "nr_epochs" : self.epochs,
             "applied_augmentations" : {
                 "process_raw_data" : self.dataset.process_raw,
                 "do_augment" : self.dataset.do_augment,
@@ -149,6 +162,7 @@ class Logger(object):
                 "do_deform" : self.dataset.do_deform,
                 "do_crop" : self.dataset.do_crop,
                 "image_type" : self.dataset.image_type,
+                "data_type" : self.dataset.data_type,
                 "get_scale_center" : self.dataset.get_scale_center,
                 "single_sample" : self.dataset.single_sample
             },
@@ -156,7 +170,7 @@ class Logger(object):
             "loss_function" : str(self.model.criterion),
             "train_files" : self.dataset.train_file_names,
             "val_files" : self.dataset.val_file_names,
-            "learning_rate": self.model.learning_rate
+            "learning_rates": self.learning_rates
         }
         file_path = self.save_dir + '/config.json'
         with open(file_path, 'w') as outfile:

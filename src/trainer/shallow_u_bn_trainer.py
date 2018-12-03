@@ -12,10 +12,10 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.dataset = ProcessData(train_ratio=0.9, process_raw_data=False,
+        self.dataset = ProcessData(train_ratio=0.9, data_type='homo', process_raw_data=False,
                                    do_augment=False, add_augment=True,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=True,
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True)
+                                   do_flip=False, do_blur=False, do_deform=False, do_crop=False,
+                                   image_type=self.image_type, get_scale_center=True, single_sample=False
 
         self.model = shallow_model_u_bn.shallow_model_u_bn(
             criterion=nn.MSELoss(),
@@ -29,7 +29,7 @@ class CNN_skipCo_trainer(object):
             self.model.cuda()
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
-                             image_type=self.image_type)
+                             image_type=self.image_type, dataset=self.datset)
         self.epochs = 250
 
     def fit(self, learning_rate, use_one_cycle=False):
