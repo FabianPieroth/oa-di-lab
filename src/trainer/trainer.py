@@ -12,18 +12,18 @@ class CNN_skipCo_trainer(object):
 
     def __init__(self):
 
-        self.image_type = 'US'
+        self.image_type = 'OA'
 
-        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
+        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=False,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=False, do_rchannels=True,
+                                   do_augment=False, add_augment=True, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
-                                   do_scale_center=True, height_channel_oa=201)
+                                   image_type=self.image_type, get_scale_center=False, single_sample=False,
+                                   do_scale_center=False, height_channel_oa=201)
 
         # TODO: if data_type='hetero' it should not upsample to the same size
-        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
+        self.model = ImageTranslator(conv_channels=[28, 64, 64, 128, 128, 256, 256, 512],
                                      output_padding=[0, 0, 1, 0, 0, 1, 0],
                                      model_name='deep_2_model')
 
@@ -57,7 +57,6 @@ class CNN_skipCo_trainer(object):
         if torch.cuda.is_available():
             input_tensor_val = input_tensor_val.cuda()
             target_tensor_val = target_tensor_val.cuda()
-
 
         self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
 
