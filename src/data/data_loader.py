@@ -325,6 +325,8 @@ class ProcessData(object):
                 print('No blur augmentation for OA data')
             if self.image_type == 'OA' and self.do_speckle_noise:
                 print('No speckle noise augmentation for OA data')
+            if self.data_type == 'hetero' and self.do_deform:
+                print('No deform augmentation for heterogenuous SoS data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
                 to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
@@ -361,9 +363,9 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params)
+                                   path_to_params=self.dir_params, data_type=self.data_type)
 
-                    if self.do_deform:
+                    if self.do_deform and self.data_type == 'homo':
                         for i in range(self.num_deform):
                             dp.do_deform(x=x, y=y, file_prefix=file_prefix,
                                          filename=self._extract_name_from_path(filename, without_ch=False),
@@ -381,7 +383,7 @@ class ProcessData(object):
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                    filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params)
+                                   path_to_params=self.dir_params, data_type=self.data_type)
 
 
                 # additionally to the processed_all files the flipped ones are done for some augmentations
@@ -397,7 +399,7 @@ class ProcessData(object):
                     x = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
                     y = self._load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
 
-                    if self.do_deform:
+                    if self.do_deform and self.data_type =='homo':
                         for i in range(self.num_deform):
                             dp.do_deform(x=x, y=y, file_prefix=file_prefix,
                                          filename=self._extract_name_from_path(filename, without_ch=False),
@@ -409,7 +411,7 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self._extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params)
+                                   path_to_params=self.dir_params, data_type=self.data_type)
 
                     if self.do_crop:
                         dp.do_crop(x=x, y=y, file_prefix=file_prefix,
@@ -421,7 +423,7 @@ class ProcessData(object):
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                             filename=self._extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                            path_to_params=self.dir_params)
+                                            path_to_params=self.dir_params, data_type=self.data_type)
 
         elif self.data_type == self.accepted_data_types[1]:
             print('The new data set is to be augmented here. Not done yet.')

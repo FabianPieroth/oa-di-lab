@@ -135,9 +135,9 @@ def do_deform(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_
     save_dict_with_pickle(params, path_to_params + '/augmentation/deform/' + end_folder, name_save_params)
 
 
-def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params):
+def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type):
     aug_x, aug_y, params = data.augmentation.blur(x, y,
-                                                  lower_lim=1, upper_lim=3)
+                                                  lower_lim=1, upper_lim=3, data_type=data_type)
 
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='blur')
 
@@ -164,8 +164,8 @@ def do_rchannels(end_folder, filename, read_in_folder, num_channels, path_to_aug
         save_dict_with_pickle(dict_list[i], path_to_augment + "/rchannels/" + end_folder, save_names[i])
 
 
-def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params):
-    aug_x, aug_y, params = data.augmentation.speckle_noise(x, y)
+def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type):
+    aug_x, aug_y, params = data.augmentation.speckle_noise(x, y, data_type=data_type)
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='speckle_noise')
 
     save_dict_with_pickle(dict_save, path_to_augment + "/speckle_noise/" + end_folder, name_save)

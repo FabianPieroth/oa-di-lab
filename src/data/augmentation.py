@@ -181,14 +181,20 @@ def blur_helper(image, sigma = 2):
     return transformed_image
 
 
-def blur(image1, image2, lower_lim = 1, upper_lim = 3):
+def blur(image1, image2, lower_lim = 1, upper_lim = 3, data_type='homo'):
     """ blurs image1 with a blur_helper, only use for US data
         input: image1: the image to be blurred
                image2: the target image, not to be blurred
                lower_lim, upper_lim: ints lower and upper lim for the sigma for the gaussian filter
         output: transformed_image1, image2"""
     sig = np.random.randint(lower_lim, upper_lim + 1)
-    transformed_image1 = blur_helper(image1, sigma = sig)
+    if data_type == 'hetero':
+        input_image1 = image1[:, :, 0]
+        transformed_image1_temp = blur_helper(input_image1, sigma=sig)
+        image1[:, :, 0] = transformed_image1_temp
+        transformed_image1 = image1
+    else:
+        transformed_image1 = blur_helper(image1, sigma=sig)
     return transformed_image1, image2, sig
 
 
