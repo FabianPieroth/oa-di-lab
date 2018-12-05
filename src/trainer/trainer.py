@@ -25,7 +25,8 @@ class CNN_skipCo_trainer(object):
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
                                    image_type=self.image_type, get_scale_center=True, single_sample=False,
-                                   do_scale_center=True, height_channel_oa=201)
+                                   do_scale_center=True, scale_center_method='old',
+                                   height_channel_oa=201)
 
         # TODO: if data_type='hetero' it should not upsample to the same size
         self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],

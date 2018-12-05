@@ -39,6 +39,7 @@ class ProcessData(object):
                  do_speckle_noise=True,
                  get_scale_center=True,
                  do_scale_center=True,
+                 scale_center_method='old',
                  trunc_points = (0.0001, 0.9999),
                  logger_call=False):
 
@@ -90,6 +91,8 @@ class ProcessData(object):
         self.process_raw = process_raw_data  # call method _process_raw_data
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.do_scale_center = do_scale_center  # applies scale and center to the data
+        self.scale_center_method = scale_center_method # 'old' for US min max scaling with mean image,
+                                                       # 'new' for variance, mean normalization
         self.trunc_points = trunc_points # quantiles at which to truncate OA data
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
@@ -464,7 +467,7 @@ class ProcessData(object):
     def _get_scale_center(self):
         print('Calculates scaling parameters')
         # Initialize values
-        if self.image_type == 'US':
+        if self.image_type == 'US' and self.scale_center_method == 'old':
             i = 0
             temp = 1
             shape_for_mean_image = [401, 401]
@@ -507,14 +510,16 @@ class ProcessData(object):
                 # increase counter
                 i += 1
             # calculate mean images
-            mean_image_high = sum_image_high / i
-            mean_image_low = sum_image_low / i
+            mean_high = sum_image_high / i
+            mean_low = sum_image_low / i
+            scale_params_low = [min_data_low, max_data_low]
+            scale_params_high = [min_data_high, max_data_high]
         else:
-            low_mean = 0
-            low_var = 0
+            mean_low = 0
+            var_low = 0
             count_low = 0
-            high_mean = 0
-            high_var = 0
+            mean_high = 0
+            var_high = 0
             count_high = 0
             for file in self.train_file_names:
                 image_sign = self.image_type + '_high'
@@ -522,27 +527,33 @@ class ProcessData(object):
                 image_sign = self.image_type + '_low'
                 image_low = self._load_file_to_numpy(file, image_sign)
                 # truncating images
-                lq = np.quantile(image_low, self.trunc_points)
-                hq = np.quantile(image_high, self.trunc_points)
-                trunc_low = image_low.clip(lq[0], lq[1])
-                trunc_high = image_high.clip(hq[0], hq[1])
+                if self.image_type == 'OA':
+                    lq = np.quantile(image_low, self.trunc_points)
+                    hq = np.quantile(image_high, self.trunc_points)
+                    image_low = image_low.clip(lq[0], lq[1])
+                    image_high = image_high.clip(hq[0], hq[1])
                 # update values
-                low_aggr = self.update_mean_var((count_low, low_mean, low_var), trunc_low)
-                (count_low, low_mean, low_var) = low_aggr
-                high_aggr = self.update_mean_var((count_high, high_mean, high_var), trunc_high)
-                (count_high, high_mean, high_var) = high_aggr
+                low_aggr = self.update_mean_var((count_low, mean_low, var_low), image_low)
+                (count_low, mean_low, var_low) = low_aggr
+                high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                (count_high, mean_high, var_high) = high_aggr
+            scale_params_low = var_low
+            scale_params_high = var_high
+
 
         # construct dictionaries and save parameters
         if self.image_type == 'US':
-            us_scale_params = {'US_low': [min_data_low, max_data_low], 'US_high': [min_data_high, max_data_high]}
-            us_mean_images = {'US_low': mean_image_low, 'US_high': mean_image_high}
+            us_scale_params = {'US_low': scale_params_low, 'US_high': scale_params_high,
+                               'scale_center_method': self.scale_center_method}
+            us_mean_images = {'US_low': mean_low, 'US_high': mean_high,
+                              'scale_center_method': self.scale_center_method}
             with open(self.dir_params + '/scale_and_center' + '/US_scale_params', 'wb') as handle:
                 pickle.dump(us_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
                 pickle.dump(us_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            oa_scale_params = {'OA_low': low_var, 'OA_high': high_var, 'trunc_points': self.trunc_points}
-            oa_mean_images = {'OA_low': low_mean, 'OA_high': high_mean, 'trunc_points': self.trunc_points}
+            oa_scale_params = {'OA_low': scale_params_low, 'OA_high': scale_params_high, 'trunc_points': self.trunc_points}
+            oa_mean_images = {'OA_low': mean_low, 'OA_high': mean_high, 'trunc_points': self.trunc_points}
             with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
                 pickle.dump(oa_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
@@ -587,11 +598,11 @@ class ProcessData(object):
                             for US: array of shape (H,W), for OA: (H,W,C)
                        image_type: 'US' or 'OA'
                 output: batch_out array with same shape as batch"""
-        if self.image_type == 'US':
+        if self.image_type == 'US' and self.scale_center_method == 'old':
             [min_data, max_data] = scale_params
             mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
             batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
-            batch_out = batch_out - mean_scaled
+            batch_out = batch_out - mean_scaled[None,:,:]
         else:
             batch_out = (batch - mean_image)/np.sqrt(scale_params)
         return batch_out
@@ -605,10 +616,10 @@ class ProcessData(object):
                                 for US: array of shape (H,W), for OA: (H,W,C)
                            image_type: 'US' or 'OA'
                     output: batch_out array with same shape as batch"""
-        if self.image_type == 'US':
+        if self.image_type == 'US' and self.scale_center_method == 'old':
             [min_data, max_data] = scale_params
             mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
-            batch_out = batch + mean_scaled
+            batch_out = batch + mean_scaled[None,:,:]
             batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
                                          max_out=max_data)
         else:
@@ -640,7 +651,14 @@ class ProcessData(object):
         if self.image_type == 'OA':
             params_trunc_points = params['trunc_points']
             if self.trunc_points != params_trunc_points:
-                sys.exit('Truncation of saved parameters does not fit the chosen truncation. Truncation of saved parameters is ' + str(params_trunc_points))
+                sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
+                         'Truncation of saved parameters is ' + str(params_trunc_points))
+        else:
+            params_scale_center_method = params['scale_center_method']
+            if self.scale_center_method != params_scale_center_method:
+                sys.exit(
+                    'Scale-center method of saved parameters does not fit the chosen method. '
+                    'Method of saved parameters is ' + str(params_scale_center_method))
         return params_low, params_high
 
     ##################################################################
