@@ -38,7 +38,6 @@ class ImageTranslator(nn.Module):
         """
         super().__init__()
 
-
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
         if strides is None:
@@ -58,7 +57,6 @@ class ImageTranslator(nn.Module):
 
         deconv_strides, deconv_kernels, padding, opad = self.compute_strides_and_kernels(strides, kernels, padding)
 
-
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i])
                                           for i in range(len(conv_channels) - 1)])
@@ -69,18 +67,31 @@ class ImageTranslator(nn.Module):
                                                         output_padding=self.output_padding[i])
                                             for i in range(len(deconv_channels) - 1)])
 
+        # save parameters
         self.criterion = criterion
+        self.kernels = kernels
+        self.padding = padding
+        self.strides = strides
+        
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
         self.val_loss = []
         self.model_name = model_name
+
+        # write parameters into self to give it to logger
+
+        self.conv_channels = conv_channels
+        self.strides = strides
+        self.kernels = kernels
+        self.padding = padding
+        self.output_padding = output_padding
 
     def forward(self, x):
 
         skip_connection = []
 
         for i in range(len(self.conv_layers)):
-            if i%2==0:
+            if i%2 == 0:
                 skip_connection += [x]
             else:
                 skip_connection += [0]
