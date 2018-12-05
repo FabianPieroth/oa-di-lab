@@ -67,7 +67,12 @@ class ImageTranslator(nn.Module):
                                                         output_padding=self.output_padding[i])
                                             for i in range(len(deconv_channels) - 1)])
 
+        # save parameters
         self.criterion = criterion
+        self.kernels = kernels
+        self.padding = padding
+        self.strides = strides
+        
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
         self.val_loss = []
