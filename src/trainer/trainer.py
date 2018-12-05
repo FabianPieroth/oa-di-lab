@@ -29,6 +29,7 @@ class CNN_skipCo_trainer(object):
 
         # TODO: if data_type='hetero' it should not upsample to the same size
         self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
+                                     #output_padding=[0, 0, 1, 0, 0, 1, 0],
                                      model_name='deep_2_model')
 
         # self.model = DilatedTranslator(conv_channels=[1, 32, 32, 32, 32, 32], dilations=[1, 2, 4, 8, 16])
