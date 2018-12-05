@@ -517,7 +517,6 @@ class ProcessData(object):
             scale_params_low = [min_data_low, max_data_low]
             scale_params_high = [min_data_high, max_data_high]
         else:
-<<<<<<< HEAD
             if self.data_type == 'homo':
                 mean_low = 0
                 var_low = 0
