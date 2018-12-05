@@ -42,20 +42,16 @@ class ImageTranslator(nn.Module):
 
         if strides is None:
             # initialize list with default strides (2,2)
-            default_stride = 2
+            default_stride = (2,2)
             strides = [default_stride for i in range(len(conv_channels))]
         if kernels is None:
             # initialize list with default kernels (7,7)
-            default_kernel = (7,7)
+            default_kernel = (5,5)
             kernels = [default_kernel for i in range(len(conv_channels))]
         if padding is None:
-            padding = [3 for i in range(len(conv_channels))]
-        if output_padding is not None:
-            self.output_padding = output_padding
-        else:
-            self.output_padding = [0 for i in range(len(conv_channels))]
+            padding = [(3,3) for i in range(len(conv_channels))]
 
-        deconv_strides, deconv_kernels, padding, opad = self.compute_strides_and_kernels(strides, kernels, padding)
+        deconv_strides, deconv_kernels, padding, output_padding = self.compute_strides_and_kernels(strides, kernels, padding)
 
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i])
@@ -64,7 +60,7 @@ class ImageTranslator(nn.Module):
         deconv_channels = conv_channels[::-1]
         self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels[i], deconv_channels[i + 1],
                                                         deconv_strides[i], deconv_kernels[i],
-                                                        output_padding=self.output_padding[i])
+                                                        output_padding=output_padding[i])
                                             for i in range(len(deconv_channels) - 1)])
 
         # save parameters
@@ -136,10 +132,83 @@ class ImageTranslator(nn.Module):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = learning_rate
 
-    def compute_strides_and_kernels(self, strides, kernels, padding):
+    def compute_strides_and_kernels(self, strides, kernels, padding, input_size=(401,401), output_padding=None, dilation=None):
         #TODO
-        if self.output_padding is not None:
+        if dilation is None:
+            dilation = [(1,1) for i in range(len(strides))]
+
+
+        if output_padding is None:
             opad = [0 for i in range(len(strides))]
         else:
-            opad = self.output_padding
-        return strides[::-1], kernels[::-1], padding[::-1], opad
+            opad = output_padding
+
+        dstrides = strides[::-1]
+        dkernels = kernels[::-1]
+        dpadding = padding[::-1]
+
+
+        ddilation = dilation[::-1]
+        # now calculate output padding
+
+        # go through all layers and calculate the resulting sizes
+
+        h_in, w_in = input_size
+        conv_sizes = [(h_in, w_in)] # tuples containing the resulting size
+
+        for i in range(len(strides)):
+            strd = strides[i]
+            kern = kernels[i]
+            pad = padding[i]
+            dil = dilation[i]
+
+            h_out = (h_in + 2 * pad[0] - dil[0] * (kern[0] - 1)) / strd[0] + 1
+            w_out = (w_in + 2 * pad[1] - dil[1] * (kern[1] - 1)) / strd[1] + 1
+
+            conv_sizes += [(int(h_out), int(w_out))]
+
+            h_in = h_out
+            w_in = w_out
+
+        # now going through the deconv layers to calculate the potential output sizes of the deconv
+        # if they don't match add as much output padding as needed
+
+        print((conv_sizes))
+
+        for i in range(len(conv_sizes)-1):
+            strd = dstrides[i]
+            kern = dkernels[i]
+            pad = dpadding[i]
+            dil = ddilation[i]
+
+            # desired shapes
+            h_in, w_in = conv_sizes[len(conv_sizes) - 1 - i]
+            h_goal, w_goal = conv_sizes[len(conv_sizes) - 2 - i]
+
+            print('stride: ', strd[0])
+            print('pad: ', pad[0])
+            print('kern: ', kern[0])
+            d_h_out = (h_in - 1) * strd[0] + 2 * pad[0] - kern[0]
+            d_w_out = (w_in - 1) * strd[1] + 2 * pad[1] - kern[1]
+            opad_h = h_goal - d_h_out
+            opad_w = w_goal - d_w_out
+
+            print('h_in: ' + str(h_in) + '; h_goal: ' + str(h_goal) + '; d_h_out: ' + str(d_h_out))
+            print('opad: ', opad_h)
+            '''
+            if opad_h is not 0:
+                print('adding output padding for height of: ', opad_h)
+
+            if opad_w is not 0:
+                print('adding output padding for width of: ', opad_w)
+
+            print('appending output padding now')
+            print('opad_h: ', opad_h)
+            print('opad_w: ', opad_w)
+            print(type((opad_h, opad_w)))
+            '''
+            opad += [(opad_h, opad_w)]
+
+        # change returning values
+        print(opad)
+        return dstrides, dkernels, dpadding, opad
