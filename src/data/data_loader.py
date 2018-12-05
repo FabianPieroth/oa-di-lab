@@ -526,9 +526,9 @@ class ProcessData(object):
                 count_high = 0
                 for file in self.train_file_names:
                     image_sign = self.image_type + '_high'
-                    image_high = self._load_file_to_numpy(file, image_sign)
+                    image_high = self.load_file_to_numpy(file, image_sign)
                     image_sign = self.image_type + '_low'
-                    image_low = self._load_file_to_numpy(file, image_sign)
+                    image_low = self.load_file_to_numpy(file, image_sign)
                     # truncating images
                     if self.image_type == 'OA':
                         lq = np.quantile(image_low, self.trunc_points)
@@ -549,9 +549,9 @@ class ProcessData(object):
                 count_high = 0
                 for file in self.train_file_names:
                     image_sign = self.image_type + '_high'
-                    image_high = self._load_file_to_numpy(file, image_sign)
+                    image_high = self.load_file_to_numpy(file, image_sign)
                     image_sign = self.image_type + '_low'
-                    image_low = self._load_file_to_numpy(file, image_sign)
+                    image_low = self.load_file_to_numpy(file, image_sign)
                     image_low_image = image_low[:,:,0]
                     image_low_sos = image_low[:,:,1:]
                     # update values
