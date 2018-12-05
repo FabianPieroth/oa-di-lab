@@ -27,7 +27,7 @@ class DeConvLayer(nn.Module):
 class ImageTranslator(nn.Module):
 
     def __init__(self, conv_channels, strides=None, kernels=None, padding=None, output_padding=None,
-                 criterion=nn.MSELoss(), optimizer=torch.optim.Adam, learning_rate=0.01, model_name='shallow_model'):
+                 criterion=nn.MSELoss(), optimizer=torch.optim.Adam, learning_rate=0.01, model_name='shallow_model', dropout=0):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -46,12 +46,12 @@ class ImageTranslator(nn.Module):
             strides = [default_stride for i in range(len(conv_channels))]
         if kernels is None:
             # initialize list with default kernels (7,7)
-            default_kernel = (5,5)
+            default_kernel = (7,7)
             kernels = [default_kernel for i in range(len(conv_channels))]
         if padding is None:
             padding = [(3,3) for i in range(len(conv_channels))]
 
-        deconv_strides, deconv_kernels, padding, output_padding = self.compute_strides_and_kernels(strides, kernels, padding)
+        deconv_strides, deconv_kernels, padding, output_padding = self.compute_strides_and_kernels(strides=strides, kernels=kernels, padding=padding, output_padding=output_padding, input_size=(401,401))
 
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i])
@@ -86,6 +86,8 @@ class ImageTranslator(nn.Module):
 
         skip_connection = []
 
+        print('printing h-shapes now')
+        print(x.shape)
         for i in range(len(self.conv_layers)):
             if i%2 == 0:
                 skip_connection += [x]
@@ -93,6 +95,7 @@ class ImageTranslator(nn.Module):
                 skip_connection += [0]
             l = self.conv_layers[i]
             x = l(x)
+            print(x.shape)
 
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
@@ -138,10 +141,6 @@ class ImageTranslator(nn.Module):
             dilation = [(1,1) for i in range(len(strides))]
 
 
-        if output_padding is None:
-            opad = [0 for i in range(len(strides))]
-        else:
-            opad = output_padding
 
         dstrides = strides[::-1]
         dkernels = kernels[::-1]
@@ -151,6 +150,11 @@ class ImageTranslator(nn.Module):
         ddilation = dilation[::-1]
         # now calculate output padding
 
+        if output_padding is None:
+            opad = []
+        else:
+            opad = output_padding
+            return dstrides, dkernels, dpadding, opad
         # go through all layers and calculate the resulting sizes
 
         h_in, w_in = input_size
