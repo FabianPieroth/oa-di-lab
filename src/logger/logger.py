@@ -106,7 +106,7 @@ class Logger(object):
                      "target_image": target_save,
                      "predict_image": predict_save}
         save_dir = self.save_dir + '/predictions' + self.save_appendix + '/' + image_class
-        os.makedirs(save_dir)
+        os.makedirs(save_dir, exist_ok=True)
 
         with open(save_dir + '/' + save_name, 'wb') as handle:
             pickle.dump(dict_save, handle, protocol=pickle.HIGHEST_PROTOCOL)
