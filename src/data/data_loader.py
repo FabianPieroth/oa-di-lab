@@ -122,8 +122,8 @@ class ProcessData(object):
             self.train_file_names, self.val_file_names = self._train_val_split(
                 original_file_names=self.original_file_names)
             self._add_augmented_file_names_to_train()
-            #self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
-            #                                                        train_names=self.train_file_names)
+            self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
+                                                                    train_names=self.train_file_names)
         if self.get_scale_center:
             self._get_scale_center()
 
