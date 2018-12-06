@@ -200,7 +200,7 @@ class ProcessData(object):
                     if not self.image_type == 'US':
                         sys.exit('There is only Ultrasound images in the hetero data set.')
                     in_files = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' +
-                                                                      chunk_folder + '/' + sample_folder,
+                                                          chunk_folder + '/' + sample_folder,
                                                           full_names=False)
                     us_low_samples = [s for s in in_files if 'US_low' in s]
                     us_high_samples = [s for s in in_files if 'US_high' in s]
