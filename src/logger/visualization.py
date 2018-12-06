@@ -20,7 +20,6 @@ def plot_channel(im_input, im_target, im_predict, name, channel):
 
 def plot_oa_spectra(im_input, im_target, im_predict, x, y, name, figsize=(18, 5)):
     for i in range(2):
-        print(im_predict.shape)
         plt.figure(figsize=figsize)
         plt.subplot(1, 3, 1)
         plt.title('input ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
