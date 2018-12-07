@@ -97,6 +97,7 @@ class ImageTranslator(nn.Module):
             x = l(x)
             print(x.shape)
 
+
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
             skip = skip_connection[len(skip_connection)-1-i]
