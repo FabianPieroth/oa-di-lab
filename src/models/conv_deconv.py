@@ -29,7 +29,7 @@ class ConvDeconv(nn.Module):
     def __init__(self, conv_channels, output_channels=None, strides=None,
                  kernels=None, padding=None, output_padding=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
-                 learning_rate=0.01, model_name='shallow_model', dropout=0):
+                 learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401)):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -45,6 +45,7 @@ class ConvDeconv(nn.Module):
 
         self.num_layers = len(conv_channels)-1
         self.out_channels = output_channels
+        self.input_size = input_size
 
         if strides is None:
             # initialize list with default strides (2,2)
@@ -57,7 +58,11 @@ class ConvDeconv(nn.Module):
         if padding is None:
             padding = [(2,2) for i in range(self.num_layers)]
 
-        dstrides, dkernels, dpadding, output_padding = self.compute_strides_and_kernels(strides=strides, kernels=kernels, padding=padding, output_padding=output_padding, input_size=(401,401))
+        dstrides, dkernels, dpadding, output_padding = self.compute_strides_and_kernels(strides=strides,
+                                                                                        kernels=kernels,
+                                                                                        padding=padding,
+                                                                                        output_padding=output_padding,
+                                                                                        input_size=self.input_size)
 
         self.dropout = nn.Dropout2d(p=dropout)
 
@@ -99,7 +104,6 @@ class ConvDeconv(nn.Module):
                 skip_connection += [0]
             l = self.conv_layers[i]
             x = l(x)
-
 
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]

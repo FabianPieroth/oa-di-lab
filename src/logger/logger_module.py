@@ -233,20 +233,20 @@ class Logger(object):
                 "get_scale_center": self.dataset.get_scale_center,
                 "single_sample": self.dataset.single_sample
             },
-            'model_parameters': {
-                'conv_channels': self.model.conv_channels,
-                'strides': self.model.strides,
-                'kernels': self.model.kernels,
-                'padding': self.model.padding,
-                'output_padding': self.model.output_padding
+            #'model_parameters': {
+            #    'conv_channels': self.model.conv_channels,
+            #    'strides': self.model.strides,
+            #    'kernels': self.model.kernels,
+            #    'padding': self.model.padding,
+            #    'output_padding': self.model.output_padding
                 # 'criterion': self.model.criterion,  is not JSON serializable
                 # 'optimizer': self.model.optimizer  is not JSON serializable
-            },
+            #},
             "train_valid_split": self.dataset.train_ratio,
             "loss_function": str(self.model.criterion),
             "train_files": self.dataset.train_file_names,
             "val_files": self.dataset.val_file_names,
-            "learning_rates": self.learning_rates
+            "learning_rates": self.learning_rates.tolist()
         }
         file_path = self.save_dir + '/config.json'
         with open(file_path, 'w') as outfile:
