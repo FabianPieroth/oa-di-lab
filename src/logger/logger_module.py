@@ -170,7 +170,8 @@ class Logger(object):
             current_epoch,
             epochs,
             mean_images,
-            scale_params):
+            scale_params,
+            learning_rates):
         # method to call the other methods and decide what should be saved, this should be called in the trainer
         self.save_appendix = save_appendix
 
@@ -184,8 +185,9 @@ class Logger(object):
 
         self.predict_eval_images(mean_images=mean_images, scale_params=scale_params)
 
-        # if str(self.model) is not None:
-        # self.save_representation_of_model()
+        # save the learning rates into self
+
+        self.learning_rates = learning_rates
 
         if current_epoch == 0:
             # only call this the first time, when training starts
