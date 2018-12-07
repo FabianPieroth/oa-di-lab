@@ -1,6 +1,6 @@
 from data.data_loader import ProcessData
 import trainer.utils as utils
-from logger.logger import Logger
+from logger.logger_module import Logger
 import numpy as np
 from models import cnn_skipC_model, awesomeImageTranslator1000
 import torch

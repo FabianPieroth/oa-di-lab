@@ -1,5 +1,5 @@
 from data.data_loader import ProcessData
-from logger.logger import Logger
+from logger.logger_module import Logger
 import numpy as np
 from models import cnn_toy_model
 import torch
