@@ -1,5 +1,5 @@
 from data.data_loader import ProcessData
-from logger.logger import Logger
+from logger.logger_module import Logger
 import numpy as np
 from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
@@ -21,12 +21,13 @@ class CNN_skipCo_trainer(object):
 
         self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=True, do_rchannels=True,
+                                   do_augment=False, add_augment=False, do_rchannels=True,
                                    do_flip=True, do_blur=True, do_deform=True, do_crop=False,
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
                                    image_type=self.image_type, get_scale_center=False, single_sample=True,
-                                   do_scale_center=True, height_channel_oa=201)
+                                   do_scale_center=False, scale_center_method='new',
+                                   height_channel_oa=201)
 
         self.model_convdeconv = ConvDeconv(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
                                      kernels=[(5,5) for i in range(7)],
@@ -103,13 +104,8 @@ class CNN_skipCo_trainer(object):
                                 current_epoch=e,
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
-
-                                scale_params=[scale_params_low, scale_params_high])
-
-    def predict(self, x):
-
-        return self.model(x)
-
+                                scale_params=[scale_params_low, scale_params_high],
+                                learning_rates=self.learning_rates)
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
         """
@@ -192,7 +188,6 @@ class CNN_skipCo_trainer(object):
         '''
         return log_lrs, losses
 
-
     def get_learning_rate(self, learning_rate, epochs, method):
         """
         Method creating the learning rates corresponding to the corresponding adaptive-method.
@@ -203,10 +198,10 @@ class CNN_skipCo_trainer(object):
         """
         lrs = []
 
-        if method=='standard' or method is None:
+        if method == 'standard' or method is None:
             lrs = [learning_rate for i in range(epochs)]
 
-        elif method=='one_cycle':
+        elif method == 'one_cycle':
             higher_rate = learning_rate
             lower_rate = 1 / 10 * higher_rate
 
@@ -227,8 +222,6 @@ class CNN_skipCo_trainer(object):
 
         return lrs
 
-
-
 def main():
     trainer = CNN_skipCo_trainer()
     #trainer.find_lr()
@@ -238,7 +231,6 @@ def main():
     #print(trainer.model)
     print('fitting model')
     trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
-    #trainer.predict()
     # torch.save(trainer.model, "../../reports/model.pt")
     # trainer.log_model(model_name=trainer.model.model_name)
     # print('\n---------------------------')

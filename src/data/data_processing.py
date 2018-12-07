@@ -4,16 +4,17 @@ import scipy.io
 import numpy as np
 import os
 
-
 # this File contains several helper functions
 
 # Pre-processing
 
-def ret_all_files_in_folder(folder_path, full_names = True):
+
+def ret_all_files_in_folder(folder_path, full_names=True):
     files = [s for s in os.listdir(folder_path) if filter_hidden_files(s)]
     if full_names:
         files = [folder_path + '/' + s for s in files]
     return files
+
 
 def filter_hidden_files(string):
     bool1 = ('.DS_' in string)
@@ -62,16 +63,16 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
 def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
-                              scan_num + '/' + filename_low)
+                                  scan_num + '/' + filename_low)
     us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
-                                  scan_num + '/' + filename_high)
+                                   scan_num + '/' + filename_high)
 
-    single_sos = us_raw_low['single_SoS'].flatten()
+    single_sos = [np.float64(s) for s in us_raw_low['single_SoS'].flatten()]
     us_low_samples = us_raw_low['US_low_samples']
 
-    couplant_sos = us_raw_high['couplant_SoS'].flatten()[0]
-    tissue_mask = us_raw_high['tissue_mask']
-    tissue_sos = us_raw_high['tissue_SoS'].flatten()
+    couplant_sos = np.float64(us_raw_high['couplant_SoS'].flatten()[0])
+    tissue_mask = np.array(us_raw_high['tissue_mask']).astype('float')
+    tissue_sos = [np.float64(s) for s in us_raw_high['tissue_SoS'].flatten()]
     us_high_samples = us_raw_high['US_high_samples']
 
     # on which axis to expand the dimension of the numpy array
@@ -86,7 +87,7 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
         for high_channel in range(us_high_samples.shape[2]):
 
             # fill mask with sos parameters
-            custom_mask = tissue_mask
+            custom_mask = np.copy(tissue_mask)
             custom_mask[custom_mask == 0] = couplant_sos
             custom_mask[custom_mask == 1] = tissue_sos[high_channel]
             custom_mask = np.expand_dims(custom_mask, axis=common_axis)
