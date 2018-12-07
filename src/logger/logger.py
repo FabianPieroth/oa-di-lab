@@ -27,7 +27,7 @@ class Logger(object):
 
         self.save_appendix = None
 
-        self.base_dir = '%s/reports' % (project_root_dir)
+        self.base_dir = '%s/reports' % project_root_dir
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
 
         self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name + '_' + timestamp
@@ -49,6 +49,8 @@ class Logger(object):
         val_length = min(len(self.dataset.val_file_names), num_images_val)
         val_names = random.sample(self.dataset.val_file_names, val_length)
 
+        test_names = self.dataset.test_names
+
         # load scale and center params
         scale_params_low = scale_params[0]
         scale_params_high = scale_params[1]
@@ -64,6 +66,14 @@ class Logger(object):
         self.load_and_forward(names=train_names, scale_params_low=scale_params_low,
                               scale_params_high=scale_params_high, mean_image_low=mean_image_low,
                               mean_image_high=mean_image_high, image_class='train')
+
+        # save test image predictions
+        if not len(test_names) == 0:
+            self.load_and_forward(names=test_names, scale_params_low=scale_params_low,
+                                  scale_params_high=scale_params_high, mean_image_low=mean_image_low,
+                                  mean_image_high=mean_image_high, image_class='test')
+        else:
+            print('There are no files in the processed test_set folder, so no files are logged here.')
 
     def load_and_forward(self, names, scale_params_low, scale_params_high, mean_image_low,
                          mean_image_high, image_class):
@@ -111,12 +121,15 @@ class Logger(object):
         with open(save_dir + '/' + save_name, 'wb') as handle:
             pickle.dump(dict_save, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    '''
     def load_predict(self, save_appendix, time_stamp, input_tensor, target_tensor):
-        self.model.load_state_dict(torch.load(self.load_dir + '_' + time_stamp + '/' + self.model.model_name + '__' + save_appendix + '.pt'))
+        self.model.load_state_dict(torch.load(self.load_dir + '_' + time_stamp + '/' +
+         self.model.model_name + '__' + save_appendix + '.pt'))
         # set the state of the model to eval()
         self.model.eval()
         predict = self.model(input_tensor) # self.model.predict(input_tensor)
         return predict
+    '''
 
     def calculate_metrics(self, model):
         # Methods calculates all the metrics that we want for the evaluation
@@ -171,15 +184,14 @@ class Logger(object):
 
         self.predict_eval_images(mean_images=mean_images, scale_params=scale_params)
 
-        #if str(self.model) is not None:
-        #    self.save_representation_of_model()
+        # if str(self.model) is not None:
+        # self.save_representation_of_model()
 
         if current_epoch == 0:
             # only call this the first time, when training starts
             self.save_representation_of_model()
             self.save_scale_center_params(mean_images=mean_images, scale_params=scale_params)
-            self.save_json_file(batch_size=self.batch_size, epochs=self.epochs,
-                                learning_rates=self.learning_rates)
+            self.save_json_file()
 
             # copy the data_loader file and the model file to make reproducible examples
             data_loader_path = self.project_root_dir + '/src/data/' + '/data_loader.py'
@@ -198,7 +210,7 @@ class Logger(object):
             shutil.copy(visualizer_path, self.save_dir + '/data')
             shutil.copy(model_file_path, self.save_dir + '/models')
 
-    def save_json_file(self, batch_size, epochs, learning_rates):
+    def save_json_file(self):
 
         config = {
             "batch_size": self.batch_size,
@@ -209,7 +221,7 @@ class Logger(object):
             "applied_augmentations": {
                 "process_raw_data": self.dataset.process_raw,
                 "do_augment": self.dataset.do_augment,
-                "add_augment": self.dataset.add_augment ,
+                "add_augment": self.dataset.add_augment,
                 "do_flip": self.dataset.do_flip,
                 "do_blur": self.dataset.do_blur,
                 "do_deform": self.dataset.do_deform,
