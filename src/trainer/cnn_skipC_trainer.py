@@ -2,11 +2,11 @@ from data.data_loader import ProcessData
 import trainer.utils as utils
 from logger.logger_module import Logger
 import numpy as np
-from models import cnn_skipC_model, awesomeImageTranslator1000
+from models.old_models import awesomeImageTranslator1000, cnn_skipC_model
 import torch
 import torch.nn as nn
 import datetime
-import matplotlib.pyplot as plt
+
 
 class CNN_skipCo_trainer(object):
     def __init__(self):
