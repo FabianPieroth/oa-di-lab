@@ -1,5 +1,5 @@
 from data.data_loader import ProcessData
-from logger.logger import Logger
+from logger.logger_module import Logger
 import numpy as np
 from models.model_superclass import ImageTranslator
 from models.dilated_conv import DilatedTranslator
@@ -97,7 +97,8 @@ class CNN_skipCo_trainer(object):
                                 current_epoch=e,
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
-                                scale_params=[scale_params_low, scale_params_high])
+                                scale_params=[scale_params_low, scale_params_high],
+                                learning_rates=self.learning_rates)
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
         """

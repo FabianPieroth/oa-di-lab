@@ -9,7 +9,7 @@ import os
 # Pre-processing
 
 
-def ret_all_files_in_folder(folder_path, full_names = True):
+def ret_all_files_in_folder(folder_path, full_names=True):
     files = [s for s in os.listdir(folder_path) if filter_hidden_files(s)]
     if full_names:
         files = [folder_path + '/' + s for s in files]
