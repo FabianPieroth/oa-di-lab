@@ -101,7 +101,10 @@ class ImageTranslator(nn.Module):
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
             skip = skip_connection[len(skip_connection)-1-i]
-            x = relu(l(x) + skip)
+            x = l(x) + skip
+
+            if i is not len(self.deconv_layers)-1:
+                x = relu(x)
 
         return x
 
