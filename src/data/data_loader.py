@@ -60,6 +60,9 @@ class ProcessData(object):
         self.do_crop = do_crop
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
+
+        self.num_val_images_hetero = 15
+
         self.do_speckle_noise = do_speckle_noise
 
         self.height_channel_oa = height_channel_oa
@@ -256,9 +259,21 @@ class ProcessData(object):
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
         random.seed(self.set_random_seed)
-        original_file_names = random.sample(original_file_names, len(original_file_names))
-        train_size = int(len(original_file_names) * self.train_ratio)
-        self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
+        if self.data_type == 'homo':
+            original_file_names = random.sample(original_file_names, len(original_file_names))
+            train_size = int(len(original_file_names) * self.train_ratio)
+            self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
+        elif self.data_type == 'hetero':
+            shortened_file_names = list(set([self.extract_name_from_path(s) for s in original_file_names]))
+            train_size = int(len(shortened_file_names) * self.train_ratio)
+            short_train_names, short_val_names = shortened_file_names[:train_size], shortened_file_names[train_size:]
+            self.train_names = self._retrieve_file_names_from_short(name_list_short=short_train_names,
+                                                                    name_list_long=original_file_names)
+            val_names = self._retrieve_file_names_from_short(name_list_short=short_val_names,
+                                                             name_list_long=original_file_names,
+                                                             num_images=self.num_val_images_hetero)
+        else:
+            print('You should not have come here. Check your work!')
         return self.train_names, val_names
 
     def _retrieve_original_file_names(self):
@@ -272,7 +287,8 @@ class ProcessData(object):
 
         file_names = []
         # original images
-        file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + self.end_folder, name_list=file_names)
+        file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + self.end_folder,
+                                         name_list=file_names)
         return file_names
 
     def _add_augmented_file_names_to_train(self):
@@ -284,6 +300,17 @@ class ProcessData(object):
                 self.train_file_names = self._names_to_list(
                     folder_name=path_augmented + '/' + aug_name + '/' + self.end_folder,
                     name_list=self.train_file_names)
+
+    def _retrieve_file_names_from_short(self, name_list_short, name_list_long, num_images=None):
+        ret_list = []
+        for short in name_list_short:
+            if num_images is None:
+                num_images = 9999
+            path_names_list = [s for s in name_list_long if short in s]
+            take_num_images = np.min([num_images, len(path_names_list)])
+            ret_list = ret_list + list(np.random.permutation(path_names_list))[:take_num_images]
+
+        return ret_list
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
@@ -418,7 +445,7 @@ class ProcessData(object):
 
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
-                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params, data_type=self.data_type)
 
@@ -458,7 +485,7 @@ class ProcessData(object):
 
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
-                                            filename=self._extract_name_from_path(filename, without_ch=False),
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
                                             path_to_params=self.dir_params, data_type=self.data_type)
 
