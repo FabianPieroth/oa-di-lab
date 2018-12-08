@@ -14,8 +14,6 @@ class ImageTranslator(nn.Module):
         super().__init__()
         self.models = nn.ModuleList([model for model in models])
 
-        self.models = nn.ModuleList([model for model in models])
-
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
         self.model_name = model_name
         self.optimizer = optimizer
