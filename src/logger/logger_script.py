@@ -8,6 +8,7 @@ import json
 
 
 def extract_and_process_logged_folder(folder_name):
+    print('Read and create input, target and predicted images.')
     folder_saved_predictions = [s for s in dp.ret_all_files_in_folder(folder_name,
                                                                       full_names=False) if 'predictions' in s]
     for folder in folder_saved_predictions:
@@ -30,6 +31,7 @@ def open_json_file(folder_name, file_name):
 
 
 def plot_train_val_loss(folder_name):
+    print('Read and plot train-validation loss.')
     json_dict = open_json_file(folder_name=folder_name, file_name='config.json')
     model_name = json_dict['model_name']
     nr_epochs = json_dict['nr_epochs']
@@ -43,7 +45,7 @@ def plot_train_val_loss(folder_name):
 
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
-    folder_name = 'homo/deep_2_model_2018_12_07_11_17'
+    folder_name = 'homo/combined_model_2018_12_07_16_39'
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
     plot_train_val_loss(folder_name=path_to_project + folder_name)

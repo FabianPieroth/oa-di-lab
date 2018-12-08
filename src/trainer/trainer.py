@@ -15,8 +15,8 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.batch_size = 7
-        self.log_period = 50
+        self.batch_size = 6
+        self.log_period = 10
         self.epochs = 250
 
         self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=True,
