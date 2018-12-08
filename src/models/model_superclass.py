@@ -12,6 +12,7 @@ class ImageTranslator(nn.Module):
         :param models: list of image translating models to be concatenated in that order
         """
         super().__init__()
+        self.models = nn.ModuleList([model for model in models])
 
         self.models = nn.ModuleList([model for model in models])
 
