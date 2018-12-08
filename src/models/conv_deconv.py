@@ -96,7 +96,7 @@ class ConvDeconv(nn.Module):
         for i in range(len(self.conv_layers)):
             if i % 2 == 0:
                 if i==0 and self.out_channels is not None:
-                    skip_connection += [x[:,0,:,:]]
+                    skip_connection += [x[:,0:1,:,:]]
                 else:
                     skip_connection += [x]
 
