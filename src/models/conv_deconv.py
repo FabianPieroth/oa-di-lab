@@ -4,21 +4,23 @@ import torch.nn as nn
 from torch.nn.functional import relu
 
 class ConvLayer (nn.Module):
-    def __init__(self, c_in, c_out, stride, kernel_size, padding):
+    def __init__(self, c_in, c_out, stride, kernel_size, padding, drop_prob):
         super().__init__()
         self.conv = nn.Conv2d(c_in,c_out,stride=stride, kernel_size=kernel_size, padding=padding).double()
         self.bn = nn.BatchNorm2d(c_out).double()
+        self.drop = nn.Dropout2d(p=drop_prob)
 
     def forward(self, x):
-        return relu(self.bn(self.conv(x)))
+        return self.drop(relu(self.bn(self.conv(x))))
 
 class DeConvLayer(nn.Module):
     """ No RELU BEHIND DECONV DUE TO THE SKIP CONNECTIONS"""
-    def __init__(self, c_in, c_out, stride, kernel_size, padding, output_padding):
+    def __init__(self, c_in, c_out, stride, kernel_size, padding, output_padding, drop_prob):
         super().__init__()
         self.deconv = nn.ConvTranspose2d(c_in, c_out, stride=stride, kernel_size=kernel_size,
                                          padding=padding, output_padding=output_padding).double()
         self.bn = nn.BatchNorm2d(c_out).double()
+        self.drop = nn.Dropout2d(p=drop_prob)
 
     def forward(self, x):
         return self.bn(self.deconv(x))
@@ -27,7 +29,7 @@ class DeConvLayer(nn.Module):
 class ConvDeconv(nn.Module):
 
     def __init__(self, conv_channels, output_channels=None, strides=None,
-                 kernels=None, padding=None, output_padding=None,
+                 kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401)):
         """
@@ -57,17 +59,20 @@ class ConvDeconv(nn.Module):
             kernels = [default_kernel for i in range(self.num_layers)]
         if padding is None:
             padding = [(2,2) for i in range(self.num_layers)]
+        if drop_probs is None:
+            drop_probs = [0 for i in range(self.num_layers)]
 
-        dstrides, dkernels, dpadding, output_padding = self.compute_strides_and_kernels(strides=strides,
+        dstrides, dkernels, dpadding, output_padding, ddrop_probs = self.compute_strides_and_kernels(strides=strides,
                                                                                         kernels=kernels,
                                                                                         padding=padding,
+                                                                                        drop_probs=drop_probs,
                                                                                         output_padding=output_padding,
                                                                                         input_size=self.input_size)
 
-        self.dropout = nn.Dropout2d(p=dropout)
 
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
-                                                    strides[i], kernels[i], padding=padding[i])
+                                                    strides[i], kernels[i], padding=padding[i],
+                                                    drop_prob=drop_probs[i])
                                           for i in range(self.num_layers)])
 
         deconv_channels = conv_channels[::-1]
@@ -78,6 +83,7 @@ class ConvDeconv(nn.Module):
         self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels[i], deconv_channels[i + 1],
                                                         dstrides[i], dkernels[i],
                                                         padding=dpadding[i],
+                                                        drop_prob=ddrop_probs[i],
                                                         output_padding=output_padding[i])
                                             for i in range(self.num_layers)])
 
@@ -90,8 +96,6 @@ class ConvDeconv(nn.Module):
     def forward(self, x):
 
         skip_connection = []
-
-        x = self.dropout(x)
 
         for i in range(len(self.conv_layers)):
             if i % 2 == 0:
@@ -114,7 +118,7 @@ class ConvDeconv(nn.Module):
 
         return x
 
-    def compute_strides_and_kernels(self, strides, kernels, padding, input_size=(401,401), output_padding=None, dilation=None):
+    def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs, input_size=(401,401), output_padding=None, dilation=None):
 
         if dilation is None:
             dilation = [(1,1) for i in range(len(strides))]
@@ -122,7 +126,7 @@ class ConvDeconv(nn.Module):
         dstrides = strides[::-1]
         dkernels = kernels[::-1]
         dpadding = padding[::-1]
-
+        ddrop_probs = drop_probs[::-1]
 
         ddilation = dilation[::-1]
         # now calculate output padding
@@ -131,7 +135,7 @@ class ConvDeconv(nn.Module):
             opad = []
         else:
             opad = output_padding
-            return dstrides, dkernels, dpadding, opad
+            return dstrides, dkernels, dpadding, opad, ddrop_probs
         # go through all layers and calculate the resulting sizes
 
         h_in, w_in = input_size
@@ -173,4 +177,4 @@ class ConvDeconv(nn.Module):
 
         # change returning values
         print('used output padding in this configuration: ', opad)
-        return dstrides, dkernels, dpadding, opad
+        return dstrides, dkernels, dpadding, opad, ddrop_probs

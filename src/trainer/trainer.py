@@ -25,16 +25,16 @@ class CNN_skipCo_trainer(object):
                                    do_flip=True, do_blur=False, do_deform=True, do_crop=False,
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
+                                   image_type=self.image_type, get_scale_center=True, single_sample=True,
                                    do_scale_center=True, scale_center_method='new',
                                    height_channel_oa=201)
 
         self.model_convdeconv = ConvDeconv(conv_channels=[3, 64, 128, 256, 512, 1024],
                                            kernels=[(7, 7) for i in range(5)],
                                            model_name='deep_2_model', input_size=(401, 401),
-                                           output_channels=1)
+                                           output_channels=1, drop_probs=[1 for i in range(5)])
 
-        # self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
+        self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
 
         self.model = ImageTranslator([self.model_convdeconv])
 
