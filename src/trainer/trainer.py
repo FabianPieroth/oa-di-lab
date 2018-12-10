@@ -1,8 +1,9 @@
 from data.data_loader import ProcessData
-from logger.logger import Logger
+from logger.logger_module import Logger
 import numpy as np
-from models.model_superclass import ImageTranslator
+from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
+from models.model_superclass import ImageTranslator
 import torch
 import torch.nn as nn
 import sys
@@ -14,27 +15,28 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.batch_size = 2
-        self.log_period = 2
-        self.epochs = 4
+        self.batch_size = 16
+        self.log_period = 100
+        self.epochs = 500
 
-        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
+        self.dataset = ProcessData(data_type='hetero', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=False, do_rchannels=True,
-                                   do_flip=True, do_blur=True, do_deform=True, do_crop=False,
+                                   do_augment=False, add_augment=False, do_rchannels=False,
+                                   do_flip=True, do_blur=False, do_deform=False, do_crop=False,
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
+                                   image_type=self.image_type, get_scale_center=True, single_sample=True,
                                    do_scale_center=True, scale_center_method='new',
                                    height_channel_oa=201)
 
+        self.model_convdeconv = ConvDeconv(conv_channels=[3, 64, 128, 256, 512, 1024],
+                                           kernels=[(7, 7) for i in range(5)],
+                                           model_name='deep_2_model', input_size=(401, 401),
+                                           output_channels=1, drop_probs=[1 for i in range(5)])
 
-        # TODO: if data_type='hetero' it should not upsample to the same size
-        self.model = ImageTranslator(conv_channels=[1, 64, 64, 128, 128, 256, 256, 512],
-                                     output_padding=[0, 0, 1, 0, 0, 1, 0],
-                                     model_name='deep_2_model')
+        self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
 
-        # self.model = DilatedTranslator(conv_channels=[1, 32, 32, 32, 32, 32], dilations=[1, 2, 4, 8, 16])
+        self.model = ImageTranslator([self.model_convdeconv])
 
         if torch.cuda.is_available():
             torch.cuda.current_device()
@@ -63,6 +65,9 @@ class CNN_skipCo_trainer(object):
             input_tensor_val = input_tensor_val.cuda()
             target_tensor_val = target_tensor_val.cuda()
 
+        # activate optimizer with the base learning rate
+        self.model.activate_optimizer(learning_rate)
+        # now calculate the learning rates list
         self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
 
         for e in range(0, self.epochs):
@@ -98,7 +103,8 @@ class CNN_skipCo_trainer(object):
                                 current_epoch=e,
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
-                                scale_params=[scale_params_low, scale_params_high])
+                                scale_params=[scale_params_low, scale_params_high],
+                                learning_rates=self.learning_rates)
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
         """
@@ -220,7 +226,7 @@ def main():
     #trainer.find_lr()
     # fit the first model
     print('\n---------------------------')
-    print(trainer.model)
+    #print(trainer.model)
     #print(trainer.model)
     print('fitting model')
     trainer.fit(learning_rate=0.0001, lr_method='one_cycle')

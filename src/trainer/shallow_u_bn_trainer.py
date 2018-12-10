@@ -1,7 +1,7 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-from models import shallow_model_u_bn
+from models.old_models import shallow_model_u_bn
 import torch
 import torch.nn as nn
 import sys
@@ -135,7 +135,6 @@ class CNN_skipCo_trainer(object):
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
 
-        from torch.autograd import variable as Variable
         import math
         print(len(self.dataset.train_file_names))
         num = len(self.dataset.train_file_names)-1

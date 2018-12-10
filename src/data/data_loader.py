@@ -27,6 +27,7 @@ class ProcessData(object):
                  do_augment=False,
                  do_heavy_augment=False,
                  process_raw_data=False,
+                 process_raw_test=True,
                  pro_and_augm_only_image_type=False,
                  height_channel_oa=201,
                  do_flip=True,
@@ -40,7 +41,7 @@ class ProcessData(object):
                  get_scale_center=True,
                  do_scale_center=True,
                  scale_center_method='old',
-                 trunc_points = (0.0001, 0.9999),
+                 trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
         # initialize and write into self, then call the prepare data and return the data to the trainer
@@ -59,6 +60,9 @@ class ProcessData(object):
         self.do_crop = do_crop
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
+
+        self.num_val_images_hetero = 15
+
         self.do_speckle_noise = do_speckle_noise
 
         self.height_channel_oa = height_channel_oa
@@ -89,6 +93,8 @@ class ProcessData(object):
         self.process_us = not self.pro_and_augm_only_image_type or \
                           (self.pro_and_augm_only_image_type and self.image_type == 'US')  # process raw us data
         self.process_raw = process_raw_data  # call method _process_raw_data
+        self.process_raw_test = process_raw_test  # call method _process_raw_test
+        self.test_names = []
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.do_scale_center = do_scale_center  # applies scale and center to the data
         self.scale_center_method = scale_center_method # 'old' for US min max scaling with mean image,
@@ -98,6 +104,11 @@ class ProcessData(object):
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
 
         self.logger_call = logger_call  # initialise the data_loader but do nothing else
+
+        if self.image_type == 'US':
+            self.end_folder = 'ultrasound'
+        else:
+            self.end_folder = 'optoacoustic'
 
         # run _prepare_data which calls the methods for preparation, also augmentation etc.
         if not self.logger_call:
@@ -109,6 +120,11 @@ class ProcessData(object):
         # process data
         if self.process_raw:
             self._process_raw_data()
+
+        if self.process_raw_test:
+            self._process_raw_test()
+            self.test_names = dp.ret_all_files_in_folder(self.dir_processed + '/test_set' + '/' + self.end_folder,
+                                                         full_names=True)
 
         if self.do_augment:
             self._augment_data()
@@ -147,7 +163,7 @@ class ProcessData(object):
         self.train_file_names = random.sample(self.train_file_names, len(self.train_file_names))
 
         if self.single_sample:
-            batch_size = 1  # if only signle sample is called, set batch_size on 1
+            batch_size = 1  # if only single sample is called, set batch_size on 1
 
         # give a list and return the corresponding batch names
         self.train_batch_chunks = np.array_split(np.array(self.train_file_names),
@@ -182,8 +198,8 @@ class ProcessData(object):
             for sample_folder in sample_directories:
                 if self.data_type == self.accepted_data_types[0]:
                     in_files = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' +
-                                                                      chunk_folder + '/' + sample_folder,
-                                                            full_names=False)
+                                                          chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
                     us_file = [s for s in in_files if 'US_' in s]
                     oa_file = [s for s in in_files if 'OA_' in s]
 
@@ -210,46 +226,91 @@ class ProcessData(object):
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
+    def _process_raw_test(self):
+        # this is the pre-processing of the test set
+        dir_test_set = self.project_root_dir + '/data' + '/' + self.data_type + '/raw' + '/test_set'
+        in_directories = dp.ret_all_files_in_folder(folder_path=dir_test_set, full_names=False)
+        save_dir = self.dir_processed + '/test_set'
+        if len(in_directories) == 0:
+            print('There are no files in the test set, the process step is therefore skipped.')
+            return None
+        # clear directory first so that there are not several channels from the same file
+        self._clear_dir(path_to_dir=save_dir + '/' + self.end_folder)
+
+        for chunk_folder in in_directories:
+            sample_directories = dp.ret_all_files_in_folder(folder_path=dir_test_set + '/' + chunk_folder,
+                                                            full_names=False)
+            print('Processing data from test_set folder: ' + chunk_folder)
+            for sample_folder in sample_directories:
+                if self.data_type == self.accepted_data_types[0]:
+                    in_files = dp.ret_all_files_in_folder(folder_path=dir_test_set + '/' +
+                                                          chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
+                    us_file = [s for s in in_files if 'US_' in s]
+                    oa_file = [s for s in in_files if 'OA_' in s]
+
+                    dp.pre_us_homo(new_in_folder=dir_test_set, study_folder=chunk_folder,
+                                   filename=us_file[0], scan_num=sample_folder, save_folder=save_dir)
+
+                    dp.pre_oa_homo(new_in_folder=dir_test_set, study_folder=chunk_folder,
+                                   filename=oa_file[0], scan_num=sample_folder, save_folder=save_dir,
+                                   cut_half=True, height_channel=self.height_channel_oa)
+
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
         random.seed(self.set_random_seed)
-        original_file_names = random.sample(original_file_names, len(original_file_names))
-        train_size = int(len(original_file_names) * self.train_ratio)
-        self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
+        if self.data_type == 'homo':
+            original_file_names = random.sample(original_file_names, len(original_file_names))
+            train_size = int(len(original_file_names) * self.train_ratio)
+            self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
+        elif self.data_type == 'hetero':
+            shortened_file_names = list(set([self.extract_name_from_path(s) for s in original_file_names]))
+            train_size = int(len(shortened_file_names) * self.train_ratio)
+            short_train_names, short_val_names = shortened_file_names[:train_size], shortened_file_names[train_size:]
+            self.train_names = self._retrieve_file_names_from_short(name_list_short=short_train_names,
+                                                                    name_list_long=original_file_names)
+            val_names = self._retrieve_file_names_from_short(name_list_short=short_val_names,
+                                                             name_list_long=original_file_names,
+                                                             num_images=self.num_val_images_hetero)
+        else:
+            print('You should not have come here. Check your work!')
         return self.train_names, val_names
 
     def _retrieve_original_file_names(self):
         # get all the complete file names (path/filename) of the selected data to train on
         if self.image_type not in ['US', 'OA']:
             sys.exit('Error: No valid image_type selected!')
-        else:
-            if self.image_type == 'US':
-                end_folder = 'ultrasound'
-            else:
-                end_folder = 'optoacoustic'
 
-        if len(dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
+        if len(dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + self.end_folder,
                                           full_names=False)) == 0:
             sys.exit('There are no Files in the processed Folder, please run again with process_raw_data=True.')
 
         file_names = []
         # original images
-        file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + end_folder, name_list=file_names)
+        file_names = self._names_to_list(folder_name=self.dir_processed_all + '/' + self.end_folder,
+                                         name_list=file_names)
         return file_names
 
     def _add_augmented_file_names_to_train(self):
         # add the file names of the augmented data to self.train_file_names
         path_augmented = self.dir_processed + '/augmented'
-        if self.image_type == 'US':
-            end_folder = 'ultrasound'
-        else:
-            end_folder = 'optoacoustic'
 
         if self.add_augment:
             for aug_name in self.names_of_augment:
                 self.train_file_names = self._names_to_list(
-                    folder_name=path_augmented + '/' + aug_name + '/' + end_folder,
+                    folder_name=path_augmented + '/' + aug_name + '/' + self.end_folder,
                     name_list=self.train_file_names)
+
+    def _retrieve_file_names_from_short(self, name_list_short, name_list_long, num_images=None):
+        ret_list = []
+        for short in name_list_short:
+            if num_images is None:
+                num_images = 9999
+            path_names_list = [s for s in name_list_long if short in s]
+            take_num_images = np.min([num_images, len(path_names_list)])
+            ret_list = ret_list + list(np.random.permutation(path_names_list))[:take_num_images]
+
+        return ret_list
 
     def _delete_val_from_augmented(self, val_names, train_names):
         # deletes the augmented data from the validation set from the training files
@@ -384,7 +445,7 @@ class ProcessData(object):
 
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
-                                   filename=self._extract_name_from_path(filename, without_ch=False),
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params, data_type=self.data_type)
 
@@ -424,7 +485,7 @@ class ProcessData(object):
 
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
-                                            filename=self._extract_name_from_path(filename, without_ch=False),
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
                                             path_to_params=self.dir_params, data_type=self.data_type)
 
@@ -444,9 +505,12 @@ class ProcessData(object):
                 if self.pro_and_augm_only_image_type and not self.image_type == file_prefix:
                     continue
                 path_to_dir = self.dir_augmented + '/' + aug_dir + '/' + im_dir
-                filelist = os.listdir(path_to_dir)
-                for f in filelist:
-                    os.remove(os.path.join(path_to_dir, f))
+                self._clear_dir(path_to_dir=path_to_dir)
+
+    def _clear_dir(self, path_to_dir):
+        file_list = os.listdir(path_to_dir)
+        for f in file_list:
+            os.remove(os.path.join(path_to_dir, f))
 
     def update_mean_var(self, prev_agg, data):
         (n_prev_obs, prev_mean, prev_var) = prev_agg
