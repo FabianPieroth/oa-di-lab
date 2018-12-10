@@ -15,14 +15,14 @@ class CNN_skipCo_trainer(object):
 
         self.image_type = 'US'
 
-        self.batch_size = 6
-        self.log_period = 10
-        self.epochs = 250
+        self.batch_size = 16
+        self.log_period = 100
+        self.epochs = 500
 
-        self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=True,
+        self.dataset = ProcessData(data_type='hetero', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=False, do_rchannels=True,
-                                   do_flip=True, do_blur=False, do_deform=True, do_crop=False,
+                                   do_augment=False, add_augment=False, do_rchannels=False,
+                                   do_flip=True, do_blur=False, do_deform=False, do_crop=False,
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
                                    image_type=self.image_type, get_scale_center=True, single_sample=True,
