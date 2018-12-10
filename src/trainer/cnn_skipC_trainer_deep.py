@@ -1,7 +1,6 @@
 from data.data_loader import ProcessData
 from logger.logger import Logger
-import numpy as np
-from models import awesomeImageTranslator1000
+from models.old_models import awesomeImageTranslator1000
 import torch
 import torch.nn as nn
 

@@ -1,0 +1,153 @@
+####################### Documentation on how to use the P100 Virtual Server #################
+#Sections:
+# Reservation
+# Log in
+# Preparations outside of the docker container
+# Inside the docker container
+# Copying results
+# Troubleshooting
+
+# the lines without # at the beginning are to be entered into the terminal
+
+##################### Reservation ######################################
+# Make the reservations via datalab.srv.lrz.de
+# You have to put you public SSH key in the profile info
+# When making a reservation you need to select the image version with CUDA 9.1 (I never tried the other one)
+# You can book reservations directly one after the other ('chaining') 
+# and the VM and the scripts you are running will continue.
+
+##################### Log in ######################################
+# Once the machine is ready (about 3 min after the reservation time) you get an email with the login info.
+# it looks like this: ssh ubuntu@10.155.47.236 (different IP address for you)
+# run this command in the terminal. you may be asked to add the fingerprint to the known hosts, do that
+# Normally, this should be it, you are logged onto the server.
+
+# For how to deal with the 'man-in-the-middle-attack' error, see the troubleshooting 1.1
+
+##################### Preparations outside of the docker container ######################################
+# Now we can start prepare the machine. Essentially we have 3 tasks: 
+# start byobu, prepare the docker image and make the data accessible.
+
+# 1) start byobu
+byobu
+# In byobu, you can open several windows. Most of the time, I use 2-3 windows later on 
+# (one inside the docker, one or two outside)
+# For this, press F2, the other window opens. To navigate between the windows, press F3.
+# To exit byobu, press F6. 
+# The byobu session (with all the windows) stays alive until you enter byobu again 
+# (by running the command byobu)
+# When you have exited byobu, you are still on the server. 
+# to exit the server, type exit. Later, you can log in again and type byobu to continue with the session.
+# Don't exit byobu by typing exit because the session will be lost.
+# Maybe try this out once or twice to get comfortable with byobu.
+
+# 2) prepare and run the docker image data
+# For this I have a script for you:
+# First, navigate to the /ssdtemp directory:
+cd /ssdtemp
+# download the script via
+wget 'https://www.dropbox.com/s/g5y60eh3eoq99e0/get_docker.sh'
+# make it runnable
+chmod u+x get_docker.sh
+# run it
+./get_docker.sh
+# for logging into the Nvidia docker cloud, enter:
+# username: $oauthtoken
+# password: YnVxMGlnajllZW82ZTdsazBlaG42NjJsMGQ6ZTQ5MzRhYWEtNjA1ZC00MmRkLTg3ZGQtNTdjMWFkMDIzYWEx
+# if the password doesn't work, contact me or get your own account on https://ngc.nvidia.com 
+# (the 'password' above is the API key you have to generate)
+
+
+# 3) get the data 
+# you can do this simultaneously to (2), in a seperate byobu window
+# First, navigate to the /ssdtemp directory:
+cd /ssdtemp
+# download the script via
+wget 'https://www.dropbox.com/s/2ggtgzda0csjx86/get_data.sh'
+# make it runnable
+chmod u+x get_data.sh
+# run it
+./get_data.sh
+# In the first few minutes, the package manager is locked, 
+# that means you can't install anything and the script will fail. 
+# If that happens, you have to wait and try again later 
+# I have had wait times of 5 to 35 minutes, I think it is worst when you are the first new user after 12 or 1pm
+
+
+
+
+##################### Inside the docker container ######################################
+# Now we have to prepare the inside of the docker container
+# Enter the directory
+cd /mnt/local/di-lab/src
+# Run the script: prepare_docker.sh
+./../server_scripts/prepare_docker.sh
+# If the Permission is denied, make the script runnable first (chmod u+x ../server_scripts/prepare_docker.sh)
+
+# After that, you can start training (e.g. python3 trainer/trainer_file.py)
+# Remember to check all trainer settings (augmentation, single sample, batch size etc
+# and the data_loader path
+
+
+##################### Copying results ######################################
+# while the training is going on, you can consider how you want to copy the results in the reports directory.
+# we have to do this because inside the docker container we only have access to the local storage, not to the mounted storage (which is on the LRZ Linux cluster and is permanent)
+
+# you can do so manually or via a script that copies the result automatically every 20min
+# First, if you are in the byobu window that is inside the docker container, change to a different one.
+# and go inside the reports directory
+cd /ssdtemp/local/di-lab/reports
+
+# a) manually
+# if you want to copy the whole reports directory, run
+cp -r /ssdtemp/local/di-lab/reports /ssdtemp/mounted/di-lab
+# if you want to copy a single reports directory (e.g. my_model_2018_xx_xx_xx_xx)
+cp -r /ssdtemp/local/di-lab/reports/my_model_2018_xx_xx_xx_xx /ssdtemp/mounted/di-lab/reports
+
+# b) automatically
+# run the copy results script:
+./../server_scripts/copy_results.sh
+# If the Permission is denied, make the script runnable first (chmod u+x ../server_scripts/copy_results.sh)
+
+
+##################### Troubleshooting ######################################
+# 1) During Login
+# 1.1 Man-in-the-middle-attack-error: 
+# I don't know if this is the correct way to deal with this situation, but it worked for me:
+# go to your local .ssh directory and delete everything inside the known_hosts file 
+# (maybe before that, make a backup copy of the file somewhere else)
+# try again to log in
+
+# 2) Downloads
+# 2.1 Downloads taking a long time (docker pull and conda install)
+# sometimes it helpt to keyboard interrupt the download and start again 
+
+# 3) sshfs stuff
+# 3.1 connection reset by peer
+# This happened to me once when I was mounting a lot in a debugging process.
+# I got out of the situation by rebooting the server (sudo reboot)
+# However please note, that everything on the server will be lost and you have to start over
+
+# 4) Docker stuff
+# 4.1 exiting docker
+# Normally, you don't have to exit the docker container because you can have multiple byobu windows
+# and can do stuff outside the container in one of those windows.
+# If you REALLY have to exit docker, type exit. 
+# Please note, that the container will vanish, 
+# you have to run it again and also install the requirements again.
+# If you don't wnat the container to vanish, you can remove the --rm option in the rum command 
+
+# 4.2 python inside the container
+# For debugging purposes it can be necessary to open a python shell. do so by typing python3.
+
+# 5) Reports
+# 5.1 deleting report directories
+# Often I have to debug on the server 
+# and thus execute a trainer file multiple times before actually starting a serious train run. 
+# In all of these preliminary runs, report directories are created. 
+# Since the files are getting big, I don't want to copy all of that to the permanent storage.
+# Therefore I delete the report directories when I'm done debugging 
+# and start the automatic result copy script afterward.
+# remove a report directory via: 
+sudo rm -rf thepath
+# thepath being the absolute or relative path of the report directory to be deleted.

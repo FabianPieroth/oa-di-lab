@@ -4,16 +4,17 @@ import scipy.io
 import numpy as np
 import os
 
-
 # this File contains several helper functions
 
 # Pre-processing
 
-def ret_all_files_in_folder(folder_path, full_names = True):
+
+def ret_all_files_in_folder(folder_path, full_names=True):
     files = [s for s in os.listdir(folder_path) if filter_hidden_files(s)]
     if full_names:
         files = [folder_path + '/' + s for s in files]
     return files
+
 
 def filter_hidden_files(string):
     bool1 = ('.DS_' in string)
@@ -62,16 +63,16 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
 def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
-                              scan_num + '/' + filename_low)
+                                  scan_num + '/' + filename_low)
     us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
-                                  scan_num + '/' + filename_high)
+                                   scan_num + '/' + filename_high)
 
-    single_sos = us_raw_low['single_SoS'].flatten()
+    single_sos = [np.float64(s) for s in us_raw_low['single_SoS'].flatten()]
     us_low_samples = us_raw_low['US_low_samples']
 
-    couplant_sos = us_raw_high['couplant_SoS'].flatten()[0]
-    tissue_mask = us_raw_high['tissue_mask']
-    tissue_sos = us_raw_high['tissue_SoS'].flatten()
+    couplant_sos = np.float64(us_raw_high['couplant_SoS'].flatten()[0])
+    tissue_mask = np.array(us_raw_high['tissue_mask']).astype('float')
+    tissue_sos = [np.float64(s) for s in us_raw_high['tissue_SoS'].flatten()]
     us_high_samples = us_raw_high['US_high_samples']
 
     # on which axis to expand the dimension of the numpy array
@@ -86,7 +87,7 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
         for high_channel in range(us_high_samples.shape[2]):
 
             # fill mask with sos parameters
-            custom_mask = tissue_mask
+            custom_mask = np.copy(tissue_mask)
             custom_mask[custom_mask == 0] = couplant_sos
             custom_mask[custom_mask == 1] = tissue_sos[high_channel]
             custom_mask = np.expand_dims(custom_mask, axis=common_axis)
@@ -135,9 +136,9 @@ def do_deform(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_
     save_dict_with_pickle(params, path_to_params + '/augmentation/deform/' + end_folder, name_save_params)
 
 
-def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params):
+def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type):
     aug_x, aug_y, params = data.augmentation.blur(x, y,
-                                                  lower_lim=1, upper_lim=3)
+                                                  lower_lim=1, upper_lim=3, data_type=data_type)
 
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='blur')
 
@@ -163,6 +164,14 @@ def do_rchannels(end_folder, filename, read_in_folder, num_channels, path_to_aug
     for i in range(len(dict_list)):
         save_dict_with_pickle(dict_list[i], path_to_augment + "/rchannels/" + end_folder, save_names[i])
 
+
+def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type):
+    aug_x, aug_y, params = data.augmentation.speckle_noise(x, y, data_type=data_type)
+    dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='speckle_noise')
+
+    save_dict_with_pickle(dict_save, path_to_augment + "/speckle_noise/" + end_folder, name_save)
+    name_save_params = name_save + '_params'
+    save_dict_with_pickle(params, path_to_params + '/augmentation/speckle_noise/' + end_folder, name_save_params)
 
 def create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type):
     name_low = file_prefix + '_low_' + aug_type
