@@ -1,0 +1,63 @@
+####################### Documentation on how to use the DGX #################
+#Sections:
+# Reservation
+# Log in
+# Preparations
+# Training
+# Troubleshooting
+
+# the lines without # at the beginning are to be entered into the terminal/into a python file
+
+##################### Reservation ######################################
+# Make the reservations via datalab.srv.lrz.de
+# You have to put you public SSH key in the profile info
+# When making a reservation you need to select the image version with CUDA 9.1 (I never tried the other one)
+# You can book reservations directly one after the other ('chaining') 
+# and the VM and the scripts you are running will continue.
+
+##################### Log in ######################################
+# Once the machine is ready (about 3 min after the reservation time) you get an email with the login info.
+# it looks like this: ssh ubuntu@10.155.47.236 (different IP address for you)
+# run this command in the terminal. you may be asked to add the fingerprint to the known hosts, do that
+# Normally, this should be it, you are logged onto the server.
+
+# For how to deal with the 'man-in-the-middle-attack' error, see the troubleshooting 1.1
+
+##################### Preparation ######################################
+# navigate to the server_scripts directory, something like
+cd /home/diXXXXX/di-lab/server_scripts
+# make the script runnable
+chmod u+x installDGX.sh
+# run the script
+./installDGX.sh
+# you will be asked to type yes two times
+
+# after the install, open byobu
+byobu
+
+##################### Training ######################################
+# navigate to the src directory, somethink like
+cd /home/diXXXXX/di-lab/src
+# run the script
+python3 trainer/trainer_file.py
+# don't forget to check the path in the data_loader.py and all the trainer settings
+# If you are on the V100, you might have to put
+import sys
+sys.path.append('thepath')
+# on top of the trainer file, thepath being the absolute path to the src directory
+
+# There is no need to copy reports, they are already saved in the dss.
+
+##################### Troubleshooting ######################################
+# 1) During Login
+# 1.1 Man-in-the-middle-attack-error: 
+# I don't know if this is the correct way to deal with this situation, but it worked for me:
+# go to your local .ssh directory and delete everything inside the known_hosts file 
+# (maybe before that, make a backup copy of the file somewhere else)
+# try again to log in
+
+# 2) Downloads
+# 2.1 Downloads taking a long time (apt install, docker pull and conda install)
+# sometimes it helpt to keyboard interrupt the download and start again 
+
+
