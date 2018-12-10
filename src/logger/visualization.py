@@ -3,6 +3,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test
 
 
 def plot_channel(im_input, im_target, im_predict, name, channel, save_name=None):
@@ -21,7 +22,7 @@ def plot_channel(im_input, im_target, im_predict, name, channel, save_name=None)
     plt.imshow(im_predict[channel, :, :], cmap='gray')
 
     if save_name is not None:
-        plt.savefig(save_name)
+        plt.savefig(save_name, bbox_inches='tight')
 
 
 def plot_oa_spectra(im_input, im_target, im_predict, x, y, name, figsize=(18, 5)):
@@ -51,7 +52,12 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
     ax2.plot(learning_rates, label='learning rate', c='grey')
     ax2.legend(loc=5)
     if save_name is not None:
-        fig.savefig(save_name)
+        fig.savefig(save_name, bbox_inches='tight')
+
+
+def plot_spectral_test(input_im, target_im, predict_im, name, save_name):
+    pvalue_input = spectral_F_test(input_im)
+    print(pvalue_input)
 
 
 def load_file_to_numpy(full_file_name):

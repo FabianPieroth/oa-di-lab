@@ -4,11 +4,11 @@ import os
 import data.data_processing as dp
 import logger.visualization as vis
 import json
-# from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test
 
 
 def extract_and_process_logged_folder(folder_name):
     print('Read and create input, target and predicted images.')
+    json_dict = open_json_file(folder_name=folder_name, file_name='config.json')
     folder_saved_predictions = [s for s in dp.ret_all_files_in_folder(folder_name,
                                                                       full_names=False) if 'predictions' in s]
     for folder in folder_saved_predictions:
@@ -22,6 +22,9 @@ def extract_and_process_logged_folder(folder_name):
                                                                          + '/' + images)
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
+                #if json_dict['image_type'] == 'OA':
+                #    vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
+                #                           save_name=save_folder + '/' + images)
 
 
 def open_json_file(folder_name, file_name):
