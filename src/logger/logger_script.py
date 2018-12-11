@@ -22,9 +22,10 @@ def extract_and_process_logged_folder(folder_name):
                                                                          + '/' + images)
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
-                #if json_dict['image_type'] == 'OA':
-                #    vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
-                #                           save_name=save_folder + '/' + images)
+                if json_dict['image_type'] == 'OA':
+                    vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
+                                           save_name=save_folder + '/' + images + '_spectra',
+                                           do_spectral_regression=True, p_threshold=0.01)
 
 
 def open_json_file(folder_name, file_name):
@@ -48,7 +49,7 @@ def plot_train_val_loss(folder_name):
 
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
-    folder_name = 'homo/combined_model_2018_12_08_12_09'
+    folder_name = 'homo/combined_model_2018_12_08_16_13'
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
     plot_train_val_loss(folder_name=path_to_project + folder_name)
