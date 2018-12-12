@@ -1,9 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-from models.conv_deconv import ConvDeconv
+#from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
+from models.SP2_conv_deconv import ConvDeconv
 import torch
 import torch.nn as nn
 import sys
@@ -17,7 +18,7 @@ class CNN_skipCo_trainer(object):
 
         self.batch_size = 16
         self.log_period = 100
-        self.epochs = 500
+        self.epochs = 1500
 
         self.dataset = ProcessData(data_type='hetero', train_ratio=0.9, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
@@ -25,14 +26,16 @@ class CNN_skipCo_trainer(object):
                                    do_flip=True, do_blur=False, do_deform=False, do_crop=False,
                                    do_speckle_noise=False,
                                    trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=True, single_sample=True,
+                                   image_type=self.image_type, get_scale_center=False, single_sample=True,
                                    do_scale_center=True, scale_center_method='new',
                                    height_channel_oa=201)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=[3, 64, 128, 256, 512, 1024],
+        self.model_convdeconv = ConvDeconv(conv_channels=[1, 32, 64, 128, 256, 512],
+                                           input_ds_mask=[0, 0, 1, 0, 0], input_ss_mask=[0, 0, 1, 0, 0],
+                                           datatype='hetero',
                                            kernels=[(7, 7) for i in range(5)],
                                            model_name='deep_2_model', input_size=(401, 401),
-                                           output_channels=1, drop_probs=[1 for i in range(5)])
+                                           output_channels=1, drop_probs=[0.01 for i in range(5)])
 
         self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
 
