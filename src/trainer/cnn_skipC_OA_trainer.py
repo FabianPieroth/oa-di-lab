@@ -1,4 +1,4 @@
-from data.data_loader import ProcessData
+gifrom data.data_loader import ProcessData
 import trainer.utils as utils
 import numpy as np
 from models import cnn_skipC_OA_model

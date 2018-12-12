@@ -19,7 +19,7 @@ class CNN_skipCo_trainer(object):
         self.log_period = 100
         self.epochs = 500
 
-        self.dataset = ProcessData(data_type='hetero', train_ratio=0.9, process_raw_data=True,
+        self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=True,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=False, do_rchannels=False,
                                    do_flip=True, do_blur=False, do_deform=False, do_crop=False,
@@ -29,7 +29,7 @@ class CNN_skipCo_trainer(object):
                                    do_scale_center=True, scale_center_method='new',
                                    height_channel_oa=201)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=[3, 64, 128, 256, 512, 1024],
+        self.model_convdeconv = ConvDeconv(conv_channels=[3, 128, 256, 512, 1024, 2048],
                                            kernels=[(7, 7) for i in range(5)],
                                            model_name='deep_2_model', input_size=(401, 401),
                                            output_channels=1, drop_probs=[1 for i in range(5)])
