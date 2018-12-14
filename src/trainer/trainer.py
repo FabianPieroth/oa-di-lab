@@ -19,7 +19,7 @@ class CNN_skipCo_trainer(object):
         self.log_period = 100
         self.epochs = 200
 
-        self.dataset = ProcessData(data_type='heter', train_ratio=0.5, process_raw_data=False,
+        self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=False,
                                    pro_and_augm_only_image_type=True, do_heavy_augment=False,
                                    do_augment=False, add_augment=True, do_rchannels=False,
                                    do_flip=True, do_blur=True, do_deform=False, do_crop=False,
