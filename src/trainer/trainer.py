@@ -11,30 +11,35 @@ import sys
 
 class CNN_skipCo_trainer(object):
 
-    def __init__(self):
+    def __init__(self, image_type, batch_size, log_period, epochs, data_type, train_ratio,
+                 process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
+                 add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
+                 trunc_points, get_scale_center, single_sample,do_scale_center,
+                 scale_center_method, height_channel_oa,
+                 conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
+                 di_conv_channels, dilations, learning_rates):
 
-        self.image_type = 'US'
+        self.image_type = image_type
 
-        self.batch_size = 16
-        self.log_period = 100
-        self.epochs = 500
+        self.batch_size = batch_size
+        self.log_period = log_period
+        self.epochs = epochs
 
-        self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=True,
-                                   pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=False, do_rchannels=False,
-                                   do_flip=True, do_blur=False, do_deform=False, do_crop=False,
-                                   do_speckle_noise=False,
-                                   trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=True, single_sample=True,
-                                   do_scale_center=True, scale_center_method='new',
-                                   height_channel_oa=201)
+        self.dataset = ProcessData(data_type=data_type, train_ratio=train_ratio, process_raw_data=process_raw_data,
+                                   pro_and_augm_only_image_type=pro_and_augm_only_image_type, do_heavy_augment=do_heavy_augment,
+                                   do_augment=do_augment, add_augment=add_augment, do_rchannels=do_rchannels,
+                                   do_flip=do_flip, do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
+                                   do_speckle_noise=do_speckle_noise,trunc_points=trunc_points,
+                                   image_type=image_type, get_scale_center=get_scale_center, single_sample=single_sample,
+                                   do_scale_center=do_scale_center, scale_center_method=scale_center_method,
+                                   height_channel_oa=height_channel_oa)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=[3, 128, 256, 512, 1024, 2048],
-                                           kernels=[(7, 7) for i in range(5)],
-                                           model_name='deep_2_model', input_size=(401, 401),
-                                           output_channels=1, drop_probs=[1 for i in range(5)])
+        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           kernels=kernels,
+                                           model_name=model_name, input_size=input_size,
+                                           output_channels=output_channels, drop_probs=drop_probs)
 
-        self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
+        self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
         self.model = ImageTranslator([self.model_convdeconv])
 
@@ -42,7 +47,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.learning_rates = [0 for i in range(self.epochs)]
+        self.learning_rates = learning_rates
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
@@ -222,7 +227,63 @@ class CNN_skipCo_trainer(object):
         return lrs
 
 def main():
-    trainer = CNN_skipCo_trainer()
+
+    image_type = 'US'
+    batch_size = 16
+    log_period = 100
+    epochs = 500
+
+    #dataset parameters
+
+    data_type = 'hetero'
+    train_ratio = 0.5
+    process_raw_data = True,
+    pro_and_augm_only_image_type = True
+    do_heavy_augment = False,
+    do_augment = False
+    add_augment = False
+    do_rchannels = False,
+    do_flip = True
+    do_blur = False
+    do_deform = False
+    do_crop = False
+    do_speckle_noise = False
+    trunc_points = (0.0001, 0.9999)
+    get_scale_center = True
+    single_sample = True
+    do_scale_center = True
+    scale_center_method = 'new'
+    height_channel_oa = 201
+
+    #model parameters
+
+    conv_channels = [3, 128, 256, 512, 1024, 2048]
+    kernels = [(7, 7) for i in range(5)]
+    model_name = 'deep_2_model'
+    input_size = (401, 401)
+    output_channels = 1
+    drop_probs = [1 for i in range(5)]
+
+    #dilated model parameters
+
+    di_conv_channels = [1, 64, 64, 64, 64, 64]
+    dilations = [1, 2, 4, 8, 16]
+
+
+    learning_rates = [0 for i in range(epochs)]
+
+
+    trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
+                                 epochs=epochs, data_type=data_type, train_ratio=train_ratio,
+                                 process_raw_data=process_raw_data, pro_and_augm_only_image_type=pro_and_augm_only_image_type,
+                                 do_heavy_augment=do_heavy_augment,do_augment=do_augment,
+                                 add_augment=add_augment, do_rchannels=do_rchannels,do_flip=do_flip,
+                                 do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,do_speckle_noise=do_speckle_noise,
+                                 trunc_points=trunc_points, get_scale_center=get_scale_center, single_sample=single_sample,
+                                 do_scale_center=do_scale_center,scale_center_method=scale_center_method,
+                                 height_channel_oa=height_channel_oa,conv_channels=conv_channels,kernels=kernels,
+                                 model_name=model_name, input_size=input_size,output_channels=output_channels, drop_probs=drop_probs,
+                                 di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=learning_rates)
     #trainer.find_lr()
     # fit the first model
     print('\n---------------------------')
