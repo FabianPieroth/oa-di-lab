@@ -40,7 +40,6 @@ class ProcessData(object):
                  do_speckle_noise=True,
                  get_scale_center=True,
                  do_scale_center=True,
-                 scale_center_method='old',
                  trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
@@ -97,8 +96,6 @@ class ProcessData(object):
         self.test_names = []
         self.get_scale_center = get_scale_center  # get scaling and mean image and store them
         self.do_scale_center = do_scale_center  # applies scale and center to the data
-        self.scale_center_method = scale_center_method # 'old' for US min max scaling with mean image,
-                                                       # 'new' for variance, mean normalization
         self.trunc_points = trunc_points # quantiles at which to truncate OA data
         self.dir_params = self.project_root_dir + '/data' + '/' + self.data_type + '/params'
         self.set_random_seed = 42  # set a random seed to enable reproducable samples
@@ -137,7 +134,9 @@ class ProcessData(object):
         else:
             self.train_file_names, self.val_file_names = self._train_val_split(
                 original_file_names=self.original_file_names)
+
             self._add_augmented_file_names_to_train()
+
             self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
                                                                     train_names=self.train_file_names)
         if self.get_scale_center:
@@ -531,115 +530,64 @@ class ProcessData(object):
     def _get_scale_center(self):
         print('Calculates scaling parameters')
         # Initialize values
-        if self.image_type == 'US' and self.scale_center_method == 'old':
-            if self.data_type == 'hetero':
-                sys.exit('old scale and center method not implemented for hetero data')
-            i = 0
-            temp = 1
-            shape_for_mean_image = [401, 401]
-            max_data_high = -np.inf * temp
-            min_data_high = np.inf * temp
-            max_data_low = -np.inf * temp
-            min_data_low = np.inf * temp
-            sum_image_high = np.zeros(shape_for_mean_image)
-            sum_image_low = np.zeros(shape_for_mean_image)
-            # do loop:
+
+        if self.data_type == 'homo':
+            mean_low = 0
+            var_low = 0
+            count_low = 0
+            mean_high = 0
+            var_high = 0
+            count_high = 0
             for file in self.train_file_names:
                 image_sign = self.image_type + '_high'
-                # get high image
-                image = self.load_file_to_numpy(file, image_sign)
-                # get maximums/minimums of the image
-                maxs = np.max(image)
-                mins = np.min(image)
-                # update maximums
-                max_data_high = np.maximum(maxs, max_data_high)
-                min_data_high = np.minimum(mins, min_data_high)
-                # add image to sum (for mean)
-                if self.image_type == 'US':
-                    sum_image_high += image
-                else:
-                    sum_image_high += np.mean(image, axis=2)
-
+                image_high = self.load_file_to_numpy(file, image_sign)
                 image_sign = self.image_type + '_low'
-                # get low image
-                image = self.load_file_to_numpy(file, image_sign)
-                maxs = np.max(image)
-                mins = np.min(image)
-                # update maximums
-                max_data_low = np.maximum(maxs, max_data_low)
-                min_data_low = np.minimum(mins, min_data_low)
-                # add image to sum (for mean)
-                if self.image_type == 'US':
-                    sum_image_low += image
-                else:
-                    sum_image_low += np.mean(image, axis=2)
-                # increase counter
-                i += 1
-            # calculate mean images
-            mean_high = sum_image_high / i
-            mean_low = sum_image_low / i
-            scale_params_low = [min_data_low, max_data_low]
-            scale_params_high = [min_data_high, max_data_high]
+                image_low = self.load_file_to_numpy(file, image_sign)
+                # truncating images
+                if self.image_type == 'OA':
+                    lq = np.quantile(image_low, self.trunc_points)
+                    hq = np.quantile(image_high, self.trunc_points)
+                    image_low = image_low.clip(lq[0], lq[1])
+                    image_high = image_high.clip(hq[0], hq[1])
+                # update values
+                low_aggr = self.update_mean_var((count_low, mean_low, var_low), image_low)
+                (count_low, mean_low, var_low) = low_aggr
+                high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                (count_high, mean_high, var_high) = high_aggr
         else:
-            if self.data_type == 'homo':
-                mean_low = 0
-                var_low = 0
-                count_low = 0
-                mean_high = 0
-                var_high = 0
-                count_high = 0
-                for file in self.train_file_names:
-                    image_sign = self.image_type + '_high'
-                    image_high = self.load_file_to_numpy(file, image_sign)
-                    image_sign = self.image_type + '_low'
-                    image_low = self.load_file_to_numpy(file, image_sign)
-                    # truncating images
-                    if self.image_type == 'OA':
-                        lq = np.quantile(image_low, self.trunc_points)
-                        hq = np.quantile(image_high, self.trunc_points)
-                        image_low = image_low.clip(lq[0], lq[1])
-                        image_high = image_high.clip(hq[0], hq[1])
-                    # update values
-                    low_aggr = self.update_mean_var((count_low, mean_low, var_low), image_low)
-                    (count_low, mean_low, var_low) = low_aggr
-                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
-                    (count_high, mean_high, var_high) = high_aggr
-            else:
-                mean_low = [0,0]
-                var_low = [0,0]
-                count_low = 0
-                mean_high = 0
-                var_high = 0
-                count_high = 0
-                for file in self.train_file_names:
-                    image_sign = self.image_type + '_high'
-                    image_high = self.load_file_to_numpy(file, image_sign)
-                    image_sign = self.image_type + '_low'
-                    image_low = self.load_file_to_numpy(file, image_sign)
-                    image_low_image = image_low[:,:,0]
-                    image_low_sos = image_low[:,:,1:]
-                    # update values
-                    low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
-                    (count_low, mean_low_image, var_low_image) = low_aggr_image
-                    mean_low[0] = mean_low_image
-                    var_low[0] = var_low_image
-                    low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
-                    (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
-                    mean_low[1] = mean_low_sos
-                    var_low[1] = var_low_sos
-                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
-                    (count_high, mean_high, var_high) = high_aggr
-            scale_params_low = var_low
-            scale_params_high = var_high
-            print(scale_params_low, scale_params_high)
-            print(mean_low, mean_high)
+            mean_low = [0,0]
+            var_low = [0,0]
+            count_low = 0
+            mean_high = 0
+            var_high = 0
+            count_high = 0
+            for file in self.train_file_names:
+                image_sign = self.image_type + '_high'
+                image_high = self.load_file_to_numpy(file, image_sign)
+                image_sign = self.image_type + '_low'
+                image_low = self.load_file_to_numpy(file, image_sign)
+                image_low_image = image_low[:,:,0]
+                image_low_sos = image_low[:,:,1:]
+                # update values
+                low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
+                (count_low, mean_low_image, var_low_image) = low_aggr_image
+                mean_low[0] = mean_low_image
+                var_low[0] = var_low_image
+                low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
+                mean_low[1] = mean_low_sos
+                var_low[1] = var_low_sos
+                high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                (count_high, mean_high, var_high) = high_aggr
+        scale_params_low = var_low
+        scale_params_high = var_high
+        print(scale_params_low, scale_params_high)
+        print(mean_low, mean_high)
 
         # construct dictionaries and save parameters
         if self.image_type == 'US':
-            us_scale_params = {'US_low': scale_params_low, 'US_high': scale_params_high,
-                               'scale_center_method': self.scale_center_method}
-            us_mean_images = {'US_low': mean_low, 'US_high': mean_high,
-                              'scale_center_method': self.scale_center_method}
+            us_scale_params = {'US_low': scale_params_low, 'US_high': scale_params_high}
+            us_mean_images = {'US_low': mean_low, 'US_high': mean_high,}
             with open(self.dir_params + '/scale_and_center' + '/US_scale_params', 'wb') as handle:
                 pickle.dump(us_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
@@ -655,32 +603,6 @@ class ProcessData(object):
         ##################################################################
         # ###### Data Normalization ######################################
         ##################################################################
-    def scale_image(self, image, min_data, max_data, min_out=-1, max_out=1):
-        """ scales the input image from [min_data,max_data] to [min_out, max_out]
-            input: image: for US (H,W) array, for OA: (H,W,C) array
-                   min_data, max_data: minimum and maximum over the data set (channel by channel)
-                        for US: floats, for OA: arrays of shape (C,)
-                   image_type: 'US' or 'OA'
-            output: image_out: array with same shape as image
-        """
-
-        factor = (max_out - min_out) / (max_data - min_data)
-        additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
-        image_out = image * factor + additive
-        return image_out
-
-    def scale_batch(self, batch, min_data, max_data, min_out=-1, max_out=1):
-        """ scales the input batch from [min_data,max_data] to [min_out, max_out]
-                input: batch: for US (N,H,W) array, for OA: (N,H,W,C) array
-                       min_data, max_data: minimum and maximum over the data set (channel by channel)
-                            for US: floats, for OA: arrays of shape (C,)
-                       image_type: 'US' or 'OA'
-                output: batch_out array with same shape as batch
-        """
-        factor = (max_out - min_out) / (max_data - min_data)
-        additive = min_out - min_data * (max_out - min_out) / (max_data - min_data)
-        batch_out = batch * factor + additive
-        return batch_out
 
     def scale_and_center(self, batch, scale_params, mean_image):
         """ scales and centers the input batch given the scale_params and the mean_image
@@ -691,13 +613,7 @@ class ProcessData(object):
                             for US: array of shape (H,W), for OA: (H,W,C)
                        image_type: 'US' or 'OA'
                 output: batch_out array with same shape as batch"""
-        if self.image_type == 'US' and self.scale_center_method == 'old':
-            [min_data, max_data] = scale_params
-            mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
-            batch_out = self.scale_batch(batch=batch, min_data=min_data, max_data=max_data)
-            batch_out = batch_out - mean_scaled[None,:,:]
-        else:
-            batch_out = (batch - mean_image)/np.sqrt(scale_params)
+        batch_out = (batch - mean_image)/np.sqrt(scale_params)
         return batch_out
 
     def scale_and_center_reverse(self, batch, scale_params, mean_image):
@@ -709,16 +625,9 @@ class ProcessData(object):
                                 for US: array of shape (H,W), for OA: (H,W,C)
                            image_type: 'US' or 'OA'
                     output: batch_out array with same shape as batch"""
-        if self.image_type == 'US' and self.scale_center_method == 'old':
-            [min_data, max_data] = scale_params
-            mean_scaled = self.scale_image(image=mean_image, min_data=min_data, max_data=max_data)
-            batch_out = batch + mean_scaled[None,:,:]
-            batch_out = self.scale_batch(batch_out, min_data=-1, max_data=1, min_out=min_data,
-                                         max_out=max_data)
-        else:
-            batch_out = batch*np.sqrt(scale_params) + mean_image
-
+        batch_out = batch*np.sqrt(scale_params) + mean_image
         return batch_out
+
     def load_params(self, param_type, dir_params=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
@@ -746,12 +655,6 @@ class ProcessData(object):
             if self.trunc_points != params_trunc_points:
                 sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
                          'Truncation of saved parameters is ' + str(params_trunc_points))
-        else:
-            params_scale_center_method = params['scale_center_method']
-            if self.scale_center_method != params_scale_center_method:
-                sys.exit(
-                    'Scale-center method of saved parameters does not fit the chosen method. '
-                    'Method of saved parameters is ' + str(params_scale_center_method))
         return params_low, params_high
 
     ##################################################################

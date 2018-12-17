@@ -11,6 +11,7 @@ import sys
 
 class CNN_skipCo_trainer(object):
 
+
     def __init__(self, image_type, batch_size, log_period, epochs, data_type, train_ratio,
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
