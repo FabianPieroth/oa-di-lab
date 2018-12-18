@@ -24,8 +24,8 @@ def extract_and_process_logged_folder(folder_name):
                                  save_name=save_folder + '/' + images)
                 if json_dict['image_type'] == 'OA':
                     vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
-                                           save_name=save_folder + '/' + images + '_spectra',
-                                           do_spectral_regression=True, p_threshold=0.01)
+                                           save_name=save_folder + '/' + images + '_spectra', p_threshold=0.01,
+                                           json_processing=json_dict)
 
 
 def open_json_file(folder_name, file_name):

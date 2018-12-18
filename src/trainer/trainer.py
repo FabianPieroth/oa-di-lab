@@ -11,7 +11,6 @@ import sys
 
 class CNN_skipCo_trainer(object):
 
-
     def __init__(self, image_type, batch_size, log_period, epochs, data_type, train_ratio,
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
@@ -34,6 +33,32 @@ class CNN_skipCo_trainer(object):
                                    image_type=image_type, get_scale_center=get_scale_center, single_sample=single_sample,
                                    do_scale_center=do_scale_center, scale_center_method=scale_center_method,
                                    height_channel_oa=height_channel_oa)
+        '''self.image_type = 'US'
+
+        self.batch_size = 1
+        self.log_period = 6000
+        self.epochs = 16000
+
+        self.dataset = ProcessData(data_type='homo', train_ratio=0.9, process_raw_data=True,
+                                   pro_and_augm_only_image_type=True, do_heavy_augment=False,
+                                   do_augment=False, add_augment=False, do_rchannels=False,
+                                   do_flip=True, do_blur=False, do_deform=True, do_crop=False,
+                                   do_speckle_noise=False,
+                                   trunc_points=(0.0001, 0.9999),
+                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
+                                   do_scale_center=True, scale_center_method='new',
+                                   height_channel_oa=201,
+                                   use_regressed_oa=False,
+                                   include_regression_error=False,
+                                   add_f_test=False,
+                                   only_f_test_in_target=False,
+                                   channel_slice_oa=None,
+                                   process_all_raw_folders=True)
+
+        self.model_convdeconv = ConvDeconv(conv_channels=[1, 128, 256, 512, 1024, 2048],
+                                           kernels=[(7, 7) for i in range(5)],
+                                           model_name='deep_2_model', input_size=(201, 401),
+                                           output_channels=None)'''
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            kernels=kernels,
