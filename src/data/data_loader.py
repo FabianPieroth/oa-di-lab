@@ -6,6 +6,7 @@ import numpy as np
 import random
 import data.data_processing as dp
 import torch
+import scipy.io
 
 
 class ProcessData(object):
@@ -27,9 +28,15 @@ class ProcessData(object):
                  do_augment=False,
                  do_heavy_augment=False,
                  process_raw_data=False,
+                 process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
                  height_channel_oa=201,
+                 use_regressed_oa=False,
+                 add_f_test=False,
+                 include_regression_error=False,
+                 only_f_test_in_target=False,
+                 channel_slice_oa=None,
                  do_flip=True,
                  do_deform=True,
                  num_deform=3,
@@ -66,6 +73,14 @@ class ProcessData(object):
         self.do_speckle_noise = do_speckle_noise
 
         self.height_channel_oa = height_channel_oa
+        self.use_regressed_oa = use_regressed_oa
+        self.include_regression_error = include_regression_error
+        self.add_f_test = add_f_test
+        self.only_f_test_in_target = only_f_test_in_target
+        if channel_slice_oa is None:
+            self.channel_slice_oa = list(range(28))
+        else:
+            self.channel_slice_oa = channel_slice_oa
 
         # the order of the following two lists has to be the same and has to be extended if new augmentations are done
         self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels', 'speckle_noise']
@@ -86,7 +101,7 @@ class ProcessData(object):
         self.dir_processed = self.project_root_dir + '/data' + '/' + self.data_type + '/processed'
         self.dir_processed_all = self.dir_processed + '/processed_all'
         self.dir_augmented = self.project_root_dir + '/data' + '/' + self.data_type + '/processed' + '/augmented'
-        self.all_folder = False  # check if raw folder was already processed
+        self.process_all_raw_folders = process_all_raw_folders  # check if raw folder was already processed
         self.pro_and_augm_only_image_type = pro_and_augm_only_image_type
         self.process_oa = not self.pro_and_augm_only_image_type or \
                           (self.pro_and_augm_only_image_type and self.image_type == 'OA')  # process raw oa data
@@ -179,7 +194,7 @@ class ProcessData(object):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         in_directories = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in, full_names=False)
         print('Process raw data')
-        if not self.all_folder:
+        if not self.process_all_raw_folders:
             skip_dirs = []
             for sub in in_directories:
                 if (next((True for s in os.listdir(self.dir_processed_all + '/ultrasound') if sub in s), False)
@@ -210,7 +225,12 @@ class ProcessData(object):
                     if oa_file and self.process_oa:
                         dp.pre_oa_homo(new_in_folder=self.dir_raw_in, study_folder=chunk_folder,
                                        filename=oa_file[0], scan_num=sample_folder, save_folder=self.dir_processed_all,
-                                       cut_half=True, height_channel=self.height_channel_oa)
+                                       cut_half=True, height_channel=self.height_channel_oa,
+                                       use_regressed_oa=self.use_regressed_oa,
+                                       regression_coefficients=self._get_default_spectra(),
+                                       include_regression_error=self.include_regression_error,
+                                       add_f_test=self.add_f_test, only_f_test_in_target=self.only_f_test_in_target,
+                                       channel_slice_oa=self.channel_slice_oa)
 
                 elif self.data_type == self.accepted_data_types[1]:
                     if not self.image_type == 'US':
@@ -254,7 +274,12 @@ class ProcessData(object):
 
                     dp.pre_oa_homo(new_in_folder=dir_test_set, study_folder=chunk_folder,
                                    filename=oa_file[0], scan_num=sample_folder, save_folder=save_dir,
-                                   cut_half=True, height_channel=self.height_channel_oa)
+                                   cut_half=True, height_channel=self.height_channel_oa,
+                                   use_regressed_oa=self.use_regressed_oa,
+                                   regression_coefficients=self._get_default_spectra(),
+                                   include_regression_error=self.include_regression_error,
+                                   add_f_test=self.add_f_test, only_f_test_in_target=self.only_f_test_in_target,
+                                   channel_slice_oa=self.channel_slice_oa)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
@@ -373,6 +398,21 @@ class ProcessData(object):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_params + '/' + folder_name + '/' + file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # regression of optoacoustic images
+
+    def _get_default_spectra(self):
+        '''
+        Function to get the default spectra used by functions in this module
+        Default are clinical spectra w/o collagen
+
+        # Returns:
+            Clinical spectra of Hb, HbO2, Fat and Water.
+            Shape is (4,28)
+        '''
+        spectra = scipy.io.loadmat(self.project_root_dir + '/src/' + 'logger/oa_spectra_analysis/clinical_spectra.mat')[
+            'spectra_L2'].T
+        return spectra[:4]
 
     ##################################################################
     # ###### Data Augmentation #######################################
