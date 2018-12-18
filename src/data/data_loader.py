@@ -47,6 +47,7 @@ class ProcessData(object):
                  do_speckle_noise=True,
                  get_scale_center=True,
                  do_scale_center=True,
+                 hetero_mask_to_mask=False,
                  trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
@@ -80,6 +81,8 @@ class ProcessData(object):
             self.channel_slice_oa = list(range(28))
         else:
             self.channel_slice_oa = channel_slice_oa
+
+        self.hetero_mask_to_mask = hetero_mask_to_mask
 
         # the order of the following two lists has to be the same and has to be extended if new augmentations are done
         self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels', 'speckle_noise']
@@ -241,7 +244,7 @@ class ProcessData(object):
                     us_high_samples = [s for s in in_files if 'US_high' in s]
                     dp.pre_us_hetero(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
-                                     save_folder=self.dir_processed_all)
+                                     save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -595,30 +598,48 @@ class ProcessData(object):
                 high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                 (count_high, mean_high, var_high) = high_aggr
         else:
-            mean_low = [0,0]
-            var_low = [0,0]
-            count_low = 0
-            mean_high = 0
-            var_high = 0
-            count_high = 0
-            for file in self.train_file_names:
-                image_sign = self.image_type + '_high'
-                image_high = self.load_file_to_numpy(file, image_sign)
-                image_sign = self.image_type + '_low'
-                image_low = self.load_file_to_numpy(file, image_sign)
-                image_low_image = image_low[:,:,0]
-                image_low_sos = image_low[:,:,1:]
-                # update values
-                low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
-                (count_low, mean_low_image, var_low_image) = low_aggr_image
-                mean_low[0] = mean_low_image
-                var_low[0] = var_low_image
-                low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
-                (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
-                mean_low[1] = mean_low_sos
-                var_low[1] = var_low_sos
-                high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
-                (count_high, mean_high, var_high) = high_aggr
+            if self.hetero_mask_to_mask:
+                mean_low = 0
+                var_low = 0
+                count_low = 0
+                mean_high = 0
+                var_high = 0
+                count_high = 0
+                for file in self.train_file_names:
+                    image_sign = self.image_type + '_high'
+                    image_high = self.load_file_to_numpy(file, image_sign)
+                    image_sign = self.image_type + '_low'
+                    image_low = self.load_file_to_numpy(file, image_sign)
+                    # update values
+                    low_aggr = self.update_mean_var((count_low, mean_low, var_low), image_low)
+                    (count_low, mean_low, var_low) = low_aggr
+                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                    (count_high, mean_high, var_high) = high_aggr
+            else:
+                mean_low = [0,0]
+                var_low = [0,0]
+                count_low = 0
+                mean_high = 0
+                var_high = 0
+                count_high = 0
+                for file in self.train_file_names:
+                    image_sign = self.image_type + '_high'
+                    image_high = self.load_file_to_numpy(file, image_sign)
+                    image_sign = self.image_type + '_low'
+                    image_low = self.load_file_to_numpy(file, image_sign)
+                    image_low_image = image_low[:,:,0]
+                    image_low_sos = image_low[:,:,1:]
+                    # update values
+                    low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
+                    (count_low, mean_low_image, var_low_image) = low_aggr_image
+                    mean_low[0] = mean_low_image
+                    var_low[0] = var_low_image
+                    low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                    (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
+                    mean_low[1] = mean_low_sos
+                    var_low[1] = var_low_sos
+                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                    (count_high, mean_high, var_high) = high_aggr
         scale_params_low = var_low
         scale_params_high = var_high
         print(scale_params_low, scale_params_high)
@@ -722,15 +743,37 @@ class ProcessData(object):
             if self.data_type=='homo':
                 scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                 scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+
+                '''elif self.only_f_test_in_target:
+                    x_ftest = x[:, :, :, 0]
+                    scale_center_x_ftest = self.scale_and_center(x_ftest, scale_params_low[0], mean_image_low[0])
+                    if self.include_regression_error:
+                        x_image = x[:, :, :, 1:5]
+                        x_error = x[:, :, :, 5]
+                        scale_center_x_image = self.scale_and_center(x_image, scale_params_low[1], mean_image_low[1])
+                        scale_center_x_error = self.scale_and_center(x_error, scale_params_low[2], mean_image_low[2])
+                        scale_center_x_val = np.empty(x.shape)
+                        scale_center_x_val[:, :, :, 0] = scale_center_x_ftest
+                        scale_center_x_val[:, :, :, 1:5] = scale_center_x_image
+                        scale_center_x_val[:, :, :, 5] = scale_center_x_error
+                    else:
+                        sys.exit('You should include the regression error, or run it without scale and center,'
+                                 ' or implement this case as well')
+    
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)'''
             else:
-                x_image = x[:,:,:,0]
-                x_sos = x[:,:,:,1:]
-                scale_center_x_image = self.scale_and_center(x_image, scale_params_low[0], mean_image_low[0])
-                scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[1], mean_image_low[1])
-                scale_center_x_val = np.empty(x.shape)
-                scale_center_x_val[:,:,:,0] = scale_center_x_image
-                scale_center_x_val[:,:,:,1:] = scale_center_x_sos
-                scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                if self.hetero_mask_to_mask:
+                    scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                else:
+                    x_image = x[:, :, :, 0]
+                    x_sos = x[:,:,:,1:]
+                    scale_center_x_image = self.scale_and_center(x_image, scale_params_low[0], mean_image_low[0])
+                    scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[1], mean_image_low[1])
+                    scale_center_x_val = np.empty(x.shape)
+                    scale_center_x_val[:, :, :, 0] = scale_center_x_image
+                    scale_center_x_val[:, :, :, 1:] = scale_center_x_sos
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
 
         else:
             scale_center_x_val = x

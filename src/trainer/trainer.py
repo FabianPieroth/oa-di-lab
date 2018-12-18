@@ -18,7 +18,7 @@ class CNN_skipCo_trainer(object):
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates):
+                 di_conv_channels, dilations, learning_rates, hetero_mask_to_mask):
 
         self.image_type = image_type
 
@@ -39,7 +39,8 @@ class CNN_skipCo_trainer(object):
                                    include_regression_error=include_regression_error,
                                    add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                    channel_slice_oa=channel_slice_oa,
-                                   process_all_raw_folders=process_all_raw_folders)
+                                   process_all_raw_folders=process_all_raw_folders,
+                                   hetero_mask_to_mask=hetero_mask_to_mask)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            kernels=kernels,
@@ -237,14 +238,14 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
+    image_type = 'US'
     batch_size = 1
     log_period = 100
     epochs = 500
 
     #dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -259,7 +260,7 @@ def main():
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = True
+    single_sample = False
     do_scale_center = True
     height_channel_oa = 201
     use_regressed_oa = True
@@ -268,13 +269,14 @@ def main():
     only_f_test_in_target = False
     channel_slice_oa = None
     process_all_raw_folders = True
+    hetero_mask_to_mask = True
 
     #model parameters
 
-    conv_channels = [4, 128, 256, 512, 1024, 2048]
+    conv_channels = [1, 16, 32, 64, 64, 64]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (201, 401)
+    input_size = (401, 401)
     output_channels = None
     drop_probs = [1 for i in range(5)]
 
@@ -302,7 +304,8 @@ def main():
                                  di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=learning_rates,
                                  use_regressed_oa=use_regressed_oa, include_regression_error=include_regression_error,
                                  add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
-                                 channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders
+                                 channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
+                                 hetero_mask_to_mask=hetero_mask_to_mask
                                  )
     #trainer.find_lr()
     # fit the first model
