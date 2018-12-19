@@ -16,6 +16,22 @@
 # You can book reservations directly one after the other ('chaining') 
 # and the VM and the scripts you are running will continue.
 
+##################### Copy the data from Toms Linux Cluster Storage to your DSS ######################
+# Before doing this, please consider 3 things:
+# -> This script only copies everything in di-lab/data, not src!
+# -> Files existent on the DSS with the same file names are overwritten
+# -> Do you want to delete old/corrupted data in the DSS beforehand?
+
+# log into the linuxcluster:
+# ssh LRZ_ID@lxlogin6.lrz.de
+# go to Tom's di-lab directory:
+cd /home/hpc/pn56xe/di52tig/di-lab
+# execute the copy_data_to_the_dss.sh script
+./copy_data_to_the_dss.sh
+
+# If you want to have a look at what's in your DSS directory, find it in /dss/dssfs01/pn69za/pn69za-dss-0001/
+# cd /dss/dssfs01/pn69za/pn69za-dss-0001/
+
 ##################### Log in ######################################
 # Once the machine is ready (about 3 min after the reservation time) you get an email with the login info.
 # it looks like this: ssh ubuntu@10.155.47.236 (different IP address for you)
