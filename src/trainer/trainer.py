@@ -11,31 +11,43 @@ import sys
 
 class CNN_skipCo_trainer(object):
 
-    def __init__(self):
+    def __init__(self, image_type, batch_size, log_period, epochs, data_type, train_ratio,
+                 process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
+                 add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
+                 trunc_points, get_scale_center, single_sample,do_scale_center,
+                 height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
+                 only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
+                 conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
+                 di_conv_channels, dilations, learning_rates, hetero_mask_to_mask):
 
-        self.image_type = 'US'
+        self.image_type = image_type
 
-        self.batch_size = 8
-        self.log_period = 100
-        self.epochs = 200
+        self.batch_size = batch_size
+        self.log_period = log_period
+        self.epochs = epochs
 
-        self.dataset = ProcessData(data_type='hetero', train_ratio=0.5, process_raw_data=False,
-                                   pro_and_augm_only_image_type=True, do_heavy_augment=False,
-                                   do_augment=False, add_augment=True, do_rchannels=False,
-                                   do_flip=True, do_blur=True, do_deform=False, do_crop=False,
-                                   do_speckle_noise=True,
-                                   trunc_points=(0.0001, 0.9999),
-                                   image_type=self.image_type, get_scale_center=True, single_sample=False,
-                                   do_scale_center=True,
-                                   height_channel_oa=201)
+        self.dataset = ProcessData(data_type=data_type, train_ratio=train_ratio, process_raw_data=process_raw_data,
+                                   pro_and_augm_only_image_type=pro_and_augm_only_image_type,
+                                   do_heavy_augment=do_heavy_augment,
+                                   do_augment=do_augment, add_augment=add_augment, do_rchannels=do_rchannels,
+                                   do_flip=do_flip, do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
+                                   do_speckle_noise=do_speckle_noise,trunc_points=trunc_points,
+                                   image_type=image_type, get_scale_center=get_scale_center,
+                                   single_sample=single_sample,
+                                   do_scale_center=do_scale_center,
+                                   height_channel_oa=height_channel_oa, use_regressed_oa=use_regressed_oa,
+                                   include_regression_error=include_regression_error,
+                                   add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
+                                   channel_slice_oa=channel_slice_oa,
+                                   process_all_raw_folders=process_all_raw_folders,
+                                   hetero_mask_to_mask=hetero_mask_to_mask)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=[3, 128, 256, 512, 1024, 2048],
-                                           kernels=[(7, 7) for i in range(5)],
-                                           model_name='deep_2_model', input_size=(201, 401),
-                                           output_channels=1, drop_probs=[1 for i in range(5)])
+        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           kernels=kernels,
+                                           model_name=model_name, input_size=input_size,
+                                           output_channels=output_channels, drop_probs=drop_probs)
 
-
-        self.model_dilated = DilatedTranslator(conv_channels=[1, 64, 64, 64, 64, 64], dilations=[1, 2, 4, 8, 16])
+        self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
         self.model = ImageTranslator([self.model_convdeconv])
 
@@ -43,7 +55,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
 
-        self.learning_rates = [0 for i in range(self.epochs)]
+        self.learning_rates = learning_rates
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
@@ -109,8 +121,10 @@ class CNN_skipCo_trainer(object):
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
         """
-        learning rate finder. goes through multiple learning rates and does one forward pass with each and tracks the loss.
-        it returns the learning rates and losses so one can make an image of the loss from which one can find a suitable learning rate. Pick the highest one on which the loss is still decreasing (so not the minimum)
+        learning rate finder. goes through multiple learning rates and does one forward
+        pass with each and tracks the loss.
+        it returns the learning rates and losses so one can make an image of the loss from which one can find
+        a suitable learning rate. Pick the highest one on which the loss is still decreasing (so not the minimum)
         :param train_in: training data input
         :param target: training data target
         :param init_value: inital value which the learning rate start with. init_value < final_value. Default: 1e-8
@@ -223,7 +237,76 @@ class CNN_skipCo_trainer(object):
         return lrs
 
 def main():
-    trainer = CNN_skipCo_trainer()
+
+    image_type = 'US'
+    batch_size = 1
+    log_period = 100
+    epochs = 500
+
+    #dataset parameters
+
+    data_type = 'hetero'
+    train_ratio = 0.9
+    process_raw_data = True
+    pro_and_augm_only_image_type = True
+    do_heavy_augment = False
+    do_augment = False
+    add_augment = False
+    do_rchannels = False
+    do_flip = True
+    do_blur = False
+    do_deform = False
+    do_crop = False
+    do_speckle_noise = False
+    trunc_points = (0.0001, 0.9999)
+    get_scale_center = True
+    single_sample = False
+    do_scale_center = True
+    height_channel_oa = 201
+    use_regressed_oa = True
+    include_regression_error = False
+    add_f_test = False
+    only_f_test_in_target = False
+    channel_slice_oa = None
+    process_all_raw_folders = True
+    hetero_mask_to_mask = True
+
+    #model parameters
+
+    conv_channels = [1, 16, 32, 64, 64, 64]
+    kernels = [(7, 7) for i in range(5)]
+    model_name = 'deep_2_model'
+    input_size = (401, 401)
+    output_channels = None
+    drop_probs = [1 for i in range(5)]
+
+    #dilated model parameters
+
+    di_conv_channels = [1, 64, 64, 64, 64, 64]
+    dilations = [1, 2, 4, 8, 16]
+
+    learning_rates = [0 for i in range(epochs)]
+
+    trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
+                                 epochs=epochs, data_type=data_type, train_ratio=train_ratio,
+                                 process_raw_data=process_raw_data,
+                                 pro_and_augm_only_image_type=pro_and_augm_only_image_type,
+                                 do_heavy_augment=do_heavy_augment,do_augment=do_augment,
+                                 add_augment=add_augment, do_rchannels=do_rchannels,do_flip=do_flip,
+                                 do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
+                                 do_speckle_noise=do_speckle_noise,
+                                 trunc_points=trunc_points, get_scale_center=get_scale_center,
+                                 single_sample=single_sample,
+                                 do_scale_center=do_scale_center,
+                                 height_channel_oa=height_channel_oa,conv_channels=conv_channels,kernels=kernels,
+                                 model_name=model_name, input_size=input_size,output_channels=output_channels,
+                                 drop_probs=drop_probs,
+                                 di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=learning_rates,
+                                 use_regressed_oa=use_regressed_oa, include_regression_error=include_regression_error,
+                                 add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
+                                 channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
+                                 hetero_mask_to_mask=hetero_mask_to_mask
+                                 )
     #trainer.find_lr()
     # fit the first model
     print('\n---------------------------')

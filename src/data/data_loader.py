@@ -6,6 +6,7 @@ import numpy as np
 import random
 import data.data_processing as dp
 import torch
+import scipy.io
 
 
 class ProcessData(object):
@@ -27,9 +28,15 @@ class ProcessData(object):
                  do_augment=False,
                  do_heavy_augment=False,
                  process_raw_data=False,
+                 process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
                  height_channel_oa=201,
+                 use_regressed_oa=False,
+                 add_f_test=False,
+                 include_regression_error=False,
+                 only_f_test_in_target=False,
+                 channel_slice_oa=None,
                  do_flip=True,
                  do_deform=True,
                  num_deform=3,
@@ -40,6 +47,7 @@ class ProcessData(object):
                  do_speckle_noise=True,
                  get_scale_center=True,
                  do_scale_center=True,
+                 hetero_mask_to_mask=False,
                  trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
@@ -65,6 +73,16 @@ class ProcessData(object):
         self.do_speckle_noise = do_speckle_noise
 
         self.height_channel_oa = height_channel_oa
+        self.use_regressed_oa = use_regressed_oa
+        self.include_regression_error = include_regression_error
+        self.add_f_test = add_f_test
+        self.only_f_test_in_target = only_f_test_in_target
+        if channel_slice_oa is None:
+            self.channel_slice_oa = list(range(28))
+        else:
+            self.channel_slice_oa = channel_slice_oa
+
+        self.hetero_mask_to_mask = hetero_mask_to_mask
 
         # the order of the following two lists has to be the same and has to be extended if new augmentations are done
         self.all_augment = ['flip', 'deform', 'blur', 'crop', 'rchannels', 'speckle_noise']
@@ -85,7 +103,7 @@ class ProcessData(object):
         self.dir_processed = self.project_root_dir + '/data' + '/' + self.data_type + '/processed'
         self.dir_processed_all = self.dir_processed + '/processed_all'
         self.dir_augmented = self.project_root_dir + '/data' + '/' + self.data_type + '/processed' + '/augmented'
-        self.all_folder = False  # check if raw folder was already processed
+        self.process_all_raw_folders = process_all_raw_folders  # check if raw folder was already processed
         self.pro_and_augm_only_image_type = pro_and_augm_only_image_type
         self.process_oa = not self.pro_and_augm_only_image_type or \
                           (self.pro_and_augm_only_image_type and self.image_type == 'OA')  # process raw oa data
@@ -178,7 +196,7 @@ class ProcessData(object):
         # load the raw data in .mat format, split up the us and oa and load them in dictionaries into processed folder
         in_directories = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in, full_names=False)
         print('Process raw data')
-        if not self.all_folder:
+        if not self.process_all_raw_folders:
             skip_dirs = []
             for sub in in_directories:
                 if (next((True for s in os.listdir(self.dir_processed_all + '/ultrasound') if sub in s), False)
@@ -209,7 +227,12 @@ class ProcessData(object):
                     if oa_file and self.process_oa:
                         dp.pre_oa_homo(new_in_folder=self.dir_raw_in, study_folder=chunk_folder,
                                        filename=oa_file[0], scan_num=sample_folder, save_folder=self.dir_processed_all,
-                                       cut_half=True, height_channel=self.height_channel_oa)
+                                       cut_half=True, height_channel=self.height_channel_oa,
+                                       use_regressed_oa=self.use_regressed_oa,
+                                       regression_coefficients=self._get_default_spectra(),
+                                       include_regression_error=self.include_regression_error,
+                                       add_f_test=self.add_f_test, only_f_test_in_target=self.only_f_test_in_target,
+                                       channel_slice_oa=self.channel_slice_oa)
 
                 elif self.data_type == self.accepted_data_types[1]:
                     if not self.image_type == 'US':
@@ -221,7 +244,7 @@ class ProcessData(object):
                     us_high_samples = [s for s in in_files if 'US_high' in s]
                     dp.pre_us_hetero(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
-                                     save_folder=self.dir_processed_all)
+                                     save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -253,7 +276,12 @@ class ProcessData(object):
 
                     dp.pre_oa_homo(new_in_folder=dir_test_set, study_folder=chunk_folder,
                                    filename=oa_file[0], scan_num=sample_folder, save_folder=save_dir,
-                                   cut_half=True, height_channel=self.height_channel_oa)
+                                   cut_half=True, height_channel=self.height_channel_oa,
+                                   use_regressed_oa=self.use_regressed_oa,
+                                   regression_coefficients=self._get_default_spectra(),
+                                   include_regression_error=self.include_regression_error,
+                                   add_f_test=self.add_f_test, only_f_test_in_target=self.only_f_test_in_target,
+                                   channel_slice_oa=self.channel_slice_oa)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
@@ -372,6 +400,21 @@ class ProcessData(object):
         # use this to save pairs of low and high quality pictures
         with open(self.dir_params + '/' + folder_name + '/' + file_name, 'wb') as handle:
             pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # regression of optoacoustic images
+
+    def _get_default_spectra(self):
+        '''
+        Function to get the default spectra used by functions in this module
+        Default are clinical spectra w/o collagen
+
+        # Returns:
+            Clinical spectra of Hb, HbO2, Fat and Water.
+            Shape is (4,28)
+        '''
+        spectra = scipy.io.loadmat(self.project_root_dir + '/src/' + 'logger/oa_spectra_analysis/clinical_spectra.mat')[
+            'spectra_L2'].T
+        return spectra[:4]
 
     ##################################################################
     # ###### Data Augmentation #######################################
@@ -555,30 +598,48 @@ class ProcessData(object):
                 high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                 (count_high, mean_high, var_high) = high_aggr
         else:
-            mean_low = [0,0]
-            var_low = [0,0]
-            count_low = 0
-            mean_high = 0
-            var_high = 0
-            count_high = 0
-            for file in self.train_file_names:
-                image_sign = self.image_type + '_high'
-                image_high = self.load_file_to_numpy(file, image_sign)
-                image_sign = self.image_type + '_low'
-                image_low = self.load_file_to_numpy(file, image_sign)
-                image_low_image = image_low[:,:,0]
-                image_low_sos = image_low[:,:,1:]
-                # update values
-                low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
-                (count_low, mean_low_image, var_low_image) = low_aggr_image
-                mean_low[0] = mean_low_image
-                var_low[0] = var_low_image
-                low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
-                (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
-                mean_low[1] = mean_low_sos
-                var_low[1] = var_low_sos
-                high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
-                (count_high, mean_high, var_high) = high_aggr
+            if self.hetero_mask_to_mask:
+                mean_low = 0
+                var_low = 0
+                count_low = 0
+                mean_high = 0
+                var_high = 0
+                count_high = 0
+                for file in self.train_file_names:
+                    image_sign = self.image_type + '_high'
+                    image_high = self.load_file_to_numpy(file, image_sign)
+                    image_sign = self.image_type + '_low'
+                    image_low = self.load_file_to_numpy(file, image_sign)
+                    # update values
+                    low_aggr = self.update_mean_var((count_low, mean_low, var_low), image_low)
+                    (count_low, mean_low, var_low) = low_aggr
+                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                    (count_high, mean_high, var_high) = high_aggr
+            else:
+                mean_low = [0,0]
+                var_low = [0,0]
+                count_low = 0
+                mean_high = 0
+                var_high = 0
+                count_high = 0
+                for file in self.train_file_names:
+                    image_sign = self.image_type + '_high'
+                    image_high = self.load_file_to_numpy(file, image_sign)
+                    image_sign = self.image_type + '_low'
+                    image_low = self.load_file_to_numpy(file, image_sign)
+                    image_low_image = image_low[:,:,0]
+                    image_low_sos = image_low[:,:,1:]
+                    # update values
+                    low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
+                    (count_low, mean_low_image, var_low_image) = low_aggr_image
+                    mean_low[0] = mean_low_image
+                    var_low[0] = var_low_image
+                    low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                    (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
+                    mean_low[1] = mean_low_sos
+                    var_low[1] = var_low_sos
+                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                    (count_high, mean_high, var_high) = high_aggr
         scale_params_low = var_low
         scale_params_high = var_high
         print(scale_params_low, scale_params_high)
@@ -682,15 +743,37 @@ class ProcessData(object):
             if self.data_type=='homo':
                 scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                 scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+
+                '''elif self.only_f_test_in_target:
+                    x_ftest = x[:, :, :, 0]
+                    scale_center_x_ftest = self.scale_and_center(x_ftest, scale_params_low[0], mean_image_low[0])
+                    if self.include_regression_error:
+                        x_image = x[:, :, :, 1:5]
+                        x_error = x[:, :, :, 5]
+                        scale_center_x_image = self.scale_and_center(x_image, scale_params_low[1], mean_image_low[1])
+                        scale_center_x_error = self.scale_and_center(x_error, scale_params_low[2], mean_image_low[2])
+                        scale_center_x_val = np.empty(x.shape)
+                        scale_center_x_val[:, :, :, 0] = scale_center_x_ftest
+                        scale_center_x_val[:, :, :, 1:5] = scale_center_x_image
+                        scale_center_x_val[:, :, :, 5] = scale_center_x_error
+                    else:
+                        sys.exit('You should include the regression error, or run it without scale and center,'
+                                 ' or implement this case as well')
+    
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)'''
             else:
-                x_image = x[:,:,:,0]
-                x_sos = x[:,:,:,1:]
-                scale_center_x_image = self.scale_and_center(x_image, scale_params_low[0], mean_image_low[0])
-                scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[1], mean_image_low[1])
-                scale_center_x_val = np.empty(x.shape)
-                scale_center_x_val[:,:,:,0] = scale_center_x_image
-                scale_center_x_val[:,:,:,1:] = scale_center_x_sos
-                scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                if self.hetero_mask_to_mask:
+                    scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                else:
+                    x_image = x[:, :, :, 0]
+                    x_sos = x[:,:,:,1:]
+                    scale_center_x_image = self.scale_and_center(x_image, scale_params_low[0], mean_image_low[0])
+                    scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[1], mean_image_low[1])
+                    scale_center_x_val = np.empty(x.shape)
+                    scale_center_x_val[:, :, :, 0] = scale_center_x_image
+                    scale_center_x_val[:, :, :, 1:] = scale_center_x_sos
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
 
         else:
             scale_center_x_val = x

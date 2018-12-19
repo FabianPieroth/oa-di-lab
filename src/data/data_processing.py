@@ -3,6 +3,8 @@ import data.augmentation
 import scipy.io
 import numpy as np
 import os
+from logger.oa_spectra_analysis.oa_for_DILab import linear_unmixing as lu
+from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test as f_test
 
 # this File contains several helper functions
 
@@ -40,18 +42,46 @@ def pre_us_homo(new_in_folder, study_folder, filename, scan_num, save_folder):
                           folder_name=save_folder + '/ultrasound', file_name=name_us_save)
 
 
-def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cut_half=True, height_channel=201):
+def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cut_half=True, height_channel=201,
+                regression_coefficients=None, use_regressed_oa=True, include_regression_error=False, add_f_test=False,
+                only_f_test_in_target=False, channel_slice_oa=None):
     oa_raw = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                               scan_num + '/' + filename)
     name_oa_low = 'OA_low_' + study_folder + '_' + scan_num
     name_oa_high = 'OA_high_' + study_folder + '_' + scan_num
     name_oa_save = 'OA_' + study_folder + '_' + scan_num + '_ch0'
     if cut_half:
-        oa_low = oa_raw['OA_low'][:height_channel,:,:]
-        oa_high = oa_raw['OA_high'][:height_channel,:,:]
+        oa_low = oa_raw['OA_low'][:height_channel, :, :]
+        oa_high = oa_raw['OA_high'][:height_channel, :, :]
     else:
         oa_low = oa_raw['OA_low']
         oa_high = oa_raw['OA_high']
+    if use_regressed_oa:
+        # print('Use the regression coefficients instead of the spectral information.')
+        oa_low_regress = lu(oa_low, spectra=regression_coefficients, return_error=include_regression_error)
+        oa_high_regress = lu(oa_high, spectra=regression_coefficients)
+        if include_regression_error:
+            # the error gets added to the input data
+            oa_low_regress = np.concatenate((oa_low_regress[0], np.expand_dims(oa_low_regress[1], axis=2)), axis=2)
+            # oa_high_regress = np.concatenate((oa_high_regress[0], np.expand_dims(oa_high_regress[1], axis=2)), axis=2)
+        if add_f_test:
+            # print('Additionally to the regressed data, we add the p_values of the f_test.')
+            f_test_low = np.expand_dims(f_test(oa_low, spectra=regression_coefficients), axis=2)
+            f_test_high = np.expand_dims(f_test(oa_high, spectra=regression_coefficients), axis=2)
+            oa_low_regress = np.concatenate((f_test_low, oa_low_regress), axis=2)
+            if only_f_test_in_target:
+                oa_high_regress = f_test_high
+                # print('We only take the p_values from the f_test as target image,
+                # to only learn the significance mask.')
+            else:
+                oa_high_regress = np.concatenate((f_test_high, oa_high_regress), axis=2)
+        oa_low = oa_low_regress
+        oa_high = oa_high_regress
+    else:
+        # here you can choose which from the 28 channels you want to keep
+        oa_low = oa_low[:, :, channel_slice_oa]
+        oa_high = oa_high[:, :, channel_slice_oa]
+
     dict_oa = {name_oa_low: oa_low,
                name_oa_high: oa_high}
     save_dict_with_pickle(file=dict_oa, folder_name=save_folder + '/optoacoustic',
@@ -60,7 +90,7 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
 # hetero
 
 
-def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder):
+def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, hetero_mask_to_mask):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
@@ -74,39 +104,59 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
     tissue_mask = np.array(us_raw_high['tissue_mask']).astype('float')
     tissue_sos = [np.float64(s) for s in us_raw_high['tissue_SoS'].flatten()]
     us_high_samples = us_raw_high['US_high_samples']
-
     # on which axis to expand the dimension of the numpy array
     common_axis = 2
+    if not hetero_mask_to_mask:
 
-    for low_channel in range(us_low_samples.shape[2]):
+        for low_channel in range(us_low_samples.shape[2]):
 
-        # create channel with single sos parameter
-        single_sos_channel = np.full(tissue_mask.shape, single_sos[low_channel])
-        single_sos_channel = np.expand_dims(single_sos_channel, axis=common_axis)
+            # create channel with single sos parameter
+            single_sos_channel = np.full(tissue_mask.shape, single_sos[low_channel])
+            single_sos_channel = np.expand_dims(single_sos_channel, axis=common_axis)
 
-        for high_channel in range(us_high_samples.shape[2]):
+            for high_channel in range(us_high_samples.shape[2]):
 
-            # fill mask with sos parameters
+                # fill mask with sos parameters
+                custom_mask = np.copy(tissue_mask)
+                custom_mask[custom_mask == 0] = couplant_sos
+                custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+                custom_mask = np.expand_dims(custom_mask, axis=common_axis)
+
+                # create names and save
+                name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(low_channel)
+                name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+                name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(low_channel) + 'and' + str(high_channel)
+
+                us_low_ex_dim = np.expand_dims(us_low_samples[:,:,low_channel], axis=common_axis)
+
+                us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel), axis=common_axis)
+                us_high_save = np.expand_dims(us_high_samples[:,:,high_channel], axis=common_axis)
+
+                dict_us_single = {name_us_low: us_low_save,
+                                  name_us_high: us_high_save}
+
+                save_dict_with_pickle(file=dict_us_single,
+                                      folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+    else:
+        for sos in range(us_high_samples.shape[2]):
             custom_mask = np.copy(tissue_mask)
             custom_mask[custom_mask == 0] = couplant_sos
-            custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+            custom_mask[custom_mask == 1] = tissue_sos[sos]
             custom_mask = np.expand_dims(custom_mask, axis=common_axis)
 
-            # create names and save
-            name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(low_channel)
-            name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
-            name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(low_channel) + 'and' + str(high_channel)
+            name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_sos' + str(sos)
+            name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_sos' + str(sos)
+            name_us_save = 'US_' + study_folder + '_' + scan_num + '_sos' + str(sos)
 
-            us_low_ex_dim = np.expand_dims(us_low_samples[:,:,low_channel], axis=common_axis)
-
-            us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel), axis=common_axis)
-            us_high_save = np.expand_dims(us_high_samples[:,:,high_channel], axis=common_axis)
+            us_low_save = custom_mask
+            us_high_save = custom_mask
 
             dict_us_single = {name_us_low: us_low_save,
                               name_us_high: us_high_save}
 
             save_dict_with_pickle(file=dict_us_single,
                                   folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+
 
 
 # File Saving and Loading

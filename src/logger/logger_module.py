@@ -228,6 +228,7 @@ class Logger(object):
                 "do_blur": self.dataset.do_blur,
                 "do_deform": self.dataset.do_deform,
                 "do_crop": self.dataset.do_crop,
+                'do_speckle_noise': self.dataset.do_speckle_noise,
                 "image_type": self.dataset.image_type,
                 "data_type": self.dataset.data_type,
                 "get_scale_center": self.dataset.get_scale_center,
@@ -242,6 +243,14 @@ class Logger(object):
                 # 'criterion': self.model.criterion,  is not JSON serializable
                 # 'optimizer': self.model.optimizer  is not JSON serializable
             #},
+            'processing': {
+                'height_channel_oa': self.dataset.height_channel_oa,
+                'use_regressed_oa': self.dataset.use_regressed_oa,
+                'include_regression_error': self.dataset.include_regression_error,
+                'add_f_test': self.dataset.add_f_test,
+                'only_f_test_in_target': self.dataset.only_f_test_in_target,
+                'channel_slice_oa': self.dataset.channel_slice_oa
+            },
             "train_valid_split": self.dataset.train_ratio,
             "loss_function": str(self.model.criterion),
             "train_files": self.dataset.train_file_names,
