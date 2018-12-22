@@ -1,4 +1,3 @@
-import sys
 import torch
 import torch.nn as nn
 from torch.nn.functional import relu
@@ -60,7 +59,6 @@ class ConvDeconv(nn.Module):
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
         :param conv_channels: output channels of the convolution layers
-        :param deconv_channels:
         :param strides: stride sizes of the conv layers, same dimension as conv_channels
         :param kernels: kernel sizes of the conv layers, same dimension as conv_channels
         """
@@ -101,7 +99,7 @@ class ConvDeconv(nn.Module):
                                                                                         output_padding=output_padding,
                                                                                         input_size=self.input_size)
 
-        # multiply the number of input channels witht 2 or 3 depending on the fact if we include the masks
+        # multiply the number of input channels with 2 or 3 depending on the fact if we include the masks
         self.conv_layers = nn.ModuleList([ConvLayer((self.input_ds_mask[i] + self.input_ss_mask[i] + 1)*conv_channels[i],
                                                     conv_channels[i + 1],
                                                     strides[i], kernels[i], padding=padding[i],
@@ -148,9 +146,9 @@ class ConvDeconv(nn.Module):
         # we work with the assumption that the images are in channel 0,
         # ds_mask channel 1, and ss_mask in channel 2
         if self.data_type is 'hetero':
-            ds_mask = x[:,2:3,:,:] # get the dual speed of sound mask (batch_size, 1, H, W)
-            ss_mask = x[:,1:2,:,:] # get the singel speed of sound mask (batch_size, 1, H, W)
-            x = x[:,0:1,:,:] # get the images -> resulting in (batch_size, 1, H, W)
+            ds_mask = x[:, 2:3, :, :]   # get the dual speed of sound mask (batch_size, 1, H, W)
+            ss_mask = x[:, 1:2, :, :]   # get the singel speed of sound mask (batch_size, 1, H, W)
+            x = x[:, 0:1, :, :]         # get the images -> resulting in (batch_size, 1, H, W)
         else:
             ds_mask = 0
             ss_mask = 0
@@ -165,7 +163,7 @@ class ConvDeconv(nn.Module):
                     # this should only
                     skip_connection += [x[:, 0:1, :, :]]
                 else:
-                    skip_connection += [x]#[:, self.conv_channels[i+1], :, :]]
+                    skip_connection += [x] #[:, self.conv_channels[i+1], :, :]]
 
             else:
                 skip_connection += [0]
@@ -187,7 +185,7 @@ class ConvDeconv(nn.Module):
         for i in range(len(self.deconv_layers)):
 
             if self.data_type is 'hetero':
-                x = self.prepare_tensor(im=x, ds=ds_mask, ss=ss_mask, i=i)
+                x = self.prepare_tensor(im=x, ds=ds_mask, ss=ss_mask, i=self.num_layers+i)
 
             l = self.deconv_layers[i]
             skip = skip_connection[len(skip_connection)-1-i]
@@ -213,6 +211,13 @@ class ConvDeconv(nn.Module):
         :param iterator:
         :return:
         """
+        print('self.num_layers: ', self.num_layers)
+        print('i: ', i)
+        if self.input_ss_mask[i] == 1:
+            print('        putting ss mask in')
+        if self.input_ds_mask[i] == 1:
+            print('        putting ds mask in')
+
         if self.input_ds_mask[i] == 1:
             if self.input_ss_mask[i] == 1:
                 # if both masks should be added concatenate the tensor in channel dimension
@@ -228,7 +233,8 @@ class ConvDeconv(nn.Module):
         return x
 
 
-    def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs, input_size=(401,401), output_padding=None, dilation=None):
+    def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs,
+                                    input_size=(401,401), output_padding=None, dilation=None):
 
         if dilation is None:
             dilation = [(1,1) for i in range(len(strides))]

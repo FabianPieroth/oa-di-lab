@@ -31,7 +31,8 @@ class CNN_skipCo_trainer(object):
                                    height_channel_oa=201)
 
         self.model_convdeconv = ConvDeconv(conv_channels=[1, 32, 64, 128, 256, 512],
-                                           input_ds_mask=[0, 0, 1, 0, 0], input_ss_mask=[0, 0, 1, 0, 0],
+                                           input_ds_mask=[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                                           input_ss_mask=[1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                                            datatype='hetero',
                                            kernels=[(7, 7) for i in range(5)],
                                            model_name='deep_2_model', input_size=(401, 401),
