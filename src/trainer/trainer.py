@@ -238,14 +238,14 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'US'
-    batch_size = 1
-    log_period = 100
+    image_type = 'OA'
+    batch_size = 8
+    log_period = 250
     epochs = 500
 
     #dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -255,29 +255,29 @@ def main():
     do_rchannels = False
     do_flip = True
     do_blur = False
-    do_deform = False
+    do_deform = True
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
-    get_scale_center = True
-    single_sample = False
+    get_scale_center = False
+    single_sample = True
     do_scale_center = True
     height_channel_oa = 201
-    use_regressed_oa = True
+    use_regressed_oa = False
     include_regression_error = False
     add_f_test = False
     only_f_test_in_target = False
-    channel_slice_oa = None
+    channel_slice_oa = [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = True
 
     #model parameters
 
-    conv_channels = [1, 16, 32, 64, 64, 64]
+    conv_channels = [7, 128, 256, 512, 1024, 2048]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (401, 401)
-    output_channels = None
+    input_size = (201, 401)
+    output_channels = 7
     drop_probs = [1 for i in range(5)]
 
     #dilated model parameters

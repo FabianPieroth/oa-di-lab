@@ -51,7 +51,11 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
 
 
 def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, save_name=None):
-    agg_size = int(math.ceil(len(train_loss) / nr_epochs))
+    if len(val_loss)+1 < nr_epochs:
+        aggregate_by = len(val_loss)
+    else:
+        aggregate_by = nr_epochs
+    agg_size = int(math.ceil(len(train_loss) / aggregate_by))
     fig, ax = plt.subplots()
     ax.plot(np.mean(train_loss.reshape(-1, agg_size), axis=1), label='training loss')
     ax.plot(val_loss, label='validation loss')
