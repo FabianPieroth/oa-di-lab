@@ -50,7 +50,7 @@ def plot_train_val_loss(folder_name):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'hetero/combined_model_2018_12_11_23_26'
+    folder_name = 'homo/combined_model_2018_12_22_08_23'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
