@@ -270,12 +270,14 @@ def main():
     di_conv_channels = [1, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
 
+    # add hyper parameters for search
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
         'conv_channels' : [[3,64,128,256,512,1024]]
     }
 
+    # number of iterations to be performed for hyperparameter search
     max_evals=30
 
     # Iterate through the specified number of evaluations
