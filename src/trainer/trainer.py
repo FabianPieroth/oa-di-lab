@@ -5,6 +5,7 @@ from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
 import torch
+import random
 import torch.nn as nn
 import sys
 
@@ -230,7 +231,7 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 16
+    #batch_size = 16
     log_period = 100
     epochs = 500
 
@@ -258,46 +259,57 @@ def main():
 
     #model parameters
 
-    conv_channels = [3, 128, 256, 512, 1024, 2048]
+    #conv_channels = [3, 128, 256, 512, 1024, 2048]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
-    drop_probs = [1 for i in range(5)]
+    drop_probs = [0 for i in range(5)]
 
     #dilated model parameters
 
     di_conv_channels = [1, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
 
+    param_grid = {
+        'learning_rates' : [0.001,0.0001,0.00001],
+        'batch_size' : [16,8],
+        'conv_channels' : [[3,128,256,512,1024,2048]]
+    }
 
-    learning_rates = [0 for i in range(epochs)]
+    max_evals=30
 
+    # Iterate through the specified number of evaluations
+    for i in range(max_evals):
 
-    trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
-                                 epochs=epochs, data_type=data_type, train_ratio=train_ratio,
-                                 process_raw_data=process_raw_data, pro_and_augm_only_image_type=pro_and_augm_only_image_type,
-                                 do_heavy_augment=do_heavy_augment,do_augment=do_augment,
-                                 add_augment=add_augment, do_rchannels=do_rchannels,do_flip=do_flip,
-                                 do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,do_speckle_noise=do_speckle_noise,
-                                 trunc_points=trunc_points, get_scale_center=get_scale_center, single_sample=single_sample,
-                                 do_scale_center=do_scale_center,scale_center_method=scale_center_method,
-                                 height_channel_oa=height_channel_oa,conv_channels=conv_channels,kernels=kernels,
-                                 model_name=model_name, input_size=input_size,output_channels=output_channels, drop_probs=drop_probs,
-                                 di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=learning_rates)
-    #trainer.find_lr()
-    # fit the first model
-    print('\n---------------------------')
-    #print(trainer.model)
-    #print(trainer.model)
-    print('fitting model')
-    trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
-    # torch.save(trainer.model, "../../reports/model.pt")
-    # trainer.log_model(model_name=trainer.model.model_name)
-    # print('\n---------------------------')
+        params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
 
-    # print('finding learning rate')
-    # trainer.find_lr()
+        print(params)
+
+        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=params['batch_size'], log_period=log_period,
+                                     epochs=epochs, data_type=data_type, train_ratio=train_ratio,
+                                     process_raw_data=process_raw_data, pro_and_augm_only_image_type=pro_and_augm_only_image_type,
+                                     do_heavy_augment=do_heavy_augment,do_augment=do_augment,
+                                     add_augment=add_augment, do_rchannels=do_rchannels,do_flip=do_flip,
+                                     do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,do_speckle_noise=do_speckle_noise,
+                                     trunc_points=trunc_points, get_scale_center=get_scale_center, single_sample=single_sample,
+                                     do_scale_center=do_scale_center,scale_center_method=scale_center_method,
+                                     height_channel_oa=height_channel_oa,conv_channels=params['conv_channels'],kernels=kernels,
+                                     model_name=model_name, input_size=input_size,output_channels=output_channels, drop_probs=drop_probs,
+                                     di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=params['learning_rates'])
+        #trainer.find_lr()
+        # fit the first model
+        print('\n---------------------------')
+        #print(trainer.model)
+        #print(trainer.model)
+        print('fitting model')
+        trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
+        # torch.save(trainer.model, "../../reports/model.pt")
+        # trainer.log_model(model_name=trainer.model.model_name)
+        # print('\n---------------------------')
+
+        # print('finding learning rate')
+        # trainer.find_lr()
 
 
     print('\nfinished')
