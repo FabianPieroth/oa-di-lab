@@ -17,9 +17,9 @@ class CNN_skipCo_trainer(object):
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
                  trunc_points, get_scale_center, single_sample,do_scale_center,
-                 scale_center_method, height_channel_oa,
+                 height_channel_oa,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates):
+                 di_conv_channels, dilations, learning_rates,hyper_no):
 
         self.image_type = image_type
 
@@ -33,7 +33,7 @@ class CNN_skipCo_trainer(object):
                                    do_flip=do_flip, do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
                                    do_speckle_noise=do_speckle_noise,trunc_points=trunc_points,
                                    image_type=image_type, get_scale_center=get_scale_center, single_sample=single_sample,
-                                   do_scale_center=do_scale_center, scale_center_method=scale_center_method,
+                                   do_scale_center=do_scale_center,
                                    height_channel_oa=height_channel_oa)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
@@ -53,7 +53,7 @@ class CNN_skipCo_trainer(object):
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
-                             epochs=self.epochs,learning_rates=self.learning_rates)
+                             epochs=self.epochs,learning_rates=self.learning_rates,hyper_no=hyper_no)
 
     def fit(self, learning_rate, lr_method='standard'):
         # get scale and center parameters
@@ -181,7 +181,6 @@ class CNN_skipCo_trainer(object):
             lr *= mult
 
             self.model.optimizer.param_groups[0]['lr'] = lr
-
         # Plot the results
         '''
         lrs = 10 ** np.array(log_lrs)
@@ -274,7 +273,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[3,128,256,512,1024,2048]]
+        'conv_channels' : [[3,64,128,256,512,1024]]
     }
 
     max_evals=30
@@ -293,10 +292,10 @@ def main():
                                      add_augment=add_augment, do_rchannels=do_rchannels,do_flip=do_flip,
                                      do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,do_speckle_noise=do_speckle_noise,
                                      trunc_points=trunc_points, get_scale_center=get_scale_center, single_sample=single_sample,
-                                     do_scale_center=do_scale_center,scale_center_method=scale_center_method,
+                                     do_scale_center=do_scale_center,
                                      height_channel_oa=height_channel_oa,conv_channels=params['conv_channels'],kernels=kernels,
                                      model_name=model_name, input_size=input_size,output_channels=output_channels, drop_probs=drop_probs,
-                                     di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=params['learning_rates'])
+                                     di_conv_channels=di_conv_channels, dilations=dilations, learning_rates=params['learning_rates'],hyper_no=i)
         #trainer.find_lr()
         # fit the first model
         print('\n---------------------------')
