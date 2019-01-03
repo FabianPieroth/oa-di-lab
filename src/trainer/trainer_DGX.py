@@ -66,6 +66,7 @@ class CNN_skipCo_trainer(object):
             torch.cuda.current_device()
             self.model.cuda()
             # here now wrap the model in Data.Parallel class
+            self.model = nn.DataParallel(self.model)
 
         self.learning_rates = learning_rates
 
