@@ -247,21 +247,21 @@ def main():
 
     #dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
-    do_heavy_augment = False
-    do_augment = False
-    add_augment = False
-    do_rchannels = False
-    do_flip = True
-    do_blur = False
+    do_heavy_augment = True
+    do_augment = True
+    add_augment = True
+    do_rchannels = True
+    do_flip = False
+    do_blur = True
     do_deform = True
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0.0001, 0.9999)
-    get_scale_center = False
+    get_scale_center = True
     single_sample = True
     do_scale_center = True
     height_channel_oa = 201

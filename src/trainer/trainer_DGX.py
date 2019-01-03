@@ -271,7 +271,7 @@ def main():
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
