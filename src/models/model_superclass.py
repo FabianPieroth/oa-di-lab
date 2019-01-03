@@ -24,6 +24,9 @@ class ImageTranslator(nn.Module):
     def activate_optimizer(self, learning_rate):
         self.optimizer = self.optimizer(self.parameters(), lr=learning_rate)
 
+    def get_parameters(self):
+        return self.parameters()
+
     def forward(self, X):
         for model in self.models:
             X = model.forward(X)
