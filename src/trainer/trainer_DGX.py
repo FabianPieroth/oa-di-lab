@@ -20,7 +20,7 @@ class CNN_skipCo_trainer(object):
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates, hetero_mask_to_mask,hyper_no):
+                 di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no):
 
         self.image_type = image_type
 
@@ -53,9 +53,19 @@ class CNN_skipCo_trainer(object):
 
         self.model = ImageTranslator([self.model_convdeconv])
 
+
+        # we need optimizer and loss here to not access anything from the model class
+        self.model_params = self.model.get_parameters()
+
+        self.optimizer = optimizer
+        self.criterion = criterion
+        self.train_loss = []
+        self.val_loss = []
+
         if torch.cuda.is_available():
             torch.cuda.current_device()
             self.model.cuda()
+            # here now wrap the model in Data.Parallel class
 
         self.learning_rates = learning_rates
 
@@ -81,14 +91,15 @@ class CNN_skipCo_trainer(object):
             target_tensor_val = target_tensor_val.cuda()
 
         # activate optimizer with the base learning rate
-        self.model.activate_optimizer(learning_rate)
+        self.optimizer = self.optimizer(self.model_params, lr=learning_rate)
+
         # now calculate the learning rates list
         self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
 
         for e in range(0, self.epochs):
             # setting the learning rate each epoch
             lr = self.learning_rates[e]
-            self.model.set_learning_rate(lr)
+            self.optimizer.param_groups[0]['lr'] = lr
 
             # separate names into random batches and shuffle every epoch
             self.dataset.batch_names(batch_size=self.batch_size)
@@ -112,7 +123,7 @@ class CNN_skipCo_trainer(object):
 
                 def closure():
                     self.optimizer.zero_grad()
-                    out = self.forward(X)
+                    out = self.model(X)
                     loss = self.criterion(out, y)
                     sys.stdout.write('\r' + ' epoch ' + str(e) + ' |  loss : ' + str(loss.item()))
                     self.train_loss.append(loss.item())
@@ -157,7 +168,7 @@ class CNN_skipCo_trainer(object):
         num = self.dataset.batch_number-1
         mult = (final_value / init_value) ** (1 / num)
         lr = init_value
-        self.model.optimizer.param_groups[0]['lr'] = lr
+        self.optimizer.param_groups[0]['lr'] = lr
         avg_loss = 0.; best_loss = 0.; batch_num = 0; losses = []; log_lrs = []
         # in self.batch_number is the number of batches in the training set
         print('batch numbers: ', self.dataset.batch_number)
@@ -178,7 +189,7 @@ class CNN_skipCo_trainer(object):
 
             batch_num += 1
             # As before, get the loss for this mini-batch of inputs/outputs
-            self.model.optimizer.zero_grad()
+            self.optimizer.zero_grad()
             print('lr: ', lr)
             outputs = self.model.forward(input_tensor)
             loss = self.model.criterion(outputs, target_tensor)
@@ -215,6 +226,7 @@ class CNN_skipCo_trainer(object):
         '''
         return log_lrs, losses
 
+
     def get_learning_rate(self, learning_rate, epochs, method):
         """
         Method creating the learning rates corresponding to the corresponding adaptive-method.
@@ -249,15 +261,15 @@ class CNN_skipCo_trainer(object):
 
         return lrs
 
-def main():
 
+def main():
 
     image_type = 'US'
     #batch_size = 16
     log_period = 100
     epochs = 500
 
-    #dataset parameters
+    # dataset parameters
 
     data_type = 'homo'
     train_ratio = 0.9
@@ -285,16 +297,18 @@ def main():
     process_all_raw_folders = True
     hetero_mask_to_mask = True
 
-    #model parameters
+    # model parameters
 
-    #conv_channels = [3, 128, 256, 512, 1024, 2048]
+    # conv_channels = [3, 128, 256, 512, 1024, 2048]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
     drop_probs = [0 for i in range(5)]
+    optimizer = torch.optim.Adam
+    criterion = nn.MSELoss()
 
-    #dilated model parameters
+    # dilated model parameters
 
     di_conv_channels = [1, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
@@ -304,7 +318,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[3,64,128,256,512,1024]]
+        'conv_channels' : [[1,64,128,256,512,1024]]
     }
 
     # number of iterations to be performed for hyperparameter search
@@ -331,6 +345,7 @@ def main():
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
+                                     optimizer=optimizer, criterion=criterion,
                                      learning_rates=params['learning_rates'],
                                      use_regressed_oa=use_regressed_oa,
                                      include_regression_error=include_regression_error,
@@ -339,21 +354,10 @@ def main():
                                      hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i
                                      )
 
-        #trainer.find_lr()
         # fit the first model
         print('\n---------------------------')
-        #print(trainer.model)
-        #print(trainer.model)
         print('fitting model')
         trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
-        # torch.save(trainer.model, "../../reports/model.pt")
-        # trainer.log_model(model_name=trainer.model.model_name)
-        # print('\n---------------------------')
-
-        # print('finding learning rate')
-        # trainer.find_lr()
-
-
 
     print('\nfinished')
 
