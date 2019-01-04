@@ -15,6 +15,7 @@ class Logger(object):
                  epochs,
                  batch_size,
                  learning_rates,
+                 hyper_no,
                  model=None,
                  image_type='US'):
         self.project_root_dir = project_root_dir
@@ -30,7 +31,7 @@ class Logger(object):
         self.base_dir = '%s/reports' % project_root_dir
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
 
-        self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name + '_' + timestamp
+        self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name + '_'+ 'hyper_' + str(hyper_no+1) + '_' + timestamp
         self.load_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name
         os.makedirs(self.save_dir)
 
