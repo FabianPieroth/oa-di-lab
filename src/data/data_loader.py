@@ -568,7 +568,7 @@ class ProcessData(object):
         mean = m / (n_obs) * prev_mean + n / (n_obs) * newmean
         var = m / (n_obs) * prev_var + n / (n_obs) * newvar + m * n / (n_obs) ** 2 * (prev_mean - newmean) ** 2
 
-        return (n_obs, mean, var)
+        return n_obs, mean, var
 
     def _get_scale_center(self):
         print('Calculates scaling parameters')
