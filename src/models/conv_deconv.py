@@ -45,6 +45,7 @@ class ConvDeconv(nn.Module):
 
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
+
         self.num_layers = len(conv_channels)-1
         self.out_channels = output_channels
         self.input_size = input_size

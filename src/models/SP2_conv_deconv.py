@@ -73,6 +73,7 @@ class ConvDeconv(nn.Module):
 
         self.input_ss_mask = input_ss_mask
         self.input_ds_mask = input_ds_mask
+        self.ds_mask_channels = ds_mask_channels
 
         if strides is None:
             # initialize list with default strides (2,2)
@@ -228,12 +229,12 @@ class ConvDeconv(nn.Module):
         _, _, height, width = im.shape
         ss = ss[:, :, 0:height, 0:width]
 
-        print('self.num_layers: ', self.num_layers)
-        print('i: ', i)
-        if self.input_ss_mask[i] == 1:
-            print('        putting ss mask in')
-        if self.input_ds_mask[i] == 1:
-            print('        putting ds mask in')
+        #print('self.num_layers: ', self.num_layers)
+        #print('i: ', i)
+        #if self.input_ss_mask[i] == 1:
+        #    print('        putting ss mask in')
+        #if self.input_ds_mask[i] == 1:
+        #    print('        putting ds mask in')
 
         if self.input_ds_mask[i] == 1:
             if self.input_ss_mask[i] == 1:
