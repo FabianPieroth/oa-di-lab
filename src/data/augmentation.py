@@ -136,7 +136,7 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement_fac=0.05, defo
 
 def crop_stretch_helper(in_image, side, crop_size):
     #helper function to crop both the input and target image by some crop size
-
+    # TODO: delete unneccessary stuff
     if side == 1:
         cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
         cropped = in_image[:in_image.shape[0] - crop_size, :in_image.shape[1] - crop_size]
@@ -257,7 +257,7 @@ def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, dat
     shape = image1.shape
     dim = shape[0] * shape[1]
     eta = np.random.randn(dim) * stdev + 1
-    eta = eta.reshape(shape)
+    eta = eta.reshape(shape[:2])
     if data_type == 'hetero':
         input_image1 = image1[:,:,0]
         transformed_image1_temp = speckle_noise_helper(input_image1, mult_noise=eta)

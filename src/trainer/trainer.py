@@ -241,7 +241,7 @@ def main():
 
 
     image_type = 'US'
-    #batch_size = 16
+    # batch_size = 16
     log_period = 100
     epochs = 500
 
@@ -249,7 +249,7 @@ def main():
 
     data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
     do_heavy_augment = False
     do_augment = True
@@ -259,7 +259,7 @@ def main():
     do_blur = False
     do_deform = False
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
     single_sample = False
