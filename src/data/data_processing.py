@@ -188,7 +188,7 @@ def do_deform(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_
 
 def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type):
     aug_x, aug_y, params = data.augmentation.blur(x, y,
-                                                  lower_lim=1, upper_lim=3, data_type=data_type)
+                                                  lower_lim=0.5, upper_lim=1.5, data_type=data_type)
 
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='blur')
 
