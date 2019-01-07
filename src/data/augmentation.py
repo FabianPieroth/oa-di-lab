@@ -138,13 +138,11 @@ def crop_stretch_helper(in_image, side, crop_size):
     #helper function to crop both the input and target image by some crop size
     # TODO: delete unneccessary stuff
     if side == 1:
-        cropped = in_image[crop_size:in_image.shape[0], :in_image.shape[1] - crop_size]
         cropped = in_image[:in_image.shape[0] - crop_size, :in_image.shape[1] - crop_size]
 
         resized = resize(cropped, (in_image.shape),
                          anti_aliasing=True)
     if side == 2:
-        cropped = in_image[crop_size:in_image.shape[0], crop_size:in_image.shape[1]]
         cropped = in_image[:in_image.shape[0] - crop_size, crop_size:in_image.shape[1]]
 
         resized = resize(cropped, (in_image.shape),

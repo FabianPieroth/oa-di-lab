@@ -493,8 +493,8 @@ class ProcessData(object):
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params, data_type=self.data_type)
 
-
                 # additionally to the processed_all files the flipped ones are done for some augmentations
+
                 flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
                                                                end_folder, full_names=True)
                 if self.do_heavy_augment:
