@@ -207,6 +207,10 @@ class ProcessData(object):
             # skip already processed folders
             in_directories = list(set(skip_dirs) ^ set(in_directories))
 
+        if self.process_all_raw_folders:
+            # clear all files from processed_all folder, if all directories will be processed
+            self._clear_dir(path_to_dir=self.dir_processed_all + '/' + self.end_folder)
+
         for chunk_folder in in_directories:
             sample_directories = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' + chunk_folder,
                                                             full_names=False)
@@ -431,8 +435,6 @@ class ProcessData(object):
                 print('No blur augmentation for OA data')
             if self.image_type == 'OA' and self.do_speckle_noise:
                 print('No speckle noise augmentation for OA data')
-            if self.data_type == 'hetero' and self.do_deform:
-                print('No deform augmentation for heterogenuous SoS data')
 
             for end_folder in ['ultrasound', 'optoacoustic']:
                 to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
@@ -491,8 +493,8 @@ class ProcessData(object):
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
                                    path_to_params=self.dir_params, data_type=self.data_type)
 
-
                 # additionally to the processed_all files the flipped ones are done for some augmentations
+
                 flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
                                                                end_folder, full_names=True)
                 if self.do_heavy_augment:
@@ -532,7 +534,59 @@ class ProcessData(object):
                                             path_to_params=self.dir_params, data_type=self.data_type)
 
         elif self.data_type == self.accepted_data_types[1]:
-            print('The new data set is to be augmented here. Not done yet.')
+            if self.data_type == 'hetero' and self.do_deform:
+                print('No deform augmentation for heterogeneous SoS data')
+            for end_folder in ['ultrasound', 'optoacoustic']:
+                to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
+                                                             full_names=True)
+                if end_folder == 'ultrasound':
+                    file_prefix = 'US'
+                else:
+                    file_prefix = 'OA'
+                if self.pro_and_augm_only_image_type and not self.image_type == file_prefix:
+                    continue
+                if len(to_be_aug_files) == 0:
+                    sys.exit('There are no processed files to be augmented, restart with pre process = True')
+
+                for filename in to_be_aug_files:
+                    print('augmenting file', self.extract_name_from_path(filename, without_ch=False))
+                    x = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
+                    if self.do_flip:
+                        dp.do_flip(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder,
+                                   path_to_augment=self.dir_augmented)
+                    if self.do_blur and end_folder == 'ultrasound':
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params, data_type=self.data_type)
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
+                                            end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                            path_to_params=self.dir_params, data_type=self.data_type)
+
+                flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
+                                                               end_folder, full_names=True)
+                for filename in flipped_to_be_aug:
+                    print('augmenting file', self.extract_name_from_path(filename, without_ch=False))
+                    x = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
+
+                    if self.do_blur and end_folder == 'ultrasound':
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params, data_type=self.data_type)
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
+                                            end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                            path_to_params=self.dir_params, data_type=self.data_type)
+
+
         else:
             print('This should be an empty else, to be stopped before coming here.')
 
@@ -568,7 +622,7 @@ class ProcessData(object):
         mean = m / (n_obs) * prev_mean + n / (n_obs) * newmean
         var = m / (n_obs) * prev_var + n / (n_obs) * newvar + m * n / (n_obs) ** 2 * (prev_mean - newmean) ** 2
 
-        return (n_obs, mean, var)
+        return n_obs, mean, var
 
     def _get_scale_center(self):
         print('Calculates scaling parameters')
@@ -689,7 +743,7 @@ class ProcessData(object):
         batch_out = batch*np.sqrt(scale_params) + mean_image
         return batch_out
 
-    def load_params(self, param_type, dir_params=None):
+    def load_params(self, param_type, dir_params=None, trunc_points=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
                     param_type: 'scale' or 'mean_image' (maybe more options later)
@@ -712,7 +766,10 @@ class ProcessData(object):
         params_low = params[dic_key_low]
         params_high = params[dic_key_high]
         if self.image_type == 'OA':
-            params_trunc_points = params['trunc_points']
+            if trunc_points is None:
+                params_trunc_points = params['trunc_points']
+            else:
+                params_trunc_points = trunc_points
             if self.trunc_points != params_trunc_points:
                 sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
                          'Truncation of saved parameters is ' + str(params_trunc_points))

@@ -97,9 +97,13 @@ class Logger(object):
             target_save = target_tensor.detach().cpu().numpy()[i, :, :, :]
             predict_new = predict.detach().cpu().numpy()[i, :, :, :]
 
-            if self.dataset.do_scale_center:
-                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
+            '''if self.dataset.do_scale_center:
+                input_save = self.dataset.scale_and_center_reverse(input_save, scale_params_low,
+                                                                    mean_image_low)
+                target_save = self.dataset.scale_and_center_reverse(target_save, scale_params_high,
                                                                     mean_image_high)
+                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
+                                                                    mean_image_high)'''
 
             self.save_predictions(input_save=input_save, target_save=target_save, predict_save=predict_new,
                                   save_name=self.dataset.extract_name_from_path(names[i], without_ch=False),
@@ -219,8 +223,12 @@ class Logger(object):
             "batch_size": self.batch_size,
             "model_name": self.model.model_name,
             "image_type": self.dataset.image_type,
+            "train_ratio": self.dataset.train_ratio,
             "data_type": self.dataset.data_type,
             "nr_epochs": self.epochs,
+            "do_scale_center": self.dataset.do_scale_center,
+            "get_scale_center": self.dataset.get_scale_center,
+            "trunc_points": self.dataset.trunc_points,
             "applied_augmentations": {
                 "process_raw_data": self.dataset.process_raw,
                 "do_augment": self.dataset.do_augment,
@@ -232,7 +240,7 @@ class Logger(object):
                 'do_speckle_noise': self.dataset.do_speckle_noise,
                 "image_type": self.dataset.image_type,
                 "data_type": self.dataset.data_type,
-                "get_scale_center": self.dataset.get_scale_center,
+                "hetero_mask_to_mask": self.dataset.hetero_mask_to_mask,
                 "single_sample": self.dataset.single_sample
             },
             #'model_parameters': {

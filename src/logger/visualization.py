@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test, linear_unmixing, _get_default_spectra
 import math
+import sys
 
 
 def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None):
@@ -102,7 +103,7 @@ def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name
 
 
 def get_relevant_spectra(image, p_threshold, json_processing=None):
-    if 'use_regressed_oa' not in list(json_processing['processing']):
+    if 'processing' not in list(json_processing):
         print('It should be downward compatible with this, write me if you get errors.')
         p_values = spectral_F_test(np.moveaxis(image, 0, -1))
         reg_coefficients = linear_unmixing(np.moveaxis(image, 0, -1))
@@ -113,7 +114,7 @@ def get_relevant_spectra(image, p_threshold, json_processing=None):
 
         significant_channel[significant_pixels[:, :, 0] == 0] = -1
         significant_channel = significant_channel + 1
-        rgb = create_rgb_image(significant_channel)
+        rgb = create_rgb_image(image_2d=significant_channel, image_3d=significant_pixels)
         return rgb
     else:
         if json_processing['processing']['use_regressed_oa']:
@@ -133,13 +134,13 @@ def get_relevant_spectra(image, p_threshold, json_processing=None):
                 significant_channel = np.argmax(significant_pixels, axis=2)
                 significant_channel[significant_pixels[:, :, 0] == 0] = -1
                 significant_channel = significant_channel + 1
-                rgb = create_rgb_image(significant_channel)
+                rgb = create_rgb_image(image_2d=significant_channel, image_3d=significant_pixels)
                 # print('Print the spectrum, the significance mask and the merged images.')
                 return rgb
             significant_pixels = image
             significant_channel = np.argmax(significant_pixels, axis=2)
             significant_channel = significant_channel + 1
-            rgb = create_rgb_image(significant_channel)
+            rgb = create_rgb_image(image_2d=significant_channel, image_3d=significant_pixels)
             return rgb
 
         else:
@@ -158,28 +159,47 @@ def get_relevant_spectra(image, p_threshold, json_processing=None):
             significant_channel[significant_pixels[:, :, 0] == 0] = -1
             significant_channel = significant_channel + 1
 
-            rgb = create_rgb_image(significant_channel)
+            rgb = create_rgb_image(image_2d=significant_channel, image_3d=significant_pixels)
 
             return rgb
 
 
 def filter_sign_pixels(p_values, image, p_threshold):
-    p_values[p_values >= p_threshold] = 0.0
+    sign_mask = np.zeros(p_values.shape)
+    sign_mask[p_values >= p_threshold] = 0.0
+    sign_mask[p_values < p_threshold] = 1.0
     sign_img_pixels = np.zeros(image.shape)
     for i in range(min(image.shape)):
-        hb = p_values * image[:, :, i]
+        hb = sign_mask * image[:, :, i]
         sign_img_pixels[:, :, i] = hb
     return sign_img_pixels
 
 
-def create_rgb_image(image_2d):
+def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
+    # coloring_type:
+    #       'continuous': add the blood channels and display it as rgb image
+    #       'discrete': color the maximum value of the array
+    #       'blood': only display the blood spectra
     # set the color values of the spectra, this is not generic, so at the moment only valid for 4 channels!
-    palette = np.array([[0, 0, 0],  # not significant: black
-                        [148, 0, 211],  # HB: dark violet
-                        [220, 20, 60],  # HBO2: crimson
-                        [255, 255, 0],  # fat: yellow
-                        [30, 144, 255]])  # water: blue
-    rgb = palette[image_2d]
+    if coloring_type == 'discrete':
+        palette = np.array([[0, 0, 0],  # not significant: black
+                            [148, 0, 211],  # HB: dark violet
+                            [220, 20, 60],  # HBO2: crimson
+                            [255, 255, 0],  # fat: yellow
+                            [30, 144, 255]])  # water: blue
+        rgb = palette[image_2d]
+    elif coloring_type == 'continuous':
+        if np.min(image_3d.shape) > 4:
+            sys.exit('There is no continuous spectra for the input available, check the parameters.')
+        rgb = np.zeros((image_3d.shape[0], image_3d.shape[1], 3))
+        rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
+        rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
+        # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
+        rgb = np.log(rgb) / np.log(np.max(rgb))  # log scale
+        # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
+        # rgb = rgb / np.max(rgb)
+    else:
+        print('to be implemented')
     return rgb
 
 
