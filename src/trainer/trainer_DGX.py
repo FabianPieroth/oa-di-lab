@@ -1,9 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-from models.conv_deconv import ConvDeconv
+#from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
+from models.SP2_conv_deconv import ConvDeconv
 import torch
 import random
 import torch.nn as nn
@@ -20,7 +21,8 @@ class CNN_skipCo_trainer(object):
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no):
+                 di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
+                 input_ds_mask, input_ss_mask, ds_mask_channels):
 
         self.image_type = image_type
 
@@ -45,6 +47,10 @@ class CNN_skipCo_trainer(object):
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           input_ds_mask=input_ds_mask,
+                                           input_ss_mask=input_ss_mask,
+                                           ds_mask_channels=ds_mask_channels,
+                                           datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs)
@@ -272,7 +278,7 @@ def main():
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -296,7 +302,7 @@ def main():
     only_f_test_in_target = False
     channel_slice_oa = [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
-    hetero_mask_to_mask = True
+    hetero_mask_to_mask = False
 
     # model parameters
 
@@ -306,6 +312,11 @@ def main():
     input_size = (401, 401)
     output_channels = 1
     drop_probs = [0 for i in range(5)]
+
+    input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+    ds_mask_channels = [1, 2, 4, 8, 16, 32]
+
     optimizer = torch.optim.Adam
     criterion = nn.MSELoss()
 
@@ -319,7 +330,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[1,64,128,256,512,1024]]
+        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
     }
 
     # number of iterations to be performed for hyperparameter search
@@ -344,6 +355,8 @@ def main():
                                      do_scale_center=do_scale_center,
                                      height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'], kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
+                                     input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
+                                     ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
                                      optimizer=optimizer, criterion=criterion,

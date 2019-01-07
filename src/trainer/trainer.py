@@ -21,7 +21,8 @@ class CNN_skipCo_trainer(object):
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates, hetero_mask_to_mask,hyper_no):
+                 di_conv_channels, dilations, learning_rates, hetero_mask_to_mask,hyper_no, input_ds_mask,
+                 input_ss_mask, ds_mask_channels):
 
         self.image_type = image_type
 
@@ -46,9 +47,14 @@ class CNN_skipCo_trainer(object):
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           input_ds_mask=input_ds_mask,
+                                           input_ss_mask=input_ss_mask,
+                                           ds_mask_channels=ds_mask_channels,
+                                           datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs)
+
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -251,11 +257,11 @@ def main():
 
     data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
     do_heavy_augment = False
-    do_augment = True
-    add_augment = True
+    do_augment = False
+    add_augment = False
     do_rchannels = False
     do_flip = True
     do_blur = False
@@ -284,6 +290,10 @@ def main():
     output_channels = 1
     drop_probs = [0 for i in range(5)]
 
+    input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+    ds_mask_channels = [1,2,4,8,16,32]
+
     #dilated model parameters
 
     di_conv_channels = [1, 64, 64, 64, 64, 64]
@@ -294,7 +304,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001, 0.0001, 0.00001],
         'batch_size' : [16, 8],
-        'conv_channels' : [[3, 64, 128, 256, 512, 1024]]
+        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
     }
 
     # number of iterations to be performed for hyperparameter search
@@ -317,8 +327,11 @@ def main():
                                      trunc_points=trunc_points, get_scale_center=get_scale_center,
                                      single_sample=single_sample,
                                      do_scale_center=do_scale_center,
-                                     height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'], kernels=kernels,
+                                     height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'],
+                                     kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
+                                     input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
+                                     ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
                                      learning_rates=params['learning_rates'],
