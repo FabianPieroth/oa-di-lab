@@ -54,7 +54,7 @@ class ConvDeconv(nn.Module):
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', input_size=(401, 401),
-                 input_ss_mask=None, input_ds_mask=None):
+                 input_ss_mask=None, input_ds_mask=None, ds_mask_channels=None):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -91,6 +91,10 @@ class ConvDeconv(nn.Module):
         if input_ds_mask is None:
             self.input_ds_mask = [0 for i in range(self.num_layers)]
 
+        # the nummber of channels for the ds_mask can be given. Otherwise the sizes are the same
+        # as the conv_channels. Also symmetric.
+        if ds_mask_channels is None:
+            self.ds_mask_channels = self.conv_channels
 
         dstrides, dkernels, dpadding, output_padding, ddrop_probs = self.compute_strides_and_kernels(strides=strides,
                                                                                         kernels=kernels,
@@ -100,7 +104,8 @@ class ConvDeconv(nn.Module):
                                                                                         input_size=self.input_size)
 
         # multiply the number of input channels with 2 or 3 depending on the fact if we include the masks
-        self.conv_layers = nn.ModuleList([ConvLayer((self.input_ds_mask[i] + self.input_ss_mask[i] + 1)*conv_channels[i],
+        self.conv_layers = nn.ModuleList([ConvLayer(self.input_ds_mask[i] * self.ds_mask_channels[i] +
+                                                    self.input_ss_mask[i] + conv_channels[i],
                                                     conv_channels[i + 1],
                                                     strides[i], kernels[i], padding=padding[i],
                                                     drop_prob=drop_probs[i])
@@ -111,7 +116,11 @@ class ConvDeconv(nn.Module):
         if output_channels is not None:
             deconv_channels[-1] = output_channels
 
-        self.deconv_layers = nn.ModuleList([DeConvLayer((self.input_ds_mask[i] + self.input_ss_mask[i] + 1)*deconv_channels[i],
+        # get the mask deconv channels
+        mask_deconv_channels = self.ds_mask_channels[::-1]
+
+        self.deconv_layers = nn.ModuleList([DeConvLayer(self.input_ds_mask[self.num_layers+i] * mask_deconv_channels[i] +
+                                                        self.input_ss_mask[self.num_layers+i] + deconv_channels[i],
                                                         deconv_channels[i + 1],
                                                         dstrides[i], dkernels[i],
                                                         padding=dpadding[i],
@@ -121,17 +130,20 @@ class ConvDeconv(nn.Module):
 
 
         # initialize mask layers
-        self.mask_conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
-                                                    strides[i], kernels[i], padding=padding[i],
-                                                    drop_prob=drop_probs[i])
-                                          for i in range(self.num_layers)])
 
-        self.mask_deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels[i], deconv_channels[i + 1],
-                                                        dstrides[i], dkernels[i],
-                                                        padding=dpadding[i],
-                                                        drop_prob=ddrop_probs[i],
-                                                        output_padding=output_padding[i])
-                                            for i in range(self.num_layers)])
+
+
+        self.mask_conv_layers = nn.ModuleList([ConvLayer(self.ds_mask_channels[i], self.ds_mask_channels[i + 1],
+                                                         strides[i], kernels[i], padding=padding[i],
+                                                         drop_prob=drop_probs[i])
+                                               for i in range(self.num_layers)])
+
+        self.mask_deconv_layers = nn.ModuleList([DeConvLayer(mask_deconv_channels[i], mask_deconv_channels[i + 1],
+                                                             dstrides[i], dkernels[i],
+                                                             padding=dpadding[i],
+                                                             drop_prob=ddrop_probs[i],
+                                                             output_padding=output_padding[i])
+                                                 for i in range(self.num_layers)])
 
         self.data_type = datatype
         self.criterion = criterion
@@ -157,7 +169,6 @@ class ConvDeconv(nn.Module):
 
         for i in range(len(self.conv_layers)):
 
-
             if i % 2 == 0:
                 if i == 0 and self.out_channels is not None:
                     # this should only
@@ -179,7 +190,7 @@ class ConvDeconv(nn.Module):
             if self.data_type is 'hetero':
                 ml = self.mask_conv_layers[i]
                 ds_mask = ml(ds_mask)
-                ss_mask = ml(ss_mask)
+                #ss_mask = ml(ss_mask)
 
 
         for i in range(len(self.deconv_layers)):
@@ -198,19 +209,25 @@ class ConvDeconv(nn.Module):
             if self.data_type is 'hetero':
                 ml = self.mask_deconv_layers[i]
                 ds_mask = ml(ds_mask)
-                ss_mask = ml(ss_mask)
+                #ss_mask = ml(ss_mask)
 
         return x
 
     def prepare_tensor(self, im, ds, ss, i):
         """
         returns the input tensor of the image. Decides based on ds_mask and ss_mask if the masks are concatenated
-        :param im: the image (batch_size, 1, H, W)
-        :param ds: the dual speed of sound mask (batch_size, 1, H, W)
-        :param ss: the single speed of sound mask (batch_size, 1, H, W)
+        :param im: the image (batch_size, C, H, W)
+        :param ds: the dual speed of sound mask (batch_size, C_mask, H, W)
+        :param ss: the single speed of sound mask (batch_size, 1, H_orig, W_orig)
         :param iterator:
         :return:
         """
+
+        # set the single sample mask to the correct height and width (same value each pixel)
+        # shape is batch_size, C, H, W
+        _, _, height, width = im.shape
+        ss = ss[:, :, 0:height, 0:width]
+
         print('self.num_layers: ', self.num_layers)
         print('i: ', i)
         if self.input_ss_mask[i] == 1:
