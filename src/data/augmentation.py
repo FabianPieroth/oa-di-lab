@@ -10,7 +10,6 @@ from skimage.transform import resize
 
 import random
 
-#import skimage.filters as skf
 
 
 ##### Elastic Deformation #######
