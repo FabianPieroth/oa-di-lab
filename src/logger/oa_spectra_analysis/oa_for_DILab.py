@@ -118,31 +118,34 @@ def spectral_F_test(data, **kwargs):
     '''
     from scipy.stats import f
 
-    ## Shape of the default spectra
-    n_components = _get_default_spectra().shape[0]
+    # Shape of the default spectra
+
     if 'spectra' in kwargs:
         n_components = kwargs['spectra'].shape[0]
+    else:
+        n_components = _get_default_spectra().shape[0]
     n_wavelengths = data.shape[-1]
 
     kwargs['use_constant'] = True
     kwargs['return_error'] = True
 
-    ## Compute sum of squared residuals of the spectral model
+    # Compute sum of squared residuals of the spectral model
     _, error = linear_unmixing(data, **kwargs)
 
     ## Compute sum of squared residuals of a constant models
     error_linear = np.sum(np.power(data - np.mean(data, axis=-1, keepdims=True),
                                    2), axis=-1)
-    ## Error may be zero but we don't mind, so set division by zero warning to
-    ## ignore (don't want to have warnings leaking from the lib functions)
+    # Error may be zero but we don't mind, so set division by zero warning to
+    # ignore (don't want to have warnings leaking from the lib functions)
     with np.errstate(divide='ignore', invalid='ignore'):
-        ## Formula from https://en.wikipedia.org/wiki/F-test#Regression_problems
+        # Formula from https://en.wikipedia.org/wiki/F-test#Regression_problems
         F = np.nan_to_num(((error_linear - error) * (n_wavelengths - n_components-1))
                           / (error * n_components))
 
-    ## Compute p values under F distribution
+    # Compute p values under F distribution
     pValues = 1.0 - f.cdf(F,n_components,n_wavelengths-n_components-1)
     return pValues
+
 
 def ring_filter(data, mode='mean', mollifier='tanh', mollifier_args=None, **kwargs):
     '''

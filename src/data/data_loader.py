@@ -568,7 +568,7 @@ class ProcessData(object):
         mean = m / (n_obs) * prev_mean + n / (n_obs) * newmean
         var = m / (n_obs) * prev_var + n / (n_obs) * newvar + m * n / (n_obs) ** 2 * (prev_mean - newmean) ** 2
 
-        return (n_obs, mean, var)
+        return n_obs, mean, var
 
     def _get_scale_center(self):
         print('Calculates scaling parameters')
@@ -689,7 +689,7 @@ class ProcessData(object):
         batch_out = batch*np.sqrt(scale_params) + mean_image
         return batch_out
 
-    def load_params(self, param_type, dir_params=None):
+    def load_params(self, param_type, dir_params=None, trunc_points=None):
         """ loads the specified parameters from file
             input: image_type: 'US' or 'OA'
                     param_type: 'scale' or 'mean_image' (maybe more options later)
@@ -712,7 +712,10 @@ class ProcessData(object):
         params_low = params[dic_key_low]
         params_high = params[dic_key_high]
         if self.image_type == 'OA':
-            params_trunc_points = params['trunc_points']
+            if trunc_points is None:
+                params_trunc_points = params['trunc_points']
+            else:
+                params_trunc_points = trunc_points
             if self.trunc_points != params_trunc_points:
                 sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
                          'Truncation of saved parameters is ' + str(params_trunc_points))

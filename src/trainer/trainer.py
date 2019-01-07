@@ -251,31 +251,34 @@ def main():
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
-    do_heavy_augment = True
+
+    do_heavy_augment = False
     do_augment = True
     add_augment = True
-    do_rchannels = True
-    do_flip = False
-    do_blur = True
-    do_deform = True
+    do_rchannels = False
+    do_flip = True
+    do_blur = False
+    do_deform = False
+
     do_crop = False
     do_speckle_noise = True
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = True
+
+    single_sample = False
     do_scale_center = True
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
     add_f_test = False
     only_f_test_in_target = False
-    channel_slice_oa = [0, 3, 6, 10, 15, 23, 27]
+    channel_slice_oa = list(range(27))  # [0, 3, 6, 10, 15, 23, 27]
+
     process_all_raw_folders = True
-    hetero_mask_to_mask = True
+    hetero_mask_to_mask = False
 
-    #model parameters
+    # model parameters
 
-    #conv_channels = [3, 128, 256, 512, 1024, 2048]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
@@ -290,9 +293,9 @@ def main():
 
     # add hyper parameters for search
     param_grid = {
-        'learning_rates' : [0.001,0.0001,0.00001],
-        'batch_size' : [16,8],
-        'conv_channels' : [[3,64,128,256,512,1024]]
+        'learning_rates' : [0.001, 0.0001, 0.00001],
+        'batch_size' : [2],
+        'conv_channels' : [[3, 64, 128, 256, 512, 1024]]
     }
 
     # number of iterations to be performed for hyperparameter search

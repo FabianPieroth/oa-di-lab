@@ -8,6 +8,8 @@ import json
 import random
 
 
+
+
 class Logger(object):
     def __init__(self,
                  project_root_dir,
@@ -16,8 +18,11 @@ class Logger(object):
                  batch_size,
                  learning_rates,
                  hyper_no,
+                 model_file_path,
+                 model_name,
                  model=None,
-                 image_type='US'):
+                 image_type='US'
+                 ):
         self.project_root_dir = project_root_dir
         self.model = model  # give the model to the logger, so we have all needed variables in the self
         self.image_type = image_type
@@ -31,15 +36,24 @@ class Logger(object):
         self.base_dir = '%s/reports' % project_root_dir
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
 
-        self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name + '_'+ 'hyper_' + str(hyper_no+1) + '_' + timestamp
-        self.load_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model.model_name
+        self.model_name = model_name
+
+        self.save_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model_name + '_'+ 'hyper_' + str(hyper_no+1) + '_' + timestamp
+        self.load_dir = self.base_dir + '/' + self.dataset.data_type + '/' + self.model_name
         os.makedirs(self.save_dir)
+
+        self.train_loss = []
+        self.val_loss = []
+
+        self.model_file_path = model_file_path
+
+
 
     def save_model(self):
         # This Method should save the model in a serialized folder structure
         # Serialize a model and its weights into json and h5 file.
         # serialize model to JSON
-        torch.save(self.model.state_dict(), self.save_dir + '/' + self.model.model_name
+        torch.save(self.model.state_dict(), self.save_dir + '/' + self.model_name
                    + 'model' + self.save_appendix + '.pt')
 
     def predict_eval_images(self, mean_images, scale_params, num_images_train=2, num_images_val=3):
@@ -97,9 +111,13 @@ class Logger(object):
             target_save = target_tensor.detach().cpu().numpy()[i, :, :, :]
             predict_new = predict.detach().cpu().numpy()[i, :, :, :]
 
-            if self.dataset.do_scale_center:
-                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
+            '''if self.dataset.do_scale_center:
+                input_save = self.dataset.scale_and_center_reverse(input_save, scale_params_low,
+                                                                    mean_image_low)
+                target_save = self.dataset.scale_and_center_reverse(target_save, scale_params_high,
                                                                     mean_image_high)
+                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
+                                                                    mean_image_high)'''
 
             self.save_predictions(input_save=input_save, target_save=target_save, predict_save=predict_new,
                                   save_name=self.dataset.extract_name_from_path(names[i], without_ch=False),
@@ -136,21 +154,23 @@ class Logger(object):
         # Methods calculates all the metrics that we want for the evaluation
         # so more than just the metric that we optimize during training
         pass
-
+    '''
     def get_val_loss(self, val_in=None, val_target=None):
         # do a forward pass with validation set for every epoch and get validation loss
         if val_in is not None and val_target is not None:
             with torch.no_grad():
                 val_out = self.model.forward(val_in)
-                val_loss = self.model.criterion(val_out, val_target)
+                #changed for DGX run
+                val_loss = trainer.criterion(val_out, val_target)
                 self.model.val_loss.append(val_loss.item())
         return
+    '''
 
     def save_loss(self):
-        np.save(self.save_dir + '/' + self.model.model_name + '_train_loss', np.array(self.model.train_loss))
+        np.save(self.save_dir + '/' + self.model_name + '_train_loss', np.array(self.train_loss))
 
-        if self.model.val_loss is not None:
-            np.save(self.save_dir + '/' + self.model.model_name + '_validation_loss', np.array(self.model.val_loss))
+        if self.val_loss is not None:
+            np.save(self.save_dir + '/' + self.model_name + '_validation_loss', np.array(self.val_loss))
 
     def save_scale_center_params(self, mean_images, scale_params):
         # write files into dictionary
@@ -162,7 +182,7 @@ class Logger(object):
             pickle.dump(scale_param, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def save_representation_of_model(self):
-        text_file = open(self.save_dir + '/' + self.model.model_name + '_model_structure.txt', "w")
+        text_file = open(self.save_dir + '/' + self.model_name + '_model_structure.txt', "w")
         text_file.write(str(self.model))
         text_file.close()
 
@@ -181,7 +201,7 @@ class Logger(object):
                 self.save_appendix = 'final'
             self.save_model()
 
-        if self.model.train_loss is not None:
+        if self.train_loss is not None:
             self.save_loss()
 
         self.predict_eval_images(mean_images=mean_images, scale_params=scale_params)
@@ -198,7 +218,7 @@ class Logger(object):
 
             # copy the data_loader file and the model file to make reproducible examples
             data_loader_path = self.project_root_dir + '/src/data/' + '/data_loader.py'
-            model_file_path = self.model.model_file_name
+            model_file_path = self.model_file_path
             augmentation_file_path = self.project_root_dir + '/src/data' + '/augmentation.py'
             data_processing_file_path = self.project_root_dir + '/src/data' + '/data_processing.py'
             visualizer_path = self.project_root_dir + '/src/' + '/logger/visualization.py'
@@ -217,10 +237,14 @@ class Logger(object):
 
         config = {
             "batch_size": self.batch_size,
-            "model_name": self.model.model_name,
+            "model_name": self.model_name,
             "image_type": self.dataset.image_type,
+            "train_ratio": self.dataset.train_ratio,
             "data_type": self.dataset.data_type,
             "nr_epochs": self.epochs,
+            "do_scale_center": self.dataset.do_scale_center,
+            "get_scale_center": self.dataset.get_scale_center,
+            "trunc_points": self.dataset.trunc_points,
             "applied_augmentations": {
                 "process_raw_data": self.dataset.process_raw,
                 "do_augment": self.dataset.do_augment,
@@ -232,7 +256,7 @@ class Logger(object):
                 'do_speckle_noise': self.dataset.do_speckle_noise,
                 "image_type": self.dataset.image_type,
                 "data_type": self.dataset.data_type,
-                "get_scale_center": self.dataset.get_scale_center,
+                "hetero_mask_to_mask": self.dataset.hetero_mask_to_mask,
                 "single_sample": self.dataset.single_sample
             },
             #'model_parameters': {
@@ -253,7 +277,7 @@ class Logger(object):
                 'channel_slice_oa': self.dataset.channel_slice_oa
             },
             "train_valid_split": self.dataset.train_ratio,
-            "loss_function": str(self.model.criterion),
+            "loss_function": str(""),
             "train_files": self.dataset.train_file_names,
             "val_files": self.dataset.val_file_names,
             "learning_rates": self.learning_rates.tolist()
