@@ -27,12 +27,13 @@ def extract_and_process_logged_folder(folder_name):
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
                 if rescale_images and json_dict['do_scale_center']:
-                    input_im = data_loader.scale_and_center_reverse(batch=input_im, scale_params=scale_low,
+                    """input_im = data_loader.scale_and_center_reverse(batch=input_im, scale_params=scale_low,
                                                                     mean_image=mean_low)
                     target_im = data_loader.scale_and_center_reverse(batch=target_im, scale_params=scale_high,
                                                                      mean_image=mean_high)
                     predict_im = data_loader.scale_and_center_reverse(batch=predict_im, scale_params=scale_high,
-                                                                      mean_image=mean_high)
+                                                                      mean_image=mean_high)"""
+                    pass
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
                 if json_dict['image_type'] == 'OA':
@@ -87,7 +88,7 @@ def plot_train_val_loss(folder_name):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_2019_01_02_00_48'
+    folder_name = 'hetero/combined_model_hyper_1_2019_01_07_17_08'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
