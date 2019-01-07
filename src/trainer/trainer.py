@@ -1,9 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-from models.conv_deconv import ConvDeconv
+#from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
+from models.SP2_conv_deconv import ConvDeconv
 import torch
 import random
 import torch.nn as nn
@@ -50,6 +51,7 @@ class CNN_skipCo_trainer(object):
                                            output_channels=output_channels, drop_probs=drop_probs)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
+
 
         self.model = ImageTranslator([self.model_convdeconv])
 
