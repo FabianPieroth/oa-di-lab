@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
 from scipy import interpolate as ipol
 import re
 import scipy.io
@@ -9,7 +10,7 @@ from skimage.transform import resize
 
 import random
 
-import skimage.filters as skf
+#import skimage.filters as skf
 
 
 ##### Elastic Deformation #######
@@ -171,21 +172,21 @@ def blur_helper(image, sigma = 2):
         output: transformed_image"""
     shape = image.shape
     if len(shape) == 2:
-        transformed_image = skf.gaussian(image, sigma = sigma)
+        transformed_image = gaussian_filter(image, sigma = sigma)
     else:
         transformed_image = np.empty_like(image)
         for channel in range(shape[2]):
-            transformed_image[:,:,channel] = skf.gaussian(image[:,:,channel], sigma = sigma)
+            transformed_image[:,:,channel] = gaussian_filter(image[:,:,channel], sigma = sigma)
     return transformed_image
 
 
-def blur(image1, image2, lower_lim = 1, upper_lim = 3, data_type='homo'):
+def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo'):
     """ blurs image1 with a blur_helper, only use for US data
         input: image1: the image to be blurred
                image2: the target image, not to be blurred
                lower_lim, upper_lim: ints lower and upper lim for the sigma for the gaussian filter
         output: transformed_image1, image2"""
-    sig = np.random.randint(lower_lim, upper_lim + 1)
+    sig = np.random.random(1)[0]*(upper_lim - lower_lim) + lower_lim
     if data_type == 'hetero':
         input_image1 = image1[:, :, 0]
         transformed_image1_temp = blur_helper(input_image1, sigma=sig)
@@ -193,6 +194,7 @@ def blur(image1, image2, lower_lim = 1, upper_lim = 3, data_type='homo'):
         transformed_image1 = image1
     else:
         transformed_image1 = blur_helper(image1, sigma=sig)
+
     return transformed_image1, image2, sig
 
 
