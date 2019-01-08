@@ -286,6 +286,15 @@ class ProcessData(object):
                                    include_regression_error=self.include_regression_error,
                                    add_f_test=self.add_f_test, only_f_test_in_target=self.only_f_test_in_target,
                                    channel_slice_oa=self.channel_slice_oa)
+                elif self.data_type == self.accepted_data_types[1]:
+                    in_files = dp.ret_all_files_in_folder(folder_path=dir_test_set + '/' +
+                                                                      chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
+                    us_low_samples = [s for s in in_files if 'US_low' in s]
+                    us_high_samples = [s for s in in_files if 'US_high' in s]
+                    dp.pre_us_hetero(new_in_folder=dir_test_set, study_folder=chunk_folder, scan_num=sample_folder,
+                                     filename_low=us_low_samples[0], filename_high=us_high_samples[0],
+                                     save_folder=save_dir, hetero_mask_to_mask=self.hetero_mask_to_mask)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed

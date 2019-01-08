@@ -2,11 +2,14 @@ import matplotlib
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.colors import PowerNorm
 import numpy as np
 import pickle
 from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test, linear_unmixing, _get_default_spectra
 import math
 import sys
+from logger.oa_spectra_analysis.generate_unmixing_figures import generate_figure as gf
+import os
 
 
 def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None):
@@ -88,15 +91,15 @@ def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name
     plt.figure(figsize=(18, 18))
     plt.subplot(1, 3, 1)
     plt.title('input' + '_' + name)
-    plt.imshow(rgb_input)
+    plt.imshow(rgb_input, norm=PowerNorm(gamma=.5))
 
     plt.subplot(1, 3, 2)
     plt.title('target' + '_' + name)
-    plt.imshow(rgb_target)
+    plt.imshow(rgb_target, norm=PowerNorm(gamma=.5))
 
     plt.subplot(1, 3, 3)
     plt.title('predict' + '_' + name)
-    plt.imshow(rgb_predict)
+    plt.imshow(rgb_predict, norm=PowerNorm(gamma=.5))
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
@@ -191,17 +194,31 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
     elif coloring_type == 'continuous':
         if np.min(image_3d.shape) > 4:
             sys.exit('There is no continuous spectra for the input available, check the parameters.')
+        image_3d = np.maximum(0, image_3d)
         rgb = np.zeros((image_3d.shape[0], image_3d.shape[1], 3))
         rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
         rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
         # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
-        rgb = np.log(rgb) / np.log(np.max(rgb))  # log scale
+        # rgb = np.log(rgb) / np.log(np.max(rgb))  # log scale
         # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
         # rgb = rgb / np.max(rgb)
     else:
         print('to be implemented')
     return rgb
 
+
+def plot_single_spectra(input_im, target_im, predict_im, save_name, regressed,
+                        input_us=None, target_us=None, predict_us=None, slice=None):
+    if not os.path.exists(save_name):
+        os.makedirs(save_name)
+    fig1 = gf(img=input_im, us=input_us, slice=slice, regressed=regressed)
+    fig2 = gf(img=target_im, us=target_us, slice=slice, regressed=regressed)
+    fig3 = gf(img=predict_im, us=predict_us, slice=slice, regressed=regressed)
+
+    # save the plots
+    fig1.savefig(save_name + '/' + 'Input', bbox_inches='tight')
+    fig2.savefig(save_name + '/' + 'Target', bbox_inches='tight')
+    fig3.savefig(save_name + '/' + 'Predict', bbox_inches='tight')
 
 def load_file_to_numpy(full_file_name):
     # helper function to load and read the data; pretty inefficient right now
