@@ -21,7 +21,8 @@ def extract_and_process_logged_folder(folder_name):
         data_folder = dp.ret_all_files_in_folder(folder_name + '/' + folder, full_names=False)
         for data in data_folder:
             save_folder = folder_name + '/' 'plots' + '/' + folder + '/' + data
-            os.makedirs(save_folder)
+            if not os.path.exists(save_folder):
+                os.makedirs(save_folder)
             image_list = dp.ret_all_files_in_folder(folder_name + '/' + folder + '/' + data, full_names=False)
             for images in image_list:
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
@@ -40,6 +41,11 @@ def extract_and_process_logged_folder(folder_name):
                     vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
                                            save_name=save_folder + '/' + images + '_spectra', p_threshold=0.05,
                                            json_processing=json_dict)
+                    vis.plot_single_spectra(input_im=input_im, target_im=target_im, predict_im=predict_im,
+                                            input_us=None, target_us=None, predict_us=None,
+                                            save_name=save_folder + '/' + images,
+                                            slice=json_dict['processing']['channel_slice_oa'],
+                                            regressed=json_dict['processing']['use_regressed_oa'])
 
 
 def open_json_file(folder_name, file_name):
