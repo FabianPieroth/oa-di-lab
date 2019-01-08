@@ -274,7 +274,7 @@ def main():
 
     data_type = 'homo'
     train_ratio = 0.9
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
     do_heavy_augment = False
     do_augment = False
