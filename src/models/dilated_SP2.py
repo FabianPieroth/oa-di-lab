@@ -42,7 +42,7 @@ class DilatedTranslator(nn.Module):
                                                         kernel_size=kernels[i], padding=self.padding[i])
                                           for i in range(len(conv_channels) - 1)])
 
-        self.last_layer = nn.Conv2d(in_channels=conv_channels[len(conv_channels)-1], out_channels=conv_channels[0],
+        self.last_layer = nn.Conv2d(in_channels=conv_channels[len(conv_channels)-1], out_channels=1,
                                     stride=1, kernel_size=(3,3), padding=1).double()
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
