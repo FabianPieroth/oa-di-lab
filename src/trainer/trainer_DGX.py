@@ -287,10 +287,10 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
+    image_type = 'US'
     #batch_size = 16
     log_period = 10
-    epochs = 35
+    epochs = 1
 
     # dataset parameters
 
@@ -300,7 +300,7 @@ def main():
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
     add_augment = True
     do_rchannels = False
     do_flip = True
@@ -311,7 +311,7 @@ def main():
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
     single_sample = True
-    do_scale_center = False
+    do_scale_center = True
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -324,15 +324,15 @@ def main():
     # model parameters
 
     # conv_channels = [3, 128, 256, 512, 1024, 2048]
-    kernels = [(7, 7) for i in range(5)]
+    kernels = [(7, 7) for i in range(7)]
     model_name = 'deep_2_model'
-    input_size = (201, 401)
+    input_size = (401, 401)
     output_channels = 1
-    drop_probs = [0 for i in range(5)]
+    drop_probs = [0 for i in range(7)]
 
-    input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
-    input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
-    ds_mask_channels = [1, 2, 4, 8, 16, 32]
+    #input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    #input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+    ds_mask_channels = [1, 2, 4, 8, 8, 16, 16, 32]
 
     optimizer = torch.optim.Adam
     criterion = nn.MSELoss()
@@ -344,22 +344,33 @@ def main():
 
 
     # add hyper parameters for search
-    param_grid = {
-        'learning_rates' : [0.001,0.0001,0.00001],
-        'batch_size' : [16,8],
-        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
+    # consists of tuples: (input_ss_mask, input_ds_mask)
+    param_grid = [([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+                  ([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]),
+                  ([1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]),
+                  ([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+                  ([1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1]),
+                  ([0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0])]
+
+    conv_channels = [1, 64, 64, 128, 128, 256, 256, 512]
+    batch_size=128
+    learning_rate=0.0001
+    """
+    {
+        'learning_rates' : [0.0001],
+        'batch_size' : [128],
+        'conv_channels' : [[1, 64, 64, 128, 128, 256, 256, 512]]
     }
-
+    """
     # number of iterations to be performed for hyperparameter search
-    max_evals=1
-
+    i = 0
     # Iterate through the specified number of evaluations
-    for i in range(max_evals):
+    for input_ss_mask, input_ds_mask in param_grid:
 
-        params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
+        print('input ss mask: ', input_ss_mask)
+        print('input ds mask: ', input_ds_mask)
 
-        print(params)
-        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=params['batch_size'], log_period=log_period,
+        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
                                      epochs=epochs, data_type=data_type, train_ratio=train_ratio,
                                      process_raw_data=process_raw_data,
                                      pro_and_augm_only_image_type=pro_and_augm_only_image_type,
@@ -370,21 +381,21 @@ def main():
                                      trunc_points=trunc_points, get_scale_center=get_scale_center,
                                      single_sample=single_sample,
                                      do_scale_center=do_scale_center,
-                                     height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'], kernels=kernels,
+                                     height_channel_oa=height_channel_oa, conv_channels=conv_channels, kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
                                      input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
                                      ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
                                      optimizer=optimizer, criterion=criterion,
-                                     learning_rates=params['learning_rates'],
+                                     learning_rates=learning_rate,
                                      use_regressed_oa=use_regressed_oa,
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
                                      hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i
                                      )
-
+        i = i + 1
         # fit the first model
         print('\n---------------------------')
         print('fitting model')
