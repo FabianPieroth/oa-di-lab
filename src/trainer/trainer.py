@@ -1,10 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-#from models.conv_deconv import ConvDeconv
+from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
-from models.SP2_conv_deconv import ConvDeconv
+from models.SP2_conv_deconv import ConvDeconv as SP2Model
 import torch
 import random
 import torch.nn as nn
@@ -22,7 +22,7 @@ class CNN_skipCo_trainer(object):
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, hetero_mask_to_mask,hyper_no, input_ds_mask,
-                 input_ss_mask, ds_mask_channels):
+                 input_ss_mask, ds_mask_channels, add_skip):
 
         self.image_type = image_type
 
@@ -47,13 +47,10 @@ class CNN_skipCo_trainer(object):
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
-                                           input_ds_mask=input_ds_mask,
-                                           input_ss_mask=input_ss_mask,
-                                           ds_mask_channels=ds_mask_channels,
-                                           datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
-                                           output_channels=output_channels, drop_probs=drop_probs)
+                                           output_channels=output_channels, drop_probs=drop_probs,
+                                           add_skip=add_skip)
 
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
@@ -248,14 +245,14 @@ class CNN_skipCo_trainer(object):
 def main():
 
 
-    image_type = 'US'
+    image_type = 'OA'
     # batch_size = 16
     log_period = 100
     epochs = 500
 
     #dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -297,6 +294,7 @@ def main():
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
     ds_mask_channels = [1,2,4,8,16,32]
 
+    add_skip = False
     #dilated model parameters
 
     di_conv_channels = [1, 64, 64, 64, 64, 64]
@@ -342,7 +340,8 @@ def main():
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
-                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i
+                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
+                                     add_skip=add_skip
                                      )
 
         #trainer.find_lr()
