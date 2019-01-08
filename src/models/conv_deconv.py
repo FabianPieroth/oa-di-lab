@@ -116,8 +116,9 @@ class ConvDeconv(nn.Module):
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
             skip = skip_connection[len(skip_connection)-1-i]
+            x = l(x)
             if self.add_skip:
-                x = l(x) + skip
+                x = x + skip
             if i is not len(self.deconv_layers)-1:
                 x = relu(x)
 
