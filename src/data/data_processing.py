@@ -81,7 +81,12 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
         # here you can choose which from the 28 channels you want to keep
         oa_low = oa_low[:, :, channel_slice_oa]
         oa_high = oa_high[:, :, channel_slice_oa]
+        if add_f_test:
+            # here you can add the f-test to the first channel together with the rest of the slice
+            f_test_low = np.expand_dims(f_test(oa_low, spectra=regression_coefficients), axis=2)
+            oa_low = np.concatenate((f_test_low, oa_low), axis=2)
         if only_f_test_in_target:
+            # if this is true, only the f-test is in the target
             oa_high = np.expand_dims(f_test(oa_high, spectra=regression_coefficients), axis=2)
 
     dict_oa = {name_oa_low: oa_low,

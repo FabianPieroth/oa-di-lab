@@ -265,16 +265,16 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'US'
+    image_type = 'OA'
     #batch_size = 16
     log_period = 100
     epochs = 500
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.9
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
     do_heavy_augment = False
     do_augment = False
@@ -292,7 +292,7 @@ def main():
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
-    add_f_test = False
+    add_f_test = True
     only_f_test_in_target = True
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
@@ -303,7 +303,7 @@ def main():
     # conv_channels = [3, 128, 256, 512, 1024, 2048]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (401, 401)
+    input_size = (201, 401)
     output_channels = 1
     drop_probs = [0 for i in range(5)]
     optimizer = torch.optim.Adam
@@ -319,7 +319,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[3,64,128,256,512,1024]]
+        'conv_channels' : [[29,64,128,256,512,1024]]
     }
 
     # number of iterations to be performed for hyperparameter search

@@ -50,13 +50,16 @@ class Logger(object):
         val_length = min(len(self.dataset.val_file_names), num_images_val)
         val_names = random.sample(self.dataset.val_file_names, val_length)
 
-        test_length = min(len(self.dataset.test_names), num_images_test)
-        single_test_names = list(set([self.dataset.extract_name_from_path(
-            test_name, without_ch=True) for test_name in self.dataset.test_names]))
-        test_names = []
-        for name in single_test_names:
-            all_sos = [full_name for full_name in self.dataset.test_names if name in full_name]
-            test_names.extend(random.sample(all_sos, test_length))
+        if self.dataset.data_type == 'hetero':
+            test_length = min(len(self.dataset.test_names), num_images_test)
+            single_test_names = list(set([self.dataset.extract_name_from_path(
+                test_name, without_ch=True) for test_name in self.dataset.test_names]))
+            test_names = []
+            for name in single_test_names:
+                all_sos = [full_name for full_name in self.dataset.test_names if name in full_name]
+                test_names.extend(random.sample(all_sos, test_length))
+        else:
+            test_names = self.dataset.test_names
 
         # load scale and center params
         scale_params_low = scale_params[0]
