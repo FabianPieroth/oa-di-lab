@@ -81,6 +81,8 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
         # here you can choose which from the 28 channels you want to keep
         oa_low = oa_low[:, :, channel_slice_oa]
         oa_high = oa_high[:, :, channel_slice_oa]
+        if only_f_test_in_target:
+            oa_high = np.expand_dims(f_test(oa_high, spectra=regression_coefficients), axis=2)
 
     dict_oa = {name_oa_low: oa_low,
                name_oa_high: oa_high}
@@ -222,6 +224,7 @@ def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, p
     save_dict_with_pickle(dict_save, path_to_augment + "/speckle_noise/" + end_folder, name_save)
     name_save_params = name_save + '_params'
     save_dict_with_pickle(params, path_to_params + '/augmentation/speckle_noise/' + end_folder, name_save_params)
+
 
 def create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type):
     name_low = file_prefix + '_low_' + aug_type

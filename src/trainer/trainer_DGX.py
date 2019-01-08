@@ -272,7 +272,7 @@ def main():
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = False
     pro_and_augm_only_image_type = True
@@ -288,15 +288,15 @@ def main():
     trunc_points = (0.0001, 0.9999)
     get_scale_center = False
     single_sample = True
-    do_scale_center = True
+    do_scale_center = False
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
     add_f_test = False
-    only_f_test_in_target = False
-    channel_slice_oa = [0, 3, 6, 10, 15, 23, 27]
+    only_f_test_in_target = True
+    channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
-    hetero_mask_to_mask = True
+    hetero_mask_to_mask = False
 
     # model parameters
 
@@ -319,7 +319,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[1,64,128,256,512,1024]]
+        'conv_channels' : [[3,64,128,256,512,1024]]
     }
 
     # number of iterations to be performed for hyperparameter search
