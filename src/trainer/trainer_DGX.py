@@ -17,7 +17,7 @@ class CNN_skipCo_trainer(object):
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
                  trunc_points, get_scale_center, single_sample,do_scale_center,
-
+                 oa_do_pca,oa_pca_fit_ratio, oa_pca_num_components,
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
@@ -39,6 +39,8 @@ class CNN_skipCo_trainer(object):
                                    image_type=image_type, get_scale_center=get_scale_center,
                                    single_sample=single_sample,
                                    do_scale_center=do_scale_center,
+                                   oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio,
+                                   oa_pca_num_components=oa_pca_num_components,
                                    height_channel_oa=height_channel_oa, use_regressed_oa=use_regressed_oa,
                                    include_regression_error=include_regression_error,
                                    add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
@@ -288,51 +290,56 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'OA'
-    #batch_size = 16
-    log_period = 10
-    epochs = 35
+    batch_size = 2
+    log_period = 1
+    epochs = 2
 
     # dataset parameters
 
-    data_type = 'hetero'
-    train_ratio = 0.9
-    process_raw_data = False
+    data_type = 'homo'
+    train_ratio = 0.5
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
     do_augment = True
-    add_augment = True
+    add_augment = False
     do_rchannels = False
-    do_flip = True
+    do_flip = False
     do_blur = False
     do_deform = False
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = True
-    do_scale_center = False
+    single_sample = False
+    do_scale_center = True
+    oa_do_pca = True
+    oa_pca_fit_ratio = 0.5
+    oa_pca_num_components= 7
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
-    add_f_test = True
-    only_f_test_in_target = True
+    add_f_test = False
+    only_f_test_in_target = False
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
 
     # model parameters
 
-    # conv_channels = [3, 128, 256, 512, 1024, 2048]
+    conv_channels = [7, 16, 16, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (201, 401)
-    output_channels = 1
+    output_channels = 7
     drop_probs = [0 for i in range(5)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
     ds_mask_channels = [1, 2, 4, 8, 16, 32]
+
+    learning_rate = 0.0001
 
     optimizer = torch.optim.Adam
     criterion = nn.MSELoss()
@@ -344,11 +351,9 @@ def main():
 
 
     # add hyper parameters for search
-    param_grid = {
-        'learning_rates' : [0.001,0.0001,0.00001],
-        'batch_size' : [16,8],
-        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
-    }
+    #param_grid = {
+    #
+    #}
 
     # number of iterations to be performed for hyperparameter search
     max_evals=1
@@ -356,10 +361,10 @@ def main():
     # Iterate through the specified number of evaluations
     for i in range(max_evals):
 
-        params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
+        #params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
 
-        print(params)
-        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=params['batch_size'], log_period=log_period,
+        #print(params)
+        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
                                      epochs=epochs, data_type=data_type, train_ratio=train_ratio,
                                      process_raw_data=process_raw_data,
                                      pro_and_augm_only_image_type=pro_and_augm_only_image_type,
@@ -370,14 +375,15 @@ def main():
                                      trunc_points=trunc_points, get_scale_center=get_scale_center,
                                      single_sample=single_sample,
                                      do_scale_center=do_scale_center,
-                                     height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'], kernels=kernels,
+                                     oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio, oa_pca_num_components = oa_pca_num_components,
+                                     height_channel_oa=height_channel_oa, conv_channels=conv_channels, kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
                                      input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
                                      ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
                                      optimizer=optimizer, criterion=criterion,
-                                     learning_rates=params['learning_rates'],
+                                     learning_rates=learning_rate,
                                      use_regressed_oa=use_regressed_oa,
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,

@@ -7,6 +7,7 @@ import random
 import data.data_processing as dp
 import torch
 import scipy.io
+from sklearn.decomposition import IncrementalPCA
 
 
 class ProcessData(object):
@@ -31,6 +32,9 @@ class ProcessData(object):
                  process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
+                 oa_do_pca= False,
+                 oa_pca_fit_ratio =1,
+                 oa_pca_num_components = 7,
                  height_channel_oa=201,
                  use_regressed_oa=False,
                  add_f_test=False,
@@ -72,6 +76,9 @@ class ProcessData(object):
 
         self.do_speckle_noise = do_speckle_noise
 
+        self.oa_do_pca = oa_do_pca
+        self.oa_pca_fit_ratio = oa_pca_fit_ratio
+        self.oa_pca_num_components = oa_pca_num_components
         self.height_channel_oa = height_channel_oa
         self.use_regressed_oa = use_regressed_oa
         self.include_regression_error = include_regression_error
@@ -157,6 +164,20 @@ class ProcessData(object):
 
             self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
                                                                     train_names=self.train_file_names)
+        if self.oa_do_pca:
+            if self.process_raw == False or self.do_augment == False:
+                sys.exit('Please process and augment the data before doing the pca')
+            if self.image_type == 'US' or self.data_type == 'hetero':
+                sys.exit('PCA not implemented for US or hetero data')
+            # fit PCA on targets in train set
+            self.fit_pca_on_targets(self.train_file_names, self.oa_pca_fit_ratio, self.oa_pca_num_components)
+            # join train, val and test file names
+            self.all_data_files = []
+            self.all_data_files.extend(self.train_file_names)
+            self.all_data_files.extend(self.val_file_names)
+            self.all_data_files.extend(self.test_names)
+            # project all data files onto pca space and overwrite the files
+            self.do_pca_and_save_data(self.all_data_files)
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -617,6 +638,63 @@ class ProcessData(object):
         for f in file_list:
             os.remove(os.path.join(path_to_dir, f))
 
+    ##################################################################
+    # ###### fit PCA for OA data      ####################################
+    ##################################################################
+
+    def fit_pca_on_targets(self, train_set, fit_ratio, num_components, pca_batch_size = 100):
+        # fits pca on target images in the train_set. subsamples images with fit_ratio
+        print('enters pca fitting function')
+        indices_of_sample = random.sample(range(len(train_set)), int(len(train_set)*fit_ratio))
+        sample_files = [train_set[i] for i in indices_of_sample]
+        print('loads data')
+        targets = np.array(np.array([np.array(self.load_file_to_numpy(full_file_name=file_name,
+            image_sign='OA' + '_high')) for file_name in sample_files]))
+        targets = targets.reshape(-1,28)
+        print(targets.shape)
+        print('fits pca')
+        pca_model = IncrementalPCA(n_components = num_components, batch_size=pca_batch_size)
+        pca_model.fit(targets)
+        with open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'wb') as handle:
+            pickle.dump(pca_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    ##################################################################
+    # ###### do PCA and save data      ###############################
+    ##################################################################
+
+    def do_pca_and_save_data(self, file_paths):
+        print('enters do_pca_and_save_data function')
+        # load model
+        model = self.load_pca_model()
+        #print(model)
+        for file_name in file_paths:
+            image_high = self.load_file_to_numpy(full_file_name=file_name,image_sign='OA' + '_high')
+            im_shape = image_high.shape
+            image_high = image_high.reshape(-1, im_shape[-1])
+            transformed_high = model.transform(image_high)
+            new_shape = list(im_shape[:2])
+            new_shape.append(model.n_components)
+            #print(new_shape)
+            transformed_high = transformed_high.reshape(new_shape)
+            image_low = self.load_file_to_numpy(full_file_name=file_name, image_sign='OA' + '_low')
+            im_shape = image_low.shape
+            image_low = image_low.reshape(-1, im_shape[-1])
+            transformed_low = model.transform(image_low)
+            new_shape = list(im_shape[:2])
+            new_shape.append(model.n_components)
+            transformed_low = transformed_low.reshape(new_shape)
+            short_file_name = file_name.rsplit('/', 1)[-1] # get only file name without rest of path
+            dic = {'OA_low_' + short_file_name: transformed_low, 'OA_high_' + short_file_name: transformed_high}
+            pickle.dump(dic, open(file_name, 'wb'))
+
+    def load_pca_model(self):
+        model = pickle.load(open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'rb'))
+        return model
+
+    ##################################################################
+    # ###### Normalization parameters ################################
+    ##################################################################
+
     def update_mean_var(self, prev_agg, data):
         (n_prev_obs, prev_mean, prev_var) = prev_agg
         m = n_prev_obs
@@ -784,6 +862,8 @@ class ProcessData(object):
                          'Truncation of saved parameters is ' + str(params_trunc_points))
         return params_low, params_high
 
+
+
     ##################################################################
     # ###### Torch tensor shaping ####################################
     ##################################################################
@@ -794,11 +874,11 @@ class ProcessData(object):
             image = batch[im_ind, :, :, :]
             quantiles = np.quantile(image, trunc_points)
             batch[im_ind, :, :, :] = image.clip(quantiles[0], quantiles[1])
+
         return batch
 
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
-
         x, y = self.create_train_batches(batch_files)
 
         if self.image_type == 'OA':
