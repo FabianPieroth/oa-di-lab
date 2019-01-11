@@ -157,6 +157,7 @@ class ProcessData(object):
 
             self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
                                                                     train_names=self.train_file_names)
+
         if self.get_scale_center:
             self._get_scale_center()
 

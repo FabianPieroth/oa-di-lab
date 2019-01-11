@@ -199,7 +199,7 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
         rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
         rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
         # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
-        # rgb = np.log(rgb) / np.log(np.max(rgb))  # log scale
+        rgb = np.log(rgb)  # log scale
         # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
         # rgb = rgb / np.max(rgb)
     else:
@@ -219,6 +219,7 @@ def plot_single_spectra(input_im, target_im, predict_im, save_name, regressed,
     fig1.savefig(save_name + '/' + 'Input', bbox_inches='tight')
     fig2.savefig(save_name + '/' + 'Target', bbox_inches='tight')
     fig3.savefig(save_name + '/' + 'Predict', bbox_inches='tight')
+
 
 def load_file_to_numpy(full_file_name):
     # helper function to load and read the data; pretty inefficient right now

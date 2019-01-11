@@ -1,10 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-#from models.conv_deconv import ConvDeconv
+from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
-from models.SP2_conv_deconv import ConvDeconv
+# from models.SP2_conv_deconv import ConvDeconv
 import torch
 import random
 import torch.nn as nn
@@ -22,7 +22,7 @@ class CNN_skipCo_trainer(object):
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
-                 input_ds_mask, input_ss_mask, ds_mask_channels):
+                 input_ds_mask, input_ss_mask, ds_mask_channels, add_skip):
 
         self.image_type = image_type
 
@@ -46,14 +46,21 @@ class CNN_skipCo_trainer(object):
                                    process_all_raw_folders=process_all_raw_folders,
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+        '''self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            input_ds_mask=input_ds_mask,
                                            input_ss_mask=input_ss_mask,
                                            ds_mask_channels=ds_mask_channels,
                                            datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
-                                           output_channels=output_channels, drop_probs=drop_probs)
+                                           output_channels=output_channels, drop_probs=drop_probs,
+                                           add_skip=add_skip)'''
+
+        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           kernels=kernels,
+                                           model_name=model_name, input_size=input_size,
+                                           output_channels=output_channels, drop_probs=drop_probs,
+                                           add_skip=add_skip)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -289,34 +296,34 @@ def main():
 
     image_type = 'OA'
     #batch_size = 16
-    log_period = 10
-    epochs = 35
+    log_period = 100
+    epochs = 200
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.9
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
-    add_augment = True
+    do_augment = False
+    add_augment = False
     do_rchannels = False
     do_flip = True
     do_blur = False
-    do_deform = False
+    do_deform = True
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
-    get_scale_center = True
-    single_sample = True
+    get_scale_center = False
+    single_sample = False
     do_scale_center = False
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
-    add_f_test = True
-    only_f_test_in_target = True
+    add_f_test = False
+    only_f_test_in_target = False
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
@@ -327,8 +334,10 @@ def main():
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (201, 401)
-    output_channels = 1
+    output_channels = None
     drop_probs = [0 for i in range(5)]
+
+    add_skip = True
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -347,7 +356,7 @@ def main():
     param_grid = {
         'learning_rates' : [0.001,0.0001,0.00001],
         'batch_size' : [16,8],
-        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
+        'conv_channels' : [[5, 128, 8, 8, 8, 8]]
     }
 
     # number of iterations to be performed for hyperparameter search
@@ -382,7 +391,7 @@ def main():
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
-                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i
+                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i, add_skip=add_skip
                                      )
 
         # fit the first model
