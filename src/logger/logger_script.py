@@ -126,7 +126,6 @@ def backproject_image_pca(pca_image, pca_model):
     n_comp, n_feat = pca_model.components_.shape
     new_shape = list(pca_image.shape[:2])
     new_shape.append(n_feat)
-    print(new_shape)
     pca_image = pca_image.reshape(-1, n_comp)
     backproj = pca_model.inverse_transform(pca_image)
     backproj = backproj.reshape(new_shape)
