@@ -190,6 +190,12 @@ class Logger(object):
         with open(self.save_dir + '/' + self.image_type + '_scale_params', 'wb') as handle:
             pickle.dump(scale_param, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def save_pca_model(self, pca_model):
+        file_path = self.save_dir + '/' + 'OA_pca_model.sav'
+        with open(file_path, 'wb') as handle:
+            pickle.dump(pca_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
     def save_representation_of_model(self):
         text_file = open(self.save_dir + '/' + self.model_name + '_model_structure.txt', "w")
         text_file.write(str(self.model))
@@ -201,6 +207,7 @@ class Logger(object):
             epochs,
             mean_images,
             scale_params,
+            pca_model,
             learning_rates):
         # method to call the other methods and decide what should be saved, this should be called in the trainer
         self.save_appendix = save_appendix
@@ -223,6 +230,8 @@ class Logger(object):
             # only call this the first time, when training starts
             self.save_representation_of_model()
             self.save_scale_center_params(mean_images=mean_images, scale_params=scale_params)
+            if self.dataset.oa_do_pca:
+                self.save_pca_model(pca_model)
             self.save_json_file()
 
             # copy the data_loader file and the model file to make reproducible examples
@@ -252,8 +261,8 @@ class Logger(object):
             "data_type": self.dataset.data_type,
             "nr_epochs": self.epochs,
             "oa_do_pca": self.dataset.oa_do_pca,
-            "oa_pca_num_components": self.dataset.oa_pca_num_compontents,
-            "oa_pca_fit_ratio": self.dataset.oa_fit_ratio,
+            "oa_pca_num_components": self.dataset.oa_pca_num_components,
+            "oa_pca_fit_ratio": self.dataset.oa_pca_fit_ratio,
             "do_scale_center": self.dataset.do_scale_center,
             "get_scale_center": self.dataset.get_scale_center,
             "trunc_points": self.dataset.trunc_points,

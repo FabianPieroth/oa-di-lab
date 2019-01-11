@@ -644,14 +644,11 @@ class ProcessData(object):
 
     def fit_pca_on_targets(self, train_set, fit_ratio, num_components, pca_batch_size = 100):
         # fits pca on target images in the train_set. subsamples images with fit_ratio
-        print('enters pca fitting function')
         indices_of_sample = random.sample(range(len(train_set)), int(len(train_set)*fit_ratio))
         sample_files = [train_set[i] for i in indices_of_sample]
-        print('loads data')
         targets = np.array(np.array([np.array(self.load_file_to_numpy(full_file_name=file_name,
             image_sign='OA' + '_high')) for file_name in sample_files]))
         targets = targets.reshape(-1,28)
-        print(targets.shape)
         print('fits pca')
         pca_model = IncrementalPCA(n_components = num_components, batch_size=pca_batch_size)
         pca_model.fit(targets)

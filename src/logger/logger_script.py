@@ -5,6 +5,7 @@ import data.data_processing as dp
 import logger.visualization as vis
 import json
 import importlib.util
+import pickle
 
 
 def extract_and_process_logged_folder(folder_name):
@@ -16,6 +17,8 @@ def extract_and_process_logged_folder(folder_name):
     data_loader = load_data_loader_module(path=folder_name, json_dict=json_dict)
     if json_dict['do_scale_center']:
         scale_low, scale_high, mean_low, mean_high = load_saved_params(path=folder_name + '/', data_loader=data_loader)
+    if json_dict['oa_do_pca']:
+        pca_model = load_pca_model(folder_name)
 
     for folder in folder_saved_predictions:
         data_folder = dp.ret_all_files_in_folder(folder_name + '/' + folder, full_names=False)
@@ -27,6 +30,7 @@ def extract_and_process_logged_folder(folder_name):
             for images in image_list:
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
+
                 if rescale_images and json_dict['do_scale_center']:
                     """input_im = data_loader.scale_and_center_reverse(batch=input_im, scale_params=scale_low,
                                                                     mean_image=mean_low)
@@ -52,6 +56,7 @@ def open_json_file(folder_name, file_name):
     with open(folder_name + '/' + file_name, 'r') as file:
         json_dict = json.load(file)
     return json_dict
+
 
 
 def load_data_loader_module(path, json_dict):
@@ -90,11 +95,49 @@ def plot_train_val_loss(folder_name):
     vis.plot_train_val_loss_graph(train_loss=train_loss, val_loss=val_loss, learning_rates=learning_rates,
                                   save_name=folder_name + '/plots/' + 'train_val_loss', nr_epochs=nr_epochs)
 
+###########################################
+# PCA specific definitions
+###########################################
+
+def load_pca_model(folder_name):
+    file_path = folder_name + '/OA_pca_model.sav'
+    with open(file_path, 'rb') as handle:
+        pca_model = pickle.load(handle)
+    return pca_model
+
+def project_image_pca(image, pca_model):
+    # takes image (C,H,W) and projects it onto the pca space
+    # outputs in image shape (pca_comp, H,W)
+    # not tested. backproject_image_pca() is tested.
+    image = np.moveaxis(image, [0], [-1])
+    im_shape = image.shape
+    new_shape = list(im_shape[:2])
+    new_shape.append(pca_model.n_components)
+    image = image.reshape(-1,im_shape[-1])
+    transformed = pca_model.transform(image)
+    transformed = transformed.reshape(new_shape)
+    transformed = np.moveaxis(transformed, [-1], [0])
+    return transformed
+
+def backproject_image_pca(pca_image, pca_model):
+    # takes image in pca components (pca_comp, H,W) and backprojects it into the higher dimensional space
+    # outputs in image shape (C,H,W)
+    pca_image = np.moveaxis(pca_image, [0], [-1])
+    n_comp, n_feat = pca_model.components_.shape
+    new_shape = list(pca_image.shape[:2])
+    new_shape.append(n_feat)
+    print(new_shape)
+    pca_image = pca_image.reshape(-1, n_comp)
+    backproj = pca_model.inverse_transform(pca_image)
+    backproj = backproj.reshape(new_shape)
+    backproj = np.moveaxis(backproj, [-1], [0])
+    return backproj
 
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'hetero/combined_model_hyper_1_2019_01_07_17_08'
+    folder_name = 'homo/combined_model_hyper_1_2019_01_11_16_49'
+
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

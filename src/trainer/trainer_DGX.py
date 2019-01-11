@@ -1,10 +1,10 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-#from models.conv_deconv import ConvDeconv
+from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
-from models.SP2_conv_deconv import ConvDeconv
+#from models.SP2_conv_deconv import ConvDeconv
 import torch
 import random
 import torch.nn as nn
@@ -49,10 +49,10 @@ class CNN_skipCo_trainer(object):
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
-                                           input_ds_mask=input_ds_mask,
-                                           input_ss_mask=input_ss_mask,
-                                           ds_mask_channels=ds_mask_channels,
-                                           datatype=data_type,
+                                           #input_ds_mask=input_ds_mask,
+                                           #input_ss_mask=input_ss_mask,
+                                           #ds_mask_channels=ds_mask_channels,
+                                           #datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs)
@@ -92,6 +92,10 @@ class CNN_skipCo_trainer(object):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+        if self.dataset.oa_do_pca:
+            # get pca model for logging
+            pca_model = self.dataset.load_pca_model()
+        else: pca_model = None
 
         # load validation set, normalize and parse into tensor
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
@@ -167,6 +171,7 @@ class CNN_skipCo_trainer(object):
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high],
+                                pca_model=pca_model,
                                 learning_rates=self.learning_rates)
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
@@ -292,7 +297,7 @@ def main():
     image_type = 'OA'
     batch_size = 2
     log_period = 1
-    epochs = 2
+    epochs = 3
 
     # dataset parameters
 
@@ -315,7 +320,7 @@ def main():
     single_sample = False
     do_scale_center = True
     oa_do_pca = True
-    oa_pca_fit_ratio = 0.5
+    oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
     oa_pca_num_components= 7
     height_channel_oa = 201
     use_regressed_oa = False
