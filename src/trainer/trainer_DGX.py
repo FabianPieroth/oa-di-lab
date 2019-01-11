@@ -308,9 +308,9 @@ def main():
 
     do_heavy_augment = False
     do_augment = True
-    add_augment = False
+    add_augment = True
     do_rchannels = False
-    do_flip = False
+    do_flip = True
     do_blur = False
     do_deform = False
     do_crop = False

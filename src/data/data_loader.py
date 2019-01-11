@@ -648,7 +648,8 @@ class ProcessData(object):
         sample_files = [train_set[i] for i in indices_of_sample]
         targets = np.array(np.array([np.array(self.load_file_to_numpy(full_file_name=file_name,
             image_sign='OA' + '_high')) for file_name in sample_files]))
-        targets = targets.reshape(-1,28)
+        n_channels = targets.shape[-1]
+        targets = targets.reshape(-1,n_channels)
         print('fits pca')
         pca_model = IncrementalPCA(n_components = num_components, batch_size=pca_batch_size)
         pca_model.fit(targets)
@@ -660,10 +661,9 @@ class ProcessData(object):
     ##################################################################
 
     def do_pca_and_save_data(self, file_paths):
-        print('enters do_pca_and_save_data function')
+        print('transforms data into pca coefficients and save the new data')
         # load model
         model = self.load_pca_model()
-        #print(model)
         for file_name in file_paths:
             image_high = self.load_file_to_numpy(full_file_name=file_name,image_sign='OA' + '_high')
             im_shape = image_high.shape
