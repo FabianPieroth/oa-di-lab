@@ -56,7 +56,7 @@ class CNN_skipCo_trainer(object):
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
 
-        self.model = ImageTranslator([self.model_convdeconv])
+        self.model = ImageTranslator([self.model_dilated])
 
         if torch.cuda.is_available():
             torch.cuda.current_device()
@@ -245,14 +245,14 @@ class CNN_skipCo_trainer(object):
 def main():
 
 
-    image_type = 'OA'
+    image_type = 'US'
     # batch_size = 16
     log_period = 100
     epochs = 500
 
     #dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -297,15 +297,15 @@ def main():
     add_skip = False
     #dilated model parameters
 
-    di_conv_channels = [1, 64, 64, 64, 64, 64]
+    di_conv_channels = [3, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
 
 
     # add hyper parameters for search
     param_grid = {
-        'learning_rates' : [0.001, 0.0001, 0.00001],
-        'batch_size' : [16, 8],
-        'conv_channels' : [[1, 64, 128, 256, 512, 1024]]
+        'learning_rates' : [0.00001],
+        'batch_size' : [8],
+        'conv_channels' : [[3, 64, 128, 256, 512, 1024]]
     }
 
     # number of iterations to be performed for hyperparameter search

@@ -1,8 +1,14 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
+<<<<<<< HEAD
 from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
+=======
+#from models.conv_deconv import ConvDeconv
+#from models.dilated_conv import DilatedTranslator
+from models.dilated_SP2 import DilatedTranslator
+>>>>>>> dilated_SP2
 from models.model_superclass import ImageTranslator
 # from models.SP2_conv_deconv import ConvDeconv
 import torch
@@ -64,7 +70,7 @@ class CNN_skipCo_trainer(object):
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
-        self.model = ImageTranslator([self.model_convdeconv])
+        self.model = ImageTranslator([self.model_dilated])
 
 
         # we need optimizer and loss here to not access anything from the model class
@@ -308,7 +314,7 @@ def main():
 
     do_heavy_augment = False
     do_augment = False
-    add_augment = False
+    add_augment = True
     do_rchannels = False
     do_flip = True
     do_blur = False
@@ -348,7 +354,7 @@ def main():
 
     # dilated model parameters
 
-    di_conv_channels = [1, 64, 64, 64, 64, 64]
+    di_conv_channels = [3, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
 
 
