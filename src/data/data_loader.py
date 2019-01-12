@@ -178,6 +178,7 @@ class ProcessData(object):
             self.all_data_files.extend(self.test_names)
             # project all data files onto pca space and overwrite the files
             self.do_pca_and_save_data(self.all_data_files)
+
         if self.get_scale_center:
             self._get_scale_center()
 
@@ -684,8 +685,11 @@ class ProcessData(object):
             dic = {'OA_low_' + short_file_name: transformed_low, 'OA_high_' + short_file_name: transformed_high}
             pickle.dump(dic, open(file_name, 'wb'))
 
-    def load_pca_model(self):
-        model = pickle.load(open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'rb'))
+    def load_pca_model(self, path=None):
+        if path is None:
+            model = pickle.load(open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'rb'))
+        else:
+            model = pickle.load(open(path + '/OA_pca_model.sav', 'rb'))
         return model
 
     ##################################################################

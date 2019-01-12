@@ -32,16 +32,20 @@ def extract_and_process_logged_folder(folder_name):
                                                                          + '/' + images)
 
                 if rescale_images and json_dict['do_scale_center']:
-                    """input_im = data_loader.scale_and_center_reverse(batch=input_im, scale_params=scale_low,
-                                                                    mean_image=mean_low)
-                    target_im = data_loader.scale_and_center_reverse(batch=target_im, scale_params=scale_high,
-                                                                     mean_image=mean_high)
-                    predict_im = data_loader.scale_and_center_reverse(batch=predict_im, scale_params=scale_high,
-                                                                      mean_image=mean_high)"""
-                    pass
+                    input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
+                                                                      predict_im=predict_im,
+                                                                      scale_low=scale_low, scale_high=scale_high,
+                                                                      mean_low=mean_low,
+                                                                      mean_high=mean_high, data_loader=data_loader)
+                if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
+                    input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
+                                                                  data_loader=data_loader)
+
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
                 if json_dict['image_type'] == 'OA':
+                    if json_dict['oa_do_pca']:
+                        json_dict['processing']['channel_slice_oa'] = list(range(28))
                     vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
                                            save_name=save_folder + '/' + images + '_spectra', p_threshold=0.05,
                                            json_processing=json_dict)
@@ -58,6 +62,31 @@ def open_json_file(folder_name, file_name):
     return json_dict
 
 
+def reverse_scaling(input_im, target_im, predict_im, scale_low, scale_high, mean_low, mean_high, data_loader):
+    input_im = data_loader.scale_and_center_reverse(batch=input_im, scale_params=scale_low,
+                                                    mean_image=mean_low)
+    target_im = data_loader.scale_and_center_reverse(batch=target_im, scale_params=scale_high,
+                                                     mean_image=mean_high)
+    predict_im = data_loader.scale_and_center_reverse(batch=predict_im, scale_params=scale_high,
+                                                      mean_image=mean_high)
+    return input_im, target_im, predict_im
+
+
+def inverse_pca(input_im, target_im, predict_im, path, data_loader):
+    pca = data_loader.load_pca_model(path=path)
+    im_shape = input_im.shape
+    n_channels = input_im.shape[0]
+    input_im = pca.inverse_transform(input_im.reshape(-1, n_channels))
+    target_im = pca.inverse_transform(target_im.reshape(-1, n_channels))
+    predict_im = pca.inverse_transform(predict_im.reshape(-1, n_channels))
+
+    im_shape = (input_im.shape[1], im_shape[1], im_shape[2])
+    input_im = input_im.reshape(im_shape)
+    target_im = target_im.reshape(im_shape)
+    predict_im = predict_im.reshape(im_shape)
+
+    return input_im, target_im, predict_im
+
 
 def load_data_loader_module(path, json_dict):
     spec = importlib.util.spec_from_file_location("ProcessData", path + '/data/data_loader.py')
@@ -73,7 +102,6 @@ def load_data_loader_module(path, json_dict):
 
 
 def load_saved_params(path, data_loader):
-
     scale_params_low, scale_params_high = data_loader.load_params(param_type="scale_params", dir_params=path,
                                                                   trunc_points=data_loader.trunc_points)
 
@@ -95,6 +123,7 @@ def plot_train_val_loss(folder_name):
     vis.plot_train_val_loss_graph(train_loss=train_loss, val_loss=val_loss, learning_rates=learning_rates,
                                   save_name=folder_name + '/plots/' + 'train_val_loss', nr_epochs=nr_epochs)
 
+
 ###########################################
 # PCA specific definitions
 ###########################################
@@ -105,6 +134,7 @@ def load_pca_model(folder_name):
         pca_model = pickle.load(handle)
     return pca_model
 
+
 def project_image_pca(image, pca_model):
     # takes image (C,H,W) and projects it onto the pca space
     # outputs in image shape (pca_comp, H,W)
@@ -113,11 +143,12 @@ def project_image_pca(image, pca_model):
     im_shape = image.shape
     new_shape = list(im_shape[:2])
     new_shape.append(pca_model.n_components)
-    image = image.reshape(-1,im_shape[-1])
+    image = image.reshape(-1, im_shape[-1])
     transformed = pca_model.transform(image)
     transformed = transformed.reshape(new_shape)
     transformed = np.moveaxis(transformed, [-1], [0])
     return transformed
+
 
 def backproject_image_pca(pca_image, pca_model):
     # takes image in pca components (pca_comp, H,W) and backprojects it into the higher dimensional space
@@ -132,11 +163,11 @@ def backproject_image_pca(pca_image, pca_model):
     backproj = np.moveaxis(backproj, [-1], [0])
     return backproj
 
+
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_11_16_49'
-
+    folder_name = 'homo/combined_model_hyper_1_2019_01_12_02_55'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

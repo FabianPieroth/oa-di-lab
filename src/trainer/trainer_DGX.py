@@ -321,7 +321,7 @@ def main():
     do_scale_center = True
     oa_do_pca = True
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
-    oa_pca_num_components= 7
+    oa_pca_num_components= 28
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -333,11 +333,11 @@ def main():
 
     # model parameters
 
-    conv_channels = [7, 16, 16, 16, 16, 16]
+    conv_channels = [28, 16, 16, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (201, 401)
-    output_channels = 7
+    output_channels = None
     drop_probs = [0 for i in range(5)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
