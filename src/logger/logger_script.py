@@ -17,8 +17,6 @@ def extract_and_process_logged_folder(folder_name):
     data_loader = load_data_loader_module(path=folder_name, json_dict=json_dict)
     if json_dict['do_scale_center']:
         scale_low, scale_high, mean_low, mean_high = load_saved_params(path=folder_name + '/', data_loader=data_loader)
-    if json_dict['oa_do_pca']:
-        pca_model = load_pca_model(folder_name)
 
     for folder in folder_saved_predictions:
         data_folder = dp.ret_all_files_in_folder(folder_name + '/' + folder, full_names=False)
@@ -74,16 +72,21 @@ def reverse_scaling(input_im, target_im, predict_im, scale_low, scale_high, mean
 
 def inverse_pca(input_im, target_im, predict_im, path, data_loader):
     pca = data_loader.load_pca_model(path=path)
-    im_shape = input_im.shape
-    n_channels = input_im.shape[0]
-    input_im = pca.inverse_transform(input_im.reshape(-1, n_channels))
-    target_im = pca.inverse_transform(target_im.reshape(-1, n_channels))
-    predict_im = pca.inverse_transform(predict_im.reshape(-1, n_channels))
 
-    im_shape = (input_im.shape[1], im_shape[1], im_shape[2])
-    input_im = input_im.reshape(im_shape)
-    target_im = target_im.reshape(im_shape)
-    predict_im = predict_im.reshape(im_shape)
+    input_im = backproject_image_pca(input_im, pca)
+    target_im = backproject_image_pca(target_im, pca)
+    predict_im = backproject_image_pca(predict_im, pca)
+
+    #im_shape = input_im.shape
+    #n_channels = input_im.shape[0]
+    #input_im = pca.inverse_transform(input_im.reshape(-1, n_channels))
+    #target_im = pca.inverse_transform(target_im.reshape(-1, n_channels))
+    #predict_im = pca.inverse_transform(predict_im.reshape(-1, n_channels))
+
+    #im_shape = (input_im.shape[1], im_shape[1], im_shape[2])
+    #input_im = input_im.reshape(im_shape)
+    #target_im = target_im.reshape(im_shape)
+    #predict_im = predict_im.reshape(im_shape)
 
     return input_im, target_im, predict_im
 
@@ -167,7 +170,7 @@ def backproject_image_pca(pca_image, pca_model):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_12_02_55'
+    folder_name = 'homo/combined_model_hyper_1_2019_01_12_09_55'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
