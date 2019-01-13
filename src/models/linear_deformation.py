@@ -41,17 +41,12 @@ class DeformationLearner(nn.Module):
         ds_mask = x[:, 2:3, :, :]   # get the dual   speed of sound mask (batch_size, 1, H, W)
         ss_mask = x[:, 1:2, :, :]   # get the single speed of sound mask (batch_size, 1, H, W)
         image = x[:, 0:1, :, :]         # image
-        import matplotlib.pyplot as plt
-        plt.imshow(image[0,0,:,:])
-        plt.show()
         ds_mask = self.mask_conv(ds_mask)
         ss_mask = ss_mask[:,:,0:134,0:134]
         downscaled_image = self.conv(image)
         x = torch.cat((downscaled_image, ds_mask, ss_mask),1)
 
         x = self.linear(x.view(x.shape[0],-1))
-        plt.imshow(x.view(downscaled_image.shape)[0,0,:,:])
-        plt.show()
         x = self.deconv(x.view(downscaled_image.shape))
         return x
 
