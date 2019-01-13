@@ -17,6 +17,11 @@ def extract_and_process_logged_folder(folder_name):
     data_loader = load_data_loader_module(path=folder_name, json_dict=json_dict)
     if json_dict['do_scale_center']:
         scale_low, scale_high, mean_low, mean_high = load_saved_params(path=folder_name + '/', data_loader=data_loader)
+    if json_dict['oa_do_scale_center_before_pca'] and json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
+        scale_low_before_pca, scale_high_before_pca, mean_low_before_pca, mean_high_before_pca = load_saved_params(path=folder_name + '/',
+                                                                                                                   data_loader=data_loader,
+                                                                                                                   before_pca=True)
+
 
     for folder in folder_saved_predictions:
         data_folder = dp.ret_all_files_in_folder(folder_name + '/' + folder, full_names=False)
@@ -38,6 +43,15 @@ def extract_and_process_logged_folder(folder_name):
                 if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
                     input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
                                                                   data_loader=data_loader)
+
+                    if json_dict['oa_do_scale_center_before_pca']:
+                        input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
+                                                                          predict_im=predict_im,
+                                                                          scale_low=scale_low_before_pca, scale_high=scale_high_before_pca,
+                                                                          mean_low=mean_low_before_pca,
+                                                                          mean_high=mean_high_before_pca, data_loader=data_loader)
+
+
 
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
@@ -93,12 +107,20 @@ def load_data_loader_module(path, json_dict):
     return data_loader
 
 
-def load_saved_params(path, data_loader):
-    scale_params_low, scale_params_high = data_loader.load_params(param_type="scale_params", dir_params=path,
-                                                                  trunc_points=data_loader.trunc_points)
+def load_saved_params(path, data_loader, before_pca=False):
+    if before_pca:
+        param_suffix = '_before_pca'
+        trunc_points = data_loader.trunc_points_before_pca
+    else:
+        param_suffix = ''
+        trunc_points = data_loader.trunc_points
 
-    mean_image_low, mean_image_high = data_loader.load_params(param_type="mean_images", dir_params=path,
-                                                              trunc_points=data_loader.trunc_points)
+    scale_params_low, scale_params_high = data_loader.load_params(param_type="scale_params" + param_suffix,
+                                                                  dir_params=path,
+                                                                  trunc_points=trunc_points,)
+
+    mean_image_low, mean_image_high = data_loader.load_params(param_type="mean_images" + param_suffix, dir_params=path,
+                                                              trunc_points=trunc_points)
 
     return scale_params_low, scale_params_high, mean_image_low, mean_image_high
 
