@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 
 class DeformationLearner(nn.Module):
-
 
     def __init__(self, stride, kernel, padding, input_size=(401,401)):
         super().__init__()
@@ -32,7 +32,6 @@ class DeformationLearner(nn.Module):
                                    kernel_size=kernel, stride=stride,
                                    padding=padding)
 
-
     def forward(self, x):
         ds_mask = x[:, 2:3, :, :]   # get the dual speed of sound mask (batch_size, 1, H, W)
         ss_mask = x[:, 1:2, :, :]   # get the singel speed of sound mask (batch_size, 1, H, W)
@@ -46,14 +45,11 @@ class DeformationLearner(nn.Module):
         x = self.deconv(x.view(image.shape))
         return x
 
-
-
     def calc_conv_output(self):
         height, width = self.input_size
         h_conv_out = int((height + 2 * self.padding - (self.kernel - 1) - 1) / self.stride + 1)
         w_conv_out = int((width +  2 * self.padding - (self.kernel - 1) - 1) / self.stride + 1)
         return h_conv_out, w_conv_out
-
 
     def calc_output_padding(self):
         height, width = self.input_size
@@ -63,3 +59,19 @@ class DeformationLearner(nn.Module):
         opad_h = height - d_h_out
         opad_w = width  - d_w_out
         return opad_h, opad_w
+
+    def create_beside_diag_identity(self, size, batch_size, beside_diagonal=1, new_axis=0, channel=3):
+        ident = np.identity(size)
+        for j in range(1, beside_diagonal + 1):
+            rng = np.arange(ident.shape[0] - j)
+            ident[rng, rng + j] = 1.0
+            ident[rng + j, rng] = 1.0
+        ident_diag = np.expand_dims(ident, axis=new_axis)
+        ident_full = np.zeros((batch_size, ident_diag.shape[0], ident_diag.shape[1], ident_diag.shape[2]))
+        for k in range(batch_size):
+            ident_full[k, :, :, :] = ident_diag
+        ident = ident_full
+        for j in range(channel - 1):
+            ident = np.append(ident, ident_full, axis=3)
+
+        return torch.tensor(ident)
