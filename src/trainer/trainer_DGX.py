@@ -5,6 +5,7 @@ from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
 #from models.SP2_conv_deconv import ConvDeconv
+from models.linear_deformation import DeformationLearner
 import torch
 import random
 import torch.nn as nn
@@ -52,18 +53,19 @@ class CNN_skipCo_trainer(object):
                                    process_all_raw_folders=process_all_raw_folders,
                                    hetero_mask_to_mask=hetero_mask_to_mask)
 
-        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+        '''self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
                                            #input_ss_mask=input_ss_mask,
                                            #ds_mask_channels=ds_mask_channels,
                                            #datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
-                                           output_channels=output_channels, drop_probs=drop_probs)
+                                           output_channels=output_channels, drop_probs=drop_probs)'''
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
-        self.model = ImageTranslator([self.model_convdeconv])
+        self.deformation_model = DeformationLearner(stride=3, kernel=3, padding=1)
+        self.model = ImageTranslator([self.deformation_model])
 
 
         # we need optimizer and loss here to not access anything from the model class
@@ -308,21 +310,21 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
+    image_type = 'US'
     batch_size = 32
     log_period = 1
     epochs = 2
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
-    add_augment = True
+    do_augment = False
+    add_augment = False
     do_rchannels = False
     do_flip = True
     do_blur = False
@@ -332,10 +334,10 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001,0.9999)
     get_scale_center = True
-    single_sample = False
+    single_sample = True
     do_scale_center = True
-    oa_do_scale_center_before_pca = True
-    oa_do_pca = True
+    oa_do_scale_center_before_pca = False
+    oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
     oa_pca_num_components = 28
     height_channel_oa = 201
@@ -353,7 +355,7 @@ def main():
     conv_channels = [7, 16, 32, 64, 64, 64]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (201, 401)
+    input_size = (401, 401)
     output_channels = None
     drop_probs = [1 for i in range(5)]
 
