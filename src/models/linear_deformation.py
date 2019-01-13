@@ -68,12 +68,8 @@ class DeformationLearner(nn.Module):
             rng = np.arange(ident.shape[0] - j)
             ident[rng, rng + j] = 1.0
             ident[rng + j, rng] = 1.0
-        ident_diag = np.expand_dims(ident, axis=new_axis)
-        ident_full = np.zeros((batch_size, ident_diag.shape[0], ident_diag.shape[1], ident_diag.shape[2]))
-        for k in range(batch_size):
-            ident_full[k, :, :, :] = ident_diag
-        ident = ident_full
+        ident_diag = ident
         for j in range(channel - 1):
-            ident = np.append(ident, ident_full, axis=3)
+            ident = np.append(ident, ident_diag, axis=3)
 
         return torch.tensor(ident)
