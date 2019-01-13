@@ -27,19 +27,21 @@ class DeformationLearner(nn.Module):
         conv_h, conv_w = self.calc_conv_output()
         self.linear = nn.Linear(in_features=conv_h*conv_w*3, out_features=conv_h*conv_w)
 
+        # set the parameters of the linear layer to zero except for the diagonal
+        self.linear.weight.data = self.linear.weight.data * self.create_beside_diag_identity()
         # dual speed mask layer
         self.mask_conv = nn.Conv2d(in_channels=1, out_channels=1,
                                    kernel_size=kernel, stride=stride,
                                    padding=padding)
 
     def forward(self, x):
-        ds_mask = x[:, 2:3, :, :]   # get the dual speed of sound mask (batch_size, 1, H, W)
-        ss_mask = x[:, 1:2, :, :]   # get the singel speed of sound mask (batch_size, 1, H, W)
+        ds_mask = x[:, 2:3, :, :]   # get the dual   speed of sound mask (batch_size, 1, H, W)
+        ss_mask = x[:, 1:2, :, :]   # get the single speed of sound mask (batch_size, 1, H, W)
         image = x[:, 0:1, :, :]         # image
 
-        x = self.conv(image)
         ds_mask = self.mask_conv(ds_mask)
         ss_mask = ss_mask[:,:,0:134,0:134]
+        x = self.conv(image)
         x = torch.cat((x, ds_mask, ss_mask),1)
         x = self.linear(x.view(x.shape[0],-1))
         x = self.deconv(x.view(image.shape))
