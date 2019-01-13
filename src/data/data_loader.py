@@ -32,6 +32,8 @@ class ProcessData(object):
                  process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
+                 trunc_points_before_pca=(0.0001,0.9999),
+                 oa_do_scale_center_before_pca=True,
                  oa_do_pca= False,
                  oa_pca_fit_ratio =1,
                  oa_pca_num_components = 7,
@@ -76,6 +78,8 @@ class ProcessData(object):
 
         self.do_speckle_noise = do_speckle_noise
 
+        self.trunc_points_before_pca=trunc_points_before_pca
+        self.oa_do_scale_center_before_pca=oa_do_scale_center_before_pca
         self.oa_do_pca = oa_do_pca
         self.oa_pca_fit_ratio = oa_pca_fit_ratio
         self.oa_pca_num_components = oa_pca_num_components
@@ -169,6 +173,10 @@ class ProcessData(object):
                 sys.exit('Please process and augment the data before doing the pca')
             if self.image_type == 'US' or self.data_type == 'hetero':
                 sys.exit('PCA not implemented for US or hetero data')
+            # get normalization parameters before pca
+            if self.oa_do_scale_center_before_pca:
+                self._get_scale_center(before_pca=True)
+
             # fit PCA on targets in train set
             self.fit_pca_on_targets(self.train_file_names, self.oa_pca_fit_ratio, self.oa_pca_num_components)
             # join train, val and test file names
@@ -645,10 +653,22 @@ class ProcessData(object):
 
     def fit_pca_on_targets(self, train_set, fit_ratio, num_components, pca_batch_size = 100):
         # fits pca on target images in the train_set. subsamples images with fit_ratio
+
+
         indices_of_sample = random.sample(range(len(train_set)), int(len(train_set)*fit_ratio))
         sample_files = [train_set[i] for i in indices_of_sample]
         targets = np.array(np.array([np.array(self.load_file_to_numpy(full_file_name=file_name,
             image_sign='OA' + '_high')) for file_name in sample_files]))
+
+        # truncate targets
+        targets = self.truncate_images_in_batch(batch=targets, trunc_points=self.trunc_points_before_pca)
+
+        if self.oa_do_scale_center_before_pca:
+            # get normalization parameters
+            var_low, var_high = self.load_params(param_type="scale_params_before_pca")
+            mean_low, mean_high = self.load_params(param_type="mean_images_before_pca")
+            # scale targets
+            targets = self.scale_and_center(targets, scale_params=var_high, mean_image=mean_high)
         n_channels = targets.shape[-1]
         targets = targets.reshape(-1,n_channels)
         print('fits pca')
@@ -665,8 +685,14 @@ class ProcessData(object):
         print('transforms data into pca coefficients and save the new data')
         # load model
         model = self.load_pca_model()
+        if self.oa_do_scale_center_before_pca:
+            # load normalization parameters
+            var_low, var_high = self.load_params(param_type="scale_params_before_pca")
+            mean_low, mean_high = self.load_params(param_type="mean_images_before_pca")
         for file_name in file_paths:
             image_high = self.load_file_to_numpy(full_file_name=file_name,image_sign='OA' + '_high')
+            if self.oa_do_scale_center_before_pca:
+                image_high = self.scale_and_center(image_high, scale_params=var_high, mean_image=mean_high)
             im_shape = image_high.shape
             image_high = image_high.reshape(-1, im_shape[-1])
             transformed_high = model.transform(image_high)
@@ -675,6 +701,8 @@ class ProcessData(object):
             #print(new_shape)
             transformed_high = transformed_high.reshape(new_shape)
             image_low = self.load_file_to_numpy(full_file_name=file_name, image_sign='OA' + '_low')
+            if self.oa_do_scale_center_before_pca:
+                image_low = self.scale_and_center(image_low, scale_params=var_low, mean_image=mean_low)
             im_shape = image_low.shape
             image_low = image_low.reshape(-1, im_shape[-1])
             transformed_low = model.transform(image_low)
@@ -712,8 +740,14 @@ class ProcessData(object):
 
         return n_obs, mean, var
 
-    def _get_scale_center(self):
+    def _get_scale_center(self, before_pca=False):
         print('Calculates scaling parameters')
+
+        if self.oa_do_scale_center_before_pca and before_pca:
+            trunc_points = self.trunc_points_before_pca
+        else:
+            trunc_points = self.trunc_points
+
         # Initialize values
 
         if self.data_type == 'homo':
@@ -730,8 +764,8 @@ class ProcessData(object):
                 image_low = self.load_file_to_numpy(file, image_sign)
                 # truncating images
                 if self.image_type == 'OA':
-                    lq = np.quantile(image_low, self.trunc_points)
-                    hq = np.quantile(image_high, self.trunc_points)
+                    lq = np.quantile(image_low, trunc_points)
+                    hq = np.quantile(image_high, trunc_points)
                     image_low = image_low.clip(lq[0], lq[1])
                     image_high = image_high.clip(hq[0], hq[1])
                 # update values
@@ -787,6 +821,11 @@ class ProcessData(object):
         print(scale_params_low, scale_params_high)
         print(mean_low, mean_high)
 
+
+        if before_pca:
+            file_suffix = '_before_pca'
+        else:
+            file_suffix = ''
         # construct dictionaries and save parameters
         if self.image_type == 'US':
             us_scale_params = {'US_low': scale_params_low, 'US_high': scale_params_high}
@@ -796,11 +835,11 @@ class ProcessData(object):
             with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
                 pickle.dump(us_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            oa_scale_params = {'OA_low': scale_params_low, 'OA_high': scale_params_high, 'trunc_points': self.trunc_points}
-            oa_mean_images = {'OA_low': mean_low, 'OA_high': mean_high, 'trunc_points': self.trunc_points}
-            with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
+            oa_scale_params = {'OA_low': scale_params_low, 'OA_high': scale_params_high, 'trunc_points': trunc_points}
+            oa_mean_images = {'OA_low': mean_low, 'OA_high': mean_high, 'trunc_points': trunc_points}
+            with open(self.dir_params + '/scale_and_center' + '/OA_scale_params' + file_suffix, 'wb') as handle:
                 pickle.dump(oa_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/OA_mean_images' + file_suffix, 'wb') as handle:
                 pickle.dump(oa_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         ##################################################################
@@ -837,12 +876,15 @@ class ProcessData(object):
                     param_type: 'scale' or 'mean_image' (maybe more options later)
             output: params_low, params_high: the parameters."""
         # dir_params = '/mnt/local/mounted'
-        if not self.do_scale_center:
+        if not self.do_scale_center and param_type in ['scale_params', 'mean_images']:
             print('No Scaling done due to parameter do_scale_center=False.')
+            return None, None
+        if not self.oa_do_scale_center_before_pca and param_type in ['scale_params_before_pca', 'mean_images_before_pca']:
+            print('No Scaling done due to parameter oa_do_scale_center_before_pca=False.')
             return None, None
         if dir_params is None:
             dir_params = self.dir_params + '/' + 'scale_and_center/'
-        if param_type in ['scale_params', 'mean_images']:
+        if param_type in ['scale_params', 'mean_images', 'scale_params_before_pca', 'mean_images_before_pca']:
             file_name = self.image_type + '_' + param_type
             filepath = dir_params + file_name
             with open(filepath, 'rb') as handle:
@@ -858,7 +900,11 @@ class ProcessData(object):
                 params_trunc_points = params['trunc_points']
             else:
                 params_trunc_points = trunc_points
-            if self.trunc_points != params_trunc_points:
+            if param_type in ['scale_params_before_pca', 'mean_images_before_pca']:
+                trunc_points_to_compare = self.trunc_points_before_pca
+            else:
+                trunc_points_to_compare = self.trunc_points
+            if trunc_points_to_compare != params_trunc_points:
                 sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
                          'Truncation of saved parameters is ' + str(params_trunc_points))
         return params_low, params_high
@@ -940,6 +986,7 @@ class ProcessData(object):
             # (N, H, W, C) to (N, C, H, W)
             scale_center_x_val = np.moveaxis(scale_center_x_val, [0, 1, 2, 3], [0, 2, 3, 1])
             scale_center_y_val = np.moveaxis(scale_center_y_val, [0, 1, 2, 3], [0, 2, 3, 1])
+
 
         input_tensor, target_tensor = torch.from_numpy(scale_center_x_val), torch.from_numpy(scale_center_y_val)
 

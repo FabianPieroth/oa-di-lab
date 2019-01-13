@@ -17,6 +17,8 @@ class CNN_skipCo_trainer(object):
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
                  trunc_points, get_scale_center, single_sample,do_scale_center,
+                 oa_do_scale_center_before_pca,
+                 trunc_points_before_pca,
                  oa_do_pca,oa_pca_fit_ratio, oa_pca_num_components,
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
@@ -39,6 +41,8 @@ class CNN_skipCo_trainer(object):
                                    image_type=image_type, get_scale_center=get_scale_center,
                                    single_sample=single_sample,
                                    do_scale_center=do_scale_center,
+                                   trunc_points_before_pca=trunc_points_before_pca,
+                                   oa_do_scale_center_before_pca=oa_do_scale_center_before_pca,
                                    oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio,
                                    oa_pca_num_components=oa_pca_num_components,
                                    height_channel_oa=height_channel_oa, use_regressed_oa=use_regressed_oa,
@@ -96,6 +100,14 @@ class CNN_skipCo_trainer(object):
             # get pca model for logging
             pca_model = self.dataset.load_pca_model()
         else: pca_model = None
+        if self.dataset.oa_do_scale_center_before_pca:
+            scale_params_low_before_pca, scale_params_high_before_pca = self.dataset.load_params(
+                param_type="scale_params_before_pca")
+            mean_image_low_before_pca, mean_image_high_before_pca = self.dataset.load_params(
+                param_type="mean_images_before_pca")
+        else:
+            scale_params_low_before_pca, scale_params_high_before_pca = None, None
+            mean_image_low_before_pca, mean_image_high_before_pca = None, None
 
         # load validation set, normalize and parse into tensor
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
@@ -171,6 +183,8 @@ class CNN_skipCo_trainer(object):
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high],
+                                mean_images_before_pca=[mean_image_low_before_pca, mean_image_high_before_pca],
+                                scale_params_before_pca = [scale_params_low_before_pca, scale_params_high_before_pca],
                                 pca_model=pca_model,
                                 learning_rates=self.learning_rates)
 
@@ -302,7 +316,7 @@ def main():
     # dataset parameters
 
     data_type = 'homo'
-    train_ratio = 0.5
+    train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
@@ -315,10 +329,12 @@ def main():
     do_deform = False
     do_crop = False
     do_speckle_noise = False
-    trunc_points = (0.0001, 0.9999)
+    trunc_points = (0, 1)
+    trunc_points_before_pca = (0.0001,0.9999)
     get_scale_center = True
     single_sample = False
     do_scale_center = True
+    oa_do_scale_center_before_pca = True
     oa_do_pca = True
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
     oa_pca_num_components= 7
@@ -333,7 +349,8 @@ def main():
 
     # model parameters
 
-    conv_channels = [7, 16, 16, 16, 16, 16]
+    #conv_channels = [7, 64, 128, 256, 512, 1024]
+    conv_channels = [7, 16, 32, 64, 64, 64]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (201, 401)
@@ -378,8 +395,10 @@ def main():
                                      do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
                                      do_speckle_noise=do_speckle_noise,
                                      trunc_points=trunc_points, get_scale_center=get_scale_center,
+                                     trunc_points_before_pca=trunc_points_before_pca,
                                      single_sample=single_sample,
                                      do_scale_center=do_scale_center,
+                                     oa_do_scale_center_before_pca=oa_do_scale_center_before_pca,
                                      oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio, oa_pca_num_components = oa_pca_num_components,
                                      height_channel_oa=height_channel_oa, conv_channels=conv_channels, kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
