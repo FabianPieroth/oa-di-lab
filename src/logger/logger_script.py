@@ -77,17 +77,6 @@ def inverse_pca(input_im, target_im, predict_im, path, data_loader):
     target_im = backproject_image_pca(target_im, pca)
     predict_im = backproject_image_pca(predict_im, pca)
 
-    #im_shape = input_im.shape
-    #n_channels = input_im.shape[0]
-    #input_im = pca.inverse_transform(input_im.reshape(-1, n_channels))
-    #target_im = pca.inverse_transform(target_im.reshape(-1, n_channels))
-    #predict_im = pca.inverse_transform(predict_im.reshape(-1, n_channels))
-
-    #im_shape = (input_im.shape[1], im_shape[1], im_shape[2])
-    #input_im = input_im.reshape(im_shape)
-    #target_im = target_im.reshape(im_shape)
-    #predict_im = predict_im.reshape(im_shape)
-
     return input_im, target_im, predict_im
 
 
@@ -170,7 +159,7 @@ def backproject_image_pca(pca_image, pca_model):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_12_09_55'
+    folder_name = 'homo/combined_model_hyper_1_2019_01_12_12_33'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

@@ -295,9 +295,9 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'OA'
-    batch_size = 2
-    log_period = 5
-    epochs = 10
+    batch_size = 32
+    log_period = 1
+    epochs = 2
 
     # dataset parameters
 
@@ -316,12 +316,12 @@ def main():
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
-    get_scale_center = True
+    get_scale_center = False
     single_sample = False
-    do_scale_center = True
+    do_scale_center = False
     oa_do_pca = True
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
-    oa_pca_num_components= 7
+    oa_pca_num_components = 28
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -333,12 +333,12 @@ def main():
 
     # model parameters
 
-    conv_channels = [7, 16, 16, 16, 16, 16]
+    conv_channels = [28, 2, 2, 2, 2, 2]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (201, 401)
-    output_channels = 7
-    drop_probs = [0 for i in range(5)]
+    output_channels = None
+    drop_probs = [1 for i in range(5)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]

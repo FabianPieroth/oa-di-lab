@@ -120,22 +120,14 @@ class Logger(object):
             target_save = target_tensor.detach().cpu().numpy()[i, :, :, :]
             predict_new = predict.detach().cpu().numpy()[i, :, :, :]
 
-            '''if self.dataset.do_scale_center:
-                input_save = self.dataset.scale_and_center_reverse(input_save, scale_params_low,
-                                                                    mean_image_low)
-                target_save = self.dataset.scale_and_center_reverse(target_save, scale_params_high,
-                                                                    mean_image_high)
-                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
-                                                                    mean_image_high)'''
-
             self.save_predictions(input_save=input_save, target_save=target_save, predict_save=predict_new,
                                   save_name=self.dataset.extract_name_from_path(names[i], without_ch=False),
                                   image_class=image_class)
 
     def predict(self, x):
-        self.model.eval()
+        # self.model.eval()
         predict_image = self.model(x)
-        self.model.train()
+        # self.model.train()
 
         return predict_image
 
@@ -194,7 +186,6 @@ class Logger(object):
         file_path = self.save_dir + '/' + 'OA_pca_model.sav'
         with open(file_path, 'wb') as handle:
             pickle.dump(pca_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 
     def save_representation_of_model(self):
         text_file = open(self.save_dir + '/' + self.model_name + '_model_structure.txt', "w")
