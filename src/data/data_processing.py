@@ -97,7 +97,8 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
 # hetero
 
 
-def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, hetero_mask_to_mask):
+def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, hetero_mask_to_mask,
+                  attention_mask='Not'):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
@@ -136,7 +137,11 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
 
                 us_low_ex_dim = np.expand_dims(us_low_samples[:,:,low_channel], axis=common_axis)
 
-                us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel), axis=common_axis)
+                if attention_mask == 'simple':
+                    us_low_save = np.concatenate((us_low_ex_dim, us_low_ex_dim, custom_mask, single_sos_channel),
+                                                 axis=common_axis)
+                else:
+                    us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel), axis=common_axis)
                 us_high_save = np.expand_dims(us_high_samples[:,:,high_channel], axis=common_axis)
 
                 dict_us_single = {name_us_low: us_low_save,

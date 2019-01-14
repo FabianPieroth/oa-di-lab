@@ -34,12 +34,12 @@ def extract_and_process_logged_folder(folder_name):
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
 
-                if rescale_images and json_dict['do_scale_center']:
+                '''if rescale_images and json_dict['do_scale_center']:
                     input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
                                                                       predict_im=predict_im,
                                                                       scale_low=scale_low, scale_high=scale_high,
                                                                       mean_low=mean_low,
-                                                                      mean_high=mean_high, data_loader=data_loader)
+                                                                      mean_high=mean_high, data_loader=data_loader)'''
                 if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
                     input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
                                                                   data_loader=data_loader)
@@ -181,7 +181,7 @@ def backproject_image_pca(pca_image, pca_model):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_12_12_33'
+    folder_name = 'hetero/hyper_1_2019_01_13_linear_deformation'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

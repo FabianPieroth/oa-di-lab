@@ -56,7 +56,7 @@ class Logger(object):
         torch.save(self.model.state_dict(), self.save_dir + '/' + self.model_name
                    + 'model' + self.save_appendix + '.pt')
 
-    def predict_eval_images(self, mean_images, scale_params, num_images_train=2, num_images_val=3, num_images_test=5):
+    def predict_eval_images(self, mean_images, scale_params, num_images_train=2, num_images_val=3, num_images_test=4):
 
         train_length = min(len(self.dataset.train_file_names), num_images_train)
         train_names = random.sample(self.dataset.train_file_names, train_length)
@@ -125,9 +125,9 @@ class Logger(object):
                                   image_class=image_class)
 
     def predict(self, x):
-        # self.model.eval()
+        self.model.eval()
         predict_image = self.model(x)
-        # self.model.train()
+        self.model.train()
 
         return predict_image
 

@@ -25,7 +25,7 @@ class CNN_skipCo_trainer(object):
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
-                 input_ds_mask, input_ss_mask, ds_mask_channels):
+                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip):
 
         self.image_type = image_type
 
@@ -51,21 +51,23 @@ class CNN_skipCo_trainer(object):
                                    add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                    channel_slice_oa=channel_slice_oa,
                                    process_all_raw_folders=process_all_raw_folders,
-                                   hetero_mask_to_mask=hetero_mask_to_mask)
+                                   hetero_mask_to_mask=hetero_mask_to_mask,
+                                   attention_mask=attention_mask)
 
-        '''self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+        self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
                                            #input_ss_mask=input_ss_mask,
                                            #ds_mask_channels=ds_mask_channels,
                                            #datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
-                                           output_channels=output_channels, drop_probs=drop_probs)'''
+                                           output_channels=output_channels, drop_probs=drop_probs,
+                                           add_skip=add_skip, attention_mask=attention_mask)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
-        self.deformation_model = DeformationLearner(stride=3, kernel=3, padding=1)
-        self.model = ImageTranslator([self.deformation_model])
+        # self.deformation_model = DeformationLearner(stride=3, kernel=3, padding=1)
+        self.model = ImageTranslator([self.model_convdeconv])
 
 
         # we need optimizer and loss here to not access anything from the model class
@@ -83,8 +85,6 @@ class CNN_skipCo_trainer(object):
             self.model = nn.DataParallel(self.model)
 
         self.learning_rates = learning_rates
-
-
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
@@ -311,15 +311,15 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 32
-    log_period = 1
-    epochs = 2
+    batch_size = 16
+    log_period = 100
+    epochs = 200
 
     # dataset parameters
 
     data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -334,7 +334,7 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001,0.9999)
     get_scale_center = True
-    single_sample = True
+    single_sample = False
     do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -348,16 +348,19 @@ def main():
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
+    add_skip = False
+
+    attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [7, 16, 32, 64, 64, 64]
-    kernels = [(7, 7) for i in range(5)]
+    conv_channels = [4, 64, 256, 512]
+    kernels = [(7, 7) for i in range(3)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
-    output_channels = None
-    drop_probs = [1 for i in range(5)]
+    output_channels = 1
+    drop_probs = [0 for i in range(3)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -414,7 +417,8 @@ def main():
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
-                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i
+                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
+                                     attention_mask=attention_mask, add_skip=add_skip
                                      )
 
         # fit the first model

@@ -2,6 +2,7 @@ import sys
 import torch
 import torch.nn as nn
 from torch.nn.functional import relu
+import numpy as np
 
 class ConvLayer (nn.Module):
     def __init__(self, c_in, c_out, stride, kernel_size, padding, drop_prob):
@@ -32,7 +33,7 @@ class ConvDeconv(nn.Module):
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
-                 add_skip=True):
+                 add_skip=True, attention_mask='Not'):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -96,10 +97,13 @@ class ConvDeconv(nn.Module):
         self.model_name = model_name
 
         self.add_skip = add_skip
+        self.attention_mask = attention_mask
 
     def forward(self, x):
 
         skip_connection = []
+        overlaps = np.exp(np.arange(len(self.conv_layers)) + 1) / np.exp(len(self.conv_layers))
+        len(self.conv_layers)
 
         for i in range(len(self.conv_layers)):
             if i % 2 == 0:
@@ -110,8 +114,21 @@ class ConvDeconv(nn.Module):
 
             else:
                 skip_connection += [0]
+
+            # use attention mask on forwarded channels
+            if self.attention_mask == 'simple':
+                if i == 0:
+                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                          upper_ratio=0.2, start='simple')
+                else:
+                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                          upper_ratio=0.2, start='Not')
+                    # TODO: Should this tensor be transfered on the gpu?
+                x = zero_one * x
+
             l = self.conv_layers[i]
             x = l(x)
+
 
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
@@ -184,3 +201,37 @@ class ConvDeconv(nn.Module):
         # change returning values
         print('used output padding in this configuration: ', opad)
         return dstrides, dkernels, dpadding, opad, ddrop_probs
+
+    def create_zero_one_ratio(self, shape_tensor, ratio_overlap, upper_ratio, start='Not', ratio_up_to_low_channel=0.5):
+        # shape_tensor: (N, C, H, W)
+        zero_one = np.zeros(shape_tensor)
+        lower_ratio = 1 - upper_ratio + (upper_ratio) * ratio_overlap
+        upper_ratio = upper_ratio + (1 - upper_ratio) * ratio_overlap
+        num_upper = int(shape_tensor[2] * upper_ratio)
+        num_lower = shape_tensor[2] - int(shape_tensor[2] * lower_ratio)
+        single_upper = np.zeros((shape_tensor[2], shape_tensor[3]))
+        single_lower = np.ones((shape_tensor[2], shape_tensor[3]))
+        single_upper[:num_upper, :] = 1.0
+        single_lower[:num_lower, :] = 0.0
+        if start == 'simple':
+            for i in range(shape_tensor[0]):
+                zero_one[i, 0, :, :] = single_upper
+                zero_one[i, 1, :, :] = single_lower
+                zero_one[i, 2, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
+                zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
+        elif start == 'complex':
+            for i in range(shape_tensor[0]):
+                zero_one[i, 0, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
+                zero_one[i, 1, :, :] = single_upper
+                zero_one[i, 2, :, :] = single_lower
+                zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
+                zero_one[i, 4, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
+        else:
+            num_channel_till_up = int(shape_tensor[1] * ratio_up_to_low_channel)
+            for i in range(shape_tensor[0]):
+                for j in range(shape_tensor[1]):
+                    if j < num_channel_till_up:
+                        zero_one[i, j, :, :] = single_upper
+                    else:
+                        zero_one[i, j, :, :] = single_lower
+        return torch.tensor(zero_one)
