@@ -33,7 +33,7 @@ class ConvDeconv(nn.Module):
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
-                 add_skip=True, attention_mask='Not'):
+                 add_skip=True, attention_mask='Not', add_skip_at_first=True):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -97,7 +97,14 @@ class ConvDeconv(nn.Module):
         self.model_name = model_name
 
         self.add_skip = add_skip
+        self.add_skip_at_first = add_skip_at_first
         self.attention_mask = attention_mask
+
+        if self.add_skip_at_first:
+            self.adding_one = 1
+        else:
+            self.adding_one = 0
+
 
     def forward(self, x):
 
@@ -105,8 +112,9 @@ class ConvDeconv(nn.Module):
         overlaps = np.exp(np.arange(len(self.conv_layers)) + 1) / np.exp(len(self.conv_layers))
         len(self.conv_layers)
 
+
         for i in range(len(self.conv_layers)):
-            if i % 2 == 0:
+            if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None:
                     skip_connection += [x[:,0:1,:,:]]
                 else:
