@@ -704,7 +704,6 @@ class ProcessData(object):
             transformed_high = model.transform(image_high)
             new_shape = list(im_shape[:2])
             new_shape.append(model.n_components)
-            #print(new_shape)
             transformed_high = transformed_high.reshape(new_shape)
             image_low = self.load_file_to_numpy(full_file_name=file_name, image_sign='OA' + '_low')
             if self.oa_do_scale_center_before_pca:

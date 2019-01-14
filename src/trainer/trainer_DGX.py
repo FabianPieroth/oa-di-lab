@@ -310,20 +310,20 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'US'
+    image_type = 'OA'
     batch_size = 16
     log_period = 100
     epochs = 200
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
     add_augment = False
     do_rchannels = False
     do_flip = True
@@ -332,14 +332,14 @@ def main():
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0, 1)
-    trunc_points_before_pca = (0.0001,0.9999)
+    trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
     single_sample = False
     do_scale_center = True
-    oa_do_scale_center_before_pca = False
-    oa_do_pca = False
+    oa_do_scale_center_before_pca = True
+    oa_do_pca = True
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
-    oa_pca_num_components = 28
+    oa_pca_num_components = 4
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -348,7 +348,7 @@ def main():
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
-    add_skip = False
+    add_skip = True
 
     attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
 
@@ -359,7 +359,7 @@ def main():
     kernels = [(7, 7) for i in range(3)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
-    output_channels = 1
+    output_channels = None
     drop_probs = [0 for i in range(3)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]

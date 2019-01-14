@@ -234,4 +234,7 @@ class ConvDeconv(nn.Module):
                         zero_one[i, j, :, :] = single_upper
                     else:
                         zero_one[i, j, :, :] = single_lower
-        return torch.tensor(zero_one)
+        zero_one = torch.tensor(zero_one)
+        if torch.cuda.is_available():
+            zero_one = zero_one.cuda()
+        return zero_one
