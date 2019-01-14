@@ -25,7 +25,8 @@ class CNN_skipCo_trainer(object):
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
-                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress):
+                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
+                 add_skip_at_first):
 
         self.image_type = image_type
 
@@ -62,7 +63,8 @@ class CNN_skipCo_trainer(object):
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs,
-                                           add_skip=add_skip, attention_mask=attention_mask)
+                                           add_skip=add_skip, attention_mask=attention_mask,
+                                           add_skip_at_first=add_skip_at_first)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -350,7 +352,7 @@ def main():
     process_all_raw_folders = True
     hetero_mask_to_mask = False
     add_skip = True
-
+    add_skip_at_first = True
 
     attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
 
@@ -421,6 +423,7 @@ def main():
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
                                      hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
                                      attention_mask=attention_mask, add_skip=add_skip,
+                                     add_skip_at_first=add_skip_at_first,
                                      pca_use_regress=pca_use_regress
                                      )
 
