@@ -266,6 +266,7 @@ class Logger(object):
             "oa_do_pca": self.dataset.oa_do_pca,
             "oa_pca_num_components": self.dataset.oa_pca_num_components,
             "oa_pca_fit_ratio": self.dataset.oa_pca_fit_ratio,
+            "pca_use_regress": self.dataset.pca_use_regress,
             "do_scale_center": self.dataset.do_scale_center,
             "get_scale_center": self.dataset.get_scale_center,
             "trunc_points": self.dataset.trunc_points,

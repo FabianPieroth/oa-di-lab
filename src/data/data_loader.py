@@ -8,6 +8,7 @@ import data.data_processing as dp
 import torch
 import scipy.io
 from sklearn.decomposition import IncrementalPCA
+from logger.oa_spectra_analysis.oa_for_DILab import linear_unmixing as lu
 
 
 class ProcessData(object):
@@ -37,6 +38,7 @@ class ProcessData(object):
                  oa_do_pca= False,
                  oa_pca_fit_ratio =1,
                  oa_pca_num_components = 7,
+                 pca_use_regress=False,
                  height_channel_oa=201,
                  use_regressed_oa=False,
                  add_f_test=False,
@@ -84,6 +86,7 @@ class ProcessData(object):
         self.oa_do_pca = oa_do_pca
         self.oa_pca_fit_ratio = oa_pca_fit_ratio
         self.oa_pca_num_components = oa_pca_num_components
+        self.pca_use_regress = pca_use_regress
         self.height_channel_oa = height_channel_oa
         self.use_regressed_oa = use_regressed_oa
         self.include_regression_error = include_regression_error
@@ -699,21 +702,27 @@ class ProcessData(object):
             image_high = self.load_file_to_numpy(full_file_name=file_name,image_sign='OA' + '_high')
             if self.oa_do_scale_center_before_pca:
                 image_high = self.scale_and_center(image_high, scale_params=var_high, mean_image=mean_high)
-            im_shape = image_high.shape
-            image_high = image_high.reshape(-1, im_shape[-1])
-            transformed_high = model.transform(image_high)
-            new_shape = list(im_shape[:2])
-            new_shape.append(model.n_components)
-            transformed_high = transformed_high.reshape(new_shape)
+
             image_low = self.load_file_to_numpy(full_file_name=file_name, image_sign='OA' + '_low')
             if self.oa_do_scale_center_before_pca:
                 image_low = self.scale_and_center(image_low, scale_params=var_low, mean_image=mean_low)
-            im_shape = image_low.shape
-            image_low = image_low.reshape(-1, im_shape[-1])
-            transformed_low = model.transform(image_low)
-            new_shape = list(im_shape[:2])
-            new_shape.append(model.n_components)
-            transformed_low = transformed_low.reshape(new_shape)
+
+            if self.pca_use_regress:
+                transformed_low = lu(image_low, spectra=model.components_)
+                transformed_high = lu(image_high, spectra=model.components_)
+            else:
+                im_shape = image_high.shape
+                image_high = image_high.reshape(-1, im_shape[-1])
+                transformed_high = model.transform(image_high)
+                new_shape = list(im_shape[:2])
+                new_shape.append(model.n_components)
+                transformed_high = transformed_high.reshape(new_shape)
+                im_shape = image_low.shape
+                image_low = image_low.reshape(-1, im_shape[-1])
+                transformed_low = model.transform(image_low)
+                new_shape = list(im_shape[:2])
+                new_shape.append(model.n_components)
+                transformed_low = transformed_low.reshape(new_shape)
             short_file_name = file_name.rsplit('/', 1)[-1] # get only file name without rest of path
             dic = {'OA_low_' + short_file_name: transformed_low, 'OA_high_' + short_file_name: transformed_high}
             pickle.dump(dic, open(file_name, 'wb'))

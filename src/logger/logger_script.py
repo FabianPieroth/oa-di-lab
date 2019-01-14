@@ -22,7 +22,6 @@ def extract_and_process_logged_folder(folder_name):
                                                                                                                    data_loader=data_loader,
                                                                                                                    before_pca=True)
 
-
     for folder in folder_saved_predictions:
         data_folder = dp.ret_all_files_in_folder(folder_name + '/' + folder, full_names=False)
         for data in data_folder:
@@ -34,15 +33,15 @@ def extract_and_process_logged_folder(folder_name):
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
 
-                '''if rescale_images and json_dict['do_scale_center']:
+                if rescale_images and json_dict['do_scale_center']:
                     input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
                                                                       predict_im=predict_im,
                                                                       scale_low=scale_low, scale_high=scale_high,
                                                                       mean_low=mean_low,
-                                                                      mean_high=mean_high, data_loader=data_loader)'''
+                                                                      mean_high=mean_high, data_loader=data_loader)
                 if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
                     input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
-                                                                  data_loader=data_loader)
+                                                                  data_loader=data_loader, json_dict=json_dict)
 
                     if json_dict['oa_do_scale_center_before_pca']:
                         input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
@@ -84,12 +83,12 @@ def reverse_scaling(input_im, target_im, predict_im, scale_low, scale_high, mean
     return input_im, target_im, predict_im
 
 
-def inverse_pca(input_im, target_im, predict_im, path, data_loader):
+def inverse_pca(input_im, target_im, predict_im, path, data_loader, json_dict):
     pca = data_loader.load_pca_model(path=path)
 
-    input_im = backproject_image_pca(input_im, pca)
-    target_im = backproject_image_pca(target_im, pca)
-    predict_im = backproject_image_pca(predict_im, pca)
+    input_im = backproject_image_pca(input_im, pca, json_dict)
+    target_im = backproject_image_pca(target_im, pca, json_dict)
+    predict_im = backproject_image_pca(predict_im, pca, json_dict)
 
     return input_im, target_im, predict_im
 
@@ -164,7 +163,7 @@ def project_image_pca(image, pca_model):
     return transformed
 
 
-def backproject_image_pca(pca_image, pca_model):
+def backproject_image_pca(pca_image, pca_model, json_dict):
     # takes image in pca components (pca_comp, H,W) and backprojects it into the higher dimensional space
     # outputs in image shape (C,H,W)
     pca_image = np.moveaxis(pca_image, [0], [-1])
@@ -172,16 +171,18 @@ def backproject_image_pca(pca_image, pca_model):
     new_shape = list(pca_image.shape[:2])
     new_shape.append(n_feat)
     pca_image = pca_image.reshape(-1, n_comp)
-    backproj = pca_model.inverse_transform(pca_image)
+    if json_dict['pca_use_regress']:
+        backproj = np.matmul(pca_image, pca_model.components_)
+    else:
+        backproj = pca_model.inverse_transform(pca_image)
     backproj = backproj.reshape(new_shape)
     backproj = np.moveaxis(backproj, [-1], [0])
     return backproj
 
-
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'hetero/hyper_1_2019_01_13_linear_deformation'
+    folder_name = 'homo/combined_model_hyper_1_2019_01_14_22_51'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

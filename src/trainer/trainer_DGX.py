@@ -25,7 +25,7 @@ class CNN_skipCo_trainer(object):
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
-                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip):
+                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress):
 
         self.image_type = image_type
 
@@ -52,7 +52,7 @@ class CNN_skipCo_trainer(object):
                                    channel_slice_oa=channel_slice_oa,
                                    process_all_raw_folders=process_all_raw_folders,
                                    hetero_mask_to_mask=hetero_mask_to_mask,
-                                   attention_mask=attention_mask)
+                                   attention_mask=attention_mask, pca_use_regress=pca_use_regress)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
@@ -311,8 +311,8 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'OA'
-    batch_size = 16
-    log_period = 100
+    batch_size = 8*8
+    log_period = 50
     epochs = 200
 
     # dataset parameters
@@ -324,11 +324,11 @@ def main():
 
     do_heavy_augment = False
     do_augment = True
-    add_augment = False
+    add_augment = True
     do_rchannels = False
     do_flip = True
     do_blur = False
-    do_deform = False
+    do_deform = True
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0, 1)
@@ -339,7 +339,8 @@ def main():
     oa_do_scale_center_before_pca = True
     oa_do_pca = True
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
-    oa_pca_num_components = 4
+    oa_pca_num_components = 7
+    pca_use_regress = False
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -350,17 +351,18 @@ def main():
     hetero_mask_to_mask = False
     add_skip = True
 
+
     attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 64, 256, 512]
-    kernels = [(7, 7) for i in range(3)]
+    conv_channels = [7, 128, 256, 512, 1024, 2048]
+    kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (401, 401)
+    input_size = (201, 401)
     output_channels = None
-    drop_probs = [0 for i in range(3)]
+    drop_probs = [0 for i in range(5)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -418,7 +420,8 @@ def main():
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
                                      hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
-                                     attention_mask=attention_mask, add_skip=add_skip
+                                     attention_mask=attention_mask, add_skip=add_skip,
+                                     pca_use_regress=pca_use_regress
                                      )
 
         # fit the first model
