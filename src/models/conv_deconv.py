@@ -101,9 +101,9 @@ class ConvDeconv(nn.Module):
         self.attention_mask = attention_mask
 
         if self.add_skip_at_first:
-            adding_one = 1
+            self.adding_one = 1
         else:
-            adding_one = 0
+            self.adding_one = 0
 
 
     def forward(self, x):
@@ -114,7 +114,7 @@ class ConvDeconv(nn.Module):
 
 
         for i in range(len(self.conv_layers)):
-            if (i + adding_one)% 2 == 0:
+            if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None:
                     skip_connection += [x[:,0:1,:,:]]
                 else:
