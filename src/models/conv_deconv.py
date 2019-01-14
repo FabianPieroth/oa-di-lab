@@ -100,16 +100,18 @@ class ConvDeconv(nn.Module):
         self.add_skip_at_first = add_skip_at_first
         self.attention_mask = attention_mask
 
+        if self.add_skip_at_first:
+            adding_one = 1
+        else:
+            adding_one = 0
+
+
     def forward(self, x):
 
         skip_connection = []
         overlaps = np.exp(np.arange(len(self.conv_layers)) + 1) / np.exp(len(self.conv_layers))
         len(self.conv_layers)
 
-        if self.add_skip_at_first:
-            adding_one = 1
-        else:
-            adding_one = 0
 
         for i in range(len(self.conv_layers)):
             if (i + adding_one)% 2 == 0:
