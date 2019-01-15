@@ -9,6 +9,7 @@ import torch
 import random
 import torch.nn as nn
 import sys
+import time
 
 
 class CNN_skipCo_trainer(object):
@@ -119,7 +120,9 @@ class CNN_skipCo_trainer(object):
 
             # in self.batch_number is the number of batches in the training set
             # go through all the batches
+            print("batches",self.dataset.batch_number)
             for i in range(self.dataset.batch_number):
+                start_time = time.time()
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
@@ -147,6 +150,10 @@ class CNN_skipCo_trainer(object):
                     return loss
 
                 self.optimizer.step(closure)
+                end_time = time.time()
+                if i == 0:
+                    print("Time per batch", end_time-start_time)
+
 
             # calculate the validation loss and add to validation history
             # self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
@@ -287,7 +294,7 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
+    image_type = 'US'
     #batch_size = 16
     log_period = 10
     epochs = 35
@@ -296,12 +303,12 @@ def main():
 
     data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
-    add_augment = True
+    do_augment = False
+    add_augment = False
     do_rchannels = False
     do_flip = True
     do_blur = False
@@ -310,13 +317,13 @@ def main():
     do_speckle_noise = False
     trunc_points = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = True
-    do_scale_center = False
+    single_sample = False
+    do_scale_center = True
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
-    add_f_test = True
-    only_f_test_in_target = True
+    add_f_test = False
+    only_f_test_in_target = False
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
