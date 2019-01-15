@@ -312,25 +312,25 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
-    batch_size = 8*8
-    log_period = 50
-    epochs = 200
+    image_type = 'US'
+    batch_size = 32
+    log_period = 30
+    epochs = 90
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.9
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
     do_augment = True
-    add_augment = True
+    add_augment = False
     do_rchannels = False
     do_flip = True
     do_blur = False
-    do_deform = True
+    do_deform = False
     do_crop = False
     do_speckle_noise = False
     trunc_points = (0, 1)
@@ -338,8 +338,8 @@ def main():
     get_scale_center = True
     single_sample = False
     do_scale_center = True
-    oa_do_scale_center_before_pca = True
-    oa_do_pca = True
+    oa_do_scale_center_before_pca = False
+    oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
     oa_pca_num_components = 7
     pca_use_regress = False
@@ -352,18 +352,18 @@ def main():
     process_all_raw_folders = True
     hetero_mask_to_mask = False
     add_skip = True
-    add_skip_at_first = True
+    add_skip_at_first = False
 
     attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [7, 128, 256, 512, 1024, 2048]
+    conv_channels = [4, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
-    input_size = (201, 401)
-    output_channels = None
+    input_size = (401, 401)
+    output_channels = 1
     drop_probs = [0 for i in range(5)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]

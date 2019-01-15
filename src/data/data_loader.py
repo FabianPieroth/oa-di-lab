@@ -77,7 +77,7 @@ class ProcessData(object):
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
 
-        self.num_val_images_hetero = 15
+        self.num_val_images_hetero = 3
 
         self.do_speckle_noise = do_speckle_noise
 

@@ -112,8 +112,20 @@ class ConvDeconv(nn.Module):
         overlaps = np.exp(np.arange(len(self.conv_layers)) + 1) / np.exp(len(self.conv_layers))
         len(self.conv_layers)
 
-
         for i in range(len(self.conv_layers)):
+
+            # use attention mask on forwarded channels, skips influenced as well
+            if self.attention_mask == 'simple':
+                if i == 0:
+                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                          upper_ratio=0.2, start='simple')
+                else:
+                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                          upper_ratio=0.2, start='Not')
+                if torch.cuda.is_available():
+                    zero_one = zero_one.cuda()
+                x = zero_one * x
+
             if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None:
                     skip_connection += [x[:,0:1,:,:]]
@@ -122,17 +134,6 @@ class ConvDeconv(nn.Module):
 
             else:
                 skip_connection += [0]
-
-            # use attention mask on forwarded channels
-            if self.attention_mask == 'simple':
-                if i == 0:
-                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
-                                                          upper_ratio=0.2, start='simple')
-                else:
-                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
-                                                          upper_ratio=0.2, start='Not')
-                    # TODO: Should this tensor be transfered on the gpu?
-                x = zero_one * x
 
             l = self.conv_layers[i]
             x = l(x)

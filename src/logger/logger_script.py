@@ -32,23 +32,23 @@ def extract_and_process_logged_folder(folder_name):
             for images in image_list:
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
-
-                if rescale_images and json_dict['do_scale_center']:
-                    input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
-                                                                      predict_im=predict_im,
-                                                                      scale_low=scale_low, scale_high=scale_high,
-                                                                      mean_low=mean_low,
-                                                                      mean_high=mean_high, data_loader=data_loader)
-                if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
-                    input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
-                                                                  data_loader=data_loader, json_dict=json_dict)
-
-                    if json_dict['oa_do_scale_center_before_pca']:
+                if json_dict['data_type'] == 'homo':
+                    if rescale_images and json_dict['do_scale_center']:
                         input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
                                                                           predict_im=predict_im,
-                                                                          scale_low=scale_low_before_pca, scale_high=scale_high_before_pca,
-                                                                          mean_low=mean_low_before_pca,
-                                                                          mean_high=mean_high_before_pca, data_loader=data_loader)
+                                                                          scale_low=scale_low, scale_high=scale_high,
+                                                                          mean_low=mean_low,
+                                                                          mean_high=mean_high, data_loader=data_loader)
+                    if json_dict['oa_do_pca'] and json_dict['image_type'] == 'OA':
+                        input_im, target_im, predict_im = inverse_pca(input_im, target_im, predict_im, path=folder_name,
+                                                                      data_loader=data_loader, json_dict=json_dict)
+
+                        if json_dict['oa_do_scale_center_before_pca']:
+                            input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
+                                                                              predict_im=predict_im,
+                                                                              scale_low=scale_low_before_pca, scale_high=scale_high_before_pca,
+                                                                              mean_low=mean_low_before_pca,
+                                                                              mean_high=mean_high_before_pca, data_loader=data_loader)
 
 
 
@@ -182,7 +182,7 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_14_22_51'
+    folder_name = 'homo/combined_model_hyper_1_2019_01_15_13_00'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
