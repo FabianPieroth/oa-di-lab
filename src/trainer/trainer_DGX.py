@@ -120,9 +120,9 @@ class CNN_skipCo_trainer(object):
 
             # in self.batch_number is the number of batches in the training set
             # go through all the batches
-            print("batches",self.dataset.batch_number)
+
             for i in range(self.dataset.batch_number):
-                start_time = time.time()
+                start_time = time.clock()
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
@@ -150,8 +150,8 @@ class CNN_skipCo_trainer(object):
                     return loss
 
                 self.optimizer.step(closure)
-                end_time = time.time()
-                if i == 0:
+                end_time = time.clock()
+                if i == 1:
                     print("Time per batch", end_time-start_time)
 
 
