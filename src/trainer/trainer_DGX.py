@@ -3,7 +3,7 @@ from logger.logger_module import Logger
 import numpy as np
 
 from models.conv_deconv import ConvDeconv
-from models.dilated_SP2 import DilatedTranslator
+from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
 # from models.SP2_conv_deconv import ConvDeconv
 import torch
