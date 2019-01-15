@@ -321,11 +321,11 @@ def main():
 
     data_type = 'hetero'
     train_ratio = 0.9
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
     add_augment = False
     do_rchannels = False
     do_flip = True
@@ -360,11 +360,11 @@ def main():
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
     conv_channels = [4, 64, 128, 256, 512, 1024]
-    kernels = [(7, 7) for i in range(5)]
+    kernels = [(7, 7) for i in range(6)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
-    drop_probs = [0 for i in range(5)]
+    drop_probs = [0 for i in range(6)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]

@@ -79,17 +79,48 @@ class ConvDeconv(nn.Module):
                                           for i in range(self.num_layers)])
 
         deconv_channels = conv_channels[::-1]
+        print('deconv channels above: ',deconv_channels)
 
         if output_channels is not None:
             deconv_channels[-1] = output_channels
 
-        self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels[i], deconv_channels[i + 1],
+        self.add_skip_at_first = add_skip_at_first
+
+        if self.add_skip_at_first:
+            self.adding_one = 0
+        else:
+            self.adding_one = 1
+
+        # increase nr of deconv channels
+        deconv_channels_new = deconv_channels.copy()
+        for i in range(len(deconv_channels)-1):
+            if (i+self.adding_one) % 2 == 0:
+                deconv_channels_new[i+1] = deconv_channels[i+1] * 2
+
+        print('conv layers: ', self.conv_layers)
+
+        print('conv channels: ', conv_channels)
+
+        print('deconv channels: ',deconv_channels)
+        print('deconv channels new: ',deconv_channels_new)
+        test_skip = []
+        print('self.adding_one: ',self.adding_one)
+        for i in range(len(conv_channels)):
+            if (i+self.adding_one) % 2 == 0:
+                test_skip += [1]
+            else:
+                test_skip += [0]
+
+        print('test skip: ',test_skip)
+        self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels_new[i], deconv_channels[i + 1],
                                                         dstrides[i], dkernels[i],
                                                         padding=dpadding[i],
                                                         drop_prob=ddrop_probs[i],
                                                         output_padding=output_padding[i])
                                             for i in range(self.num_layers)])
 
+        print('deconv layers: ')
+        print(self.deconv_layers)
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
@@ -97,13 +128,9 @@ class ConvDeconv(nn.Module):
         self.model_name = model_name
 
         self.add_skip = add_skip
-        self.add_skip_at_first = add_skip_at_first
         self.attention_mask = attention_mask
 
-        if self.add_skip_at_first:
-            self.adding_one = 1
-        else:
-            self.adding_one = 0
+
 
 
     def forward(self, x):
@@ -144,13 +171,16 @@ class ConvDeconv(nn.Module):
             skip = skip_connection[len(skip_connection)-1-i]
             x = l(x)
             if self.add_skip:
-                x = x + skip
+                # x = x + skip
+                if skip is not 0:
+                    x = torch.cat((x,skip),1)
             if i is not len(self.deconv_layers)-1:
                 x = relu(x)
 
         return x
 
-    def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs, input_size=(401,401), output_padding=None, dilation=None):
+    def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs, input_size=(401,401),
+                                    output_padding=None, dilation=None):
 
         if dilation is None:
             dilation = [(1,1) for i in range(len(strides))]
