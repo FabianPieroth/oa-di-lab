@@ -313,14 +313,14 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 32
-    log_period = 30
-    epochs = 90
+    batch_size = 16*8
+    log_period = 25
+    epochs = 250
 
     # dataset parameters
 
     data_type = 'hetero'
-    train_ratio = 0.9
+    train_ratio = 0.99
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
@@ -329,10 +329,10 @@ def main():
     add_augment = False
     do_rchannels = False
     do_flip = True
-    do_blur = False
+    do_blur = True
     do_deform = False
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
@@ -361,10 +361,11 @@ def main():
     # conv_channels = [7, 64, 128, 256, 512, 1024]
     conv_channels = [5, 8, 8, 8, 8, 8]
     kernels = [(7, 7) for i in range(5)]
+
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
-    drop_probs = [0 for i in range(5)]
+    drop_probs = [0 for i in range(6)]
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -430,7 +431,7 @@ def main():
         # fit the first model
         print('\n---------------------------')
         print('fitting model')
-        trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
+        trainer.fit(learning_rate=learning_rate, lr_method='one_cycle')
 
     print('\nfinished')
 
