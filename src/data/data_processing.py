@@ -221,17 +221,8 @@ def save_dict_with_pickle(file, folder_name, file_name):
     with open(folder_name + '/' + file_name, 'wb') as handle:
         pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
 # Hetero search for suitable single speed of sounds compared to dual speed of sound
-
-def check_for_suitable_images(single_sos, couplant_sos, tissue_sos, us_low_samples, single_thres=12.0, dual_thres=20):
-    if np.absolute(single_sos - couplant_sos) < single_thres:
-        single_couplant_index = np.argmin(np.absolute(single_sos - couplant_sos))
-    else:
-        suitable = False
-        us_low = None
-        return suitable, us_low
-
-    return suitable, us_low
 
 
 def find_suitable_index(single, multiple, threshold):

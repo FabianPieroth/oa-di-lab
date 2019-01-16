@@ -33,7 +33,7 @@ class ConvDeconv(nn.Module):
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
-                 add_skip=True, attention_mask='Not', add_skip_at_first=True):
+                 add_skip=True, attention_mask='Not', add_skip_at_first=True, concatenate_skip=False):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -46,7 +46,6 @@ class ConvDeconv(nn.Module):
 
 
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
-
 
         self.num_layers = len(conv_channels)-1
         self.out_channels = output_channels
@@ -72,7 +71,6 @@ class ConvDeconv(nn.Module):
                                                                                         output_padding=output_padding,
                                                                                         input_size=self.input_size)
 
-
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i], padding=padding[i],
                                                     drop_prob=drop_probs[i])
@@ -84,6 +82,7 @@ class ConvDeconv(nn.Module):
             deconv_channels[-1] = output_channels
 
         self.add_skip_at_first = add_skip_at_first
+        self.concatenate_skip = concatenate_skip
 
         if self.add_skip_at_first:
             self.adding_one = 0
@@ -92,10 +91,10 @@ class ConvDeconv(nn.Module):
 
         # increase nr of deconv channels
         deconv_channels_new = deconv_channels.copy()
-        for i in range(len(deconv_channels)-1):
-            if (i+self.adding_one) % 2 == 0:
-                deconv_channels_new[i+1] = deconv_channels[i+1] * 2
-
+        if self.concatenate_skip:
+            for i in range(len(deconv_channels)-1):
+                if (i+self.adding_one) % 2 == 0:
+                    deconv_channels_new[i+1] = deconv_channels[i+1] * 2
 
         self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels_new[i], deconv_channels[i + 1],
                                                         dstrides[i], dkernels[i],
@@ -112,9 +111,6 @@ class ConvDeconv(nn.Module):
 
         self.add_skip = add_skip
         self.attention_mask = attention_mask
-
-
-
 
     def forward(self, x):
 
@@ -148,15 +144,17 @@ class ConvDeconv(nn.Module):
             l = self.conv_layers[i]
             x = l(x)
 
-
         for i in range(len(self.deconv_layers)):
             l = self.deconv_layers[i]
             skip = skip_connection[len(skip_connection)-1-i]
             x = l(x)
             if self.add_skip:
-                # x = x + skip
-                if skip is not 0:
-                    x = torch.cat((x,skip),1)
+                if self.concatenate_skip:
+                    if skip is not 0:
+                        x = torch.cat((x, skip), 1)
+                else:
+                    x = x + skip
+
             if i is not len(self.deconv_layers)-1:
                 x = relu(x)
 
@@ -202,7 +200,6 @@ class ConvDeconv(nn.Module):
 
         # now going through the deconv layers to calculate the potential output sizes of the deconv
         # if they don't match add as much output padding as needed
-
 
         for i in range(len(conv_sizes)-1):
             strd = dstrides[i]

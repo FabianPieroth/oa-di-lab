@@ -136,7 +136,6 @@ def elastic_deform(image1, image2, n_points=1, stdev_displacement_fac=0.05, defo
 
 def crop_stretch_helper(in_image, side, crop_size):
     #helper function to crop both the input and target image by some crop size
-    # TODO: delete unneccessary stuff
     if side == 1:
         cropped = in_image[:in_image.shape[0] - crop_size, :in_image.shape[1] - crop_size]
 
@@ -192,7 +191,7 @@ def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo', att
             transformed_image1_temp = blur_helper(input_image1, sigma=sig)
             image1[:, :, 0] = transformed_image1_temp
             transformed_image1 = image1
-        elif attention_mask == 'simple':
+        elif attention_mask == 'simple' or attention_mask == 'complex':
             input_image1a = image1[:, :, 0]
             input_image1b = image1[:, :, 1]
             transformed_image1a_temp = blur_helper(input_image1a, sigma=sig)
@@ -272,7 +271,7 @@ def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, dat
             transformed_image1_temp = speckle_noise_helper(input_image1, mult_noise=eta)
             image1[:, :, 0] = transformed_image1_temp
             transformed_image1 = image1
-        elif attention_mask == 'simple':
+        elif attention_mask == 'simple' or attention_mask == 'complex':
             input_image1a = image1[:, :, 0]
             input_image1b = image1[:, :, 1]
             transformed_image1a_temp = speckle_noise_helper(input_image1a, mult_noise=eta)
