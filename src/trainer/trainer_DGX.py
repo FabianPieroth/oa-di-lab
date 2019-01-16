@@ -325,7 +325,7 @@ def main():
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
     add_augment = False
     do_rchannels = False
     do_flip = True
@@ -351,15 +351,15 @@ def main():
     channel_slice_oa = None  # [0, 3, 6, 10, 15, 23, 27]
     process_all_raw_folders = True
     hetero_mask_to_mask = False
-    add_skip = True
+    add_skip = False
     add_skip_at_first = False
 
-    attention_mask = 'simple'  # 'simple', 'Not', to come: 'complex'
+    attention_mask = 'complex'  # 'simple', 'Not', to come: 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 64, 128, 256, 512, 1024]
+    conv_channels = [5, 8, 8, 8, 8, 8]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (401, 401)

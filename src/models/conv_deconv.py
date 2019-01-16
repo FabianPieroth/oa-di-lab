@@ -230,9 +230,9 @@ class ConvDeconv(nn.Module):
                 zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
         elif start == 'complex':
             for i in range(shape_tensor[0]):
-                zero_one[i, 0, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-                zero_one[i, 1, :, :] = single_upper
-                zero_one[i, 2, :, :] = single_lower
+                zero_one[i, 0, :, :] = single_upper
+                zero_one[i, 1, :, :] = single_lower
+                zero_one[i, 2, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
                 zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
                 zero_one[i, 4, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
         else:

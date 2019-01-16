@@ -114,7 +114,7 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
     us_high_samples = us_raw_high['US_high_samples']
     # on which axis to expand the dimension of the numpy array
     common_axis = 2
-    if not hetero_mask_to_mask:
+    if not hetero_mask_to_mask and not attention_mask == 'complex':
 
         for low_channel in range(us_low_samples.shape[2]):
 
@@ -149,6 +149,49 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
 
                 save_dict_with_pickle(file=dict_us_single,
                                       folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+    elif attention_mask == 'complex':
+        suitable_couplant, index_couplant = find_suitable_index(single=couplant_sos, multiple=single_sos, threshold=16)
+        if not suitable_couplant:
+            # if we cannot find a suitable low quality image with couplant sos, this sample has no value in complex
+            return
+        else:
+            single_sos_couplant = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_couplant]),
+                                                 axis=common_axis)
+            low_single_couplant = np.expand_dims(us_low_samples[:, :, index_couplant], axis=common_axis)
+
+        for high_channel in range(us_high_samples.shape[2]):
+            suitable_dual, index_dual = find_suitable_index(single=tissue_sos[high_channel], multiple=single_sos,
+                                                            threshold=32)
+            if not suitable_dual:
+                # if we cannot find a suitable low quality image with couplant sos, this dual sample is skipped
+                continue
+            else:
+                single_sos_dual = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_dual]),
+                                                 axis=common_axis)
+                low_single_dual = np.expand_dims(us_low_samples[:, :, index_dual], axis=common_axis)
+
+                custom_mask = np.copy(tissue_mask)
+                custom_mask[custom_mask == 0] = couplant_sos
+                custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+                custom_mask = np.expand_dims(custom_mask, axis=common_axis)
+
+                us_low_save = np.concatenate((low_single_couplant, low_single_dual, custom_mask, single_sos_couplant,
+                                              single_sos_dual), axis=common_axis)
+
+                us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
+
+                name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
+                    index_dual)
+                name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+                name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
+                    index_dual) + 'to' + str(high_channel)
+
+                dict_us_single = {name_us_low: us_low_save,
+                                  name_us_high: us_high_save}
+
+                save_dict_with_pickle(file=dict_us_single,
+                                      folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+
     else:
         for sos in range(us_high_samples.shape[2]):
             custom_mask = np.copy(tissue_mask)
@@ -177,6 +220,29 @@ def save_dict_with_pickle(file, folder_name, file_name):
     # use this to save pairs of low and high quality pictures
     with open(folder_name + '/' + file_name, 'wb') as handle:
         pickle.dump(file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+# Hetero search for suitable single speed of sounds compared to dual speed of sound
+
+def check_for_suitable_images(single_sos, couplant_sos, tissue_sos, us_low_samples, single_thres=12.0, dual_thres=20):
+    if np.absolute(single_sos - couplant_sos) < single_thres:
+        single_couplant_index = np.argmin(np.absolute(single_sos - couplant_sos))
+    else:
+        suitable = False
+        us_low = None
+        return suitable, us_low
+
+    return suitable, us_low
+
+
+def find_suitable_index(single, multiple, threshold):
+    suitable = False
+    index_min = None
+    if np.min(np.absolute(multiple - single)) < threshold:
+        index_min = np.argmin(np.absolute(multiple - single))
+        suitable = True
+
+    return suitable, index_min
+
 
 # Augmentations
 

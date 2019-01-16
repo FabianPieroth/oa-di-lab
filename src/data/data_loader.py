@@ -806,7 +806,7 @@ class ProcessData(object):
                     high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                     (count_high, mean_high, var_high) = high_aggr
             else:
-                if self.attention_mask == 'simple':
+                if self.attention_mask == 'simple' or self.attention_mask == 'complex':
                     mean_low = [0, 0, 0]
                     var_low = [0, 0, 0]
                     count_low = 0
@@ -997,7 +997,7 @@ class ProcessData(object):
                 if self.hetero_mask_to_mask:
                     scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
-                elif self.attention_mask == 'simple':
+                elif self.attention_mask == 'simple' or self.attention_mask == 'complex':
                     x_image1 = x[:, :, :, 0]
                     x_image2 = x[:, :, :, 1]
                     x_sos = x[:, :, :, 2:]
