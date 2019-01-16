@@ -325,14 +325,14 @@ def main():
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
     add_augment = False
     do_rchannels = False
     do_flip = True
-    do_blur = False
+    do_blur = True
     do_deform = False
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
