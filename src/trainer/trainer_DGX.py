@@ -313,20 +313,20 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 32
-    log_period = 30
-    epochs = 90
+    batch_size = 16*8
+    log_period = 25
+    epochs = 250
 
     # dataset parameters
 
     data_type = 'hetero'
-    train_ratio = 0.9
-    process_raw_data = False
+    train_ratio = 0.99
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
     do_augment = True
-    add_augment = False
+    add_augment = True
     do_rchannels = False
     do_flip = True
     do_blur = True
@@ -430,7 +430,7 @@ def main():
         # fit the first model
         print('\n---------------------------')
         print('fitting model')
-        trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
+        trainer.fit(learning_rate=learning_rate, lr_method='one_cycle')
 
     print('\nfinished')
 
