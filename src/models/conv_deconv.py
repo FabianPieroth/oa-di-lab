@@ -79,7 +79,6 @@ class ConvDeconv(nn.Module):
                                           for i in range(self.num_layers)])
 
         deconv_channels = conv_channels[::-1]
-        print('deconv channels above: ',deconv_channels)
 
         if output_channels is not None:
             deconv_channels[-1] = output_channels
@@ -97,21 +96,7 @@ class ConvDeconv(nn.Module):
             if (i+self.adding_one) % 2 == 0:
                 deconv_channels_new[i+1] = deconv_channels[i+1] * 2
 
-        print('conv layers: ', self.conv_layers)
 
-        print('conv channels: ', conv_channels)
-
-        print('deconv channels: ',deconv_channels)
-        print('deconv channels new: ',deconv_channels_new)
-        test_skip = []
-        print('self.adding_one: ',self.adding_one)
-        for i in range(len(conv_channels)):
-            if (i+self.adding_one) % 2 == 0:
-                test_skip += [1]
-            else:
-                test_skip += [0]
-
-        print('test skip: ',test_skip)
         self.deconv_layers = nn.ModuleList([DeConvLayer(deconv_channels_new[i], deconv_channels[i + 1],
                                                         dstrides[i], dkernels[i],
                                                         padding=dpadding[i],
@@ -119,8 +104,6 @@ class ConvDeconv(nn.Module):
                                                         output_padding=output_padding[i])
                                             for i in range(self.num_layers)])
 
-        print('deconv layers: ')
-        print(self.deconv_layers)
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
