@@ -50,8 +50,6 @@ def extract_and_process_logged_folder(folder_name):
                                                                               mean_low=mean_low_before_pca,
                                                                               mean_high=mean_high_before_pca, data_loader=data_loader)
 
-
-
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
                                  save_name=save_folder + '/' + images)
                 if json_dict['image_type'] == 'OA':
@@ -97,7 +95,6 @@ def load_data_loader_module(path, json_dict):
     spec = importlib.util.spec_from_file_location("ProcessData", path + '/data/data_loader.py')
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    # TODO: Add additional parameters from the json dict in newer versions
     # especially trunc_points and do_scale_center
     data_loader = foo.ProcessData(train_ratio=json_dict['train_ratio'], image_type=json_dict['image_type'],
                                   data_type=json_dict['data_type'],
@@ -178,6 +175,7 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
     backproj = backproj.reshape(new_shape)
     backproj = np.moveaxis(backproj, [-1], [0])
     return backproj
+
 
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'

@@ -133,7 +133,7 @@ class ConvDeconv(nn.Module):
                 x = zero_one * x
 
             if (i + self.adding_one)% 2 == 0:
-                if i==0 and self.out_channels is not None:
+                if i==0 and self.out_channels is not None and self.add_skip_at_first:
                     skip_connection += [x[:,0:1,:,:]]
                 else:
                     skip_connection += [x]

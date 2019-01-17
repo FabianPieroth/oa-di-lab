@@ -204,6 +204,9 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
         rgb = np.zeros((image_3d.shape[0], image_3d.shape[1], 3))
         rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
         rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
+        rgb[:, :, 0] = rgb[:, :,0] / np.max(rgb[:, :,0])
+        rgb[:, :, 1] = rgb[:, :, 1] / np.max(rgb[:, :, 1])
+        rgb[:, :, 2] = rgb[:, :, 2] / np.max(rgb[:, :, 2])
         # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
         # rgb = np.log(rgb) / np.log(np.max(rgb))  # log scale
         # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
