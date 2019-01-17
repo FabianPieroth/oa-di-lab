@@ -1,11 +1,11 @@
 from data.data_loader import ProcessData
 from logger.logger_module import Logger
 import numpy as np
-
 from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
-# from models.SP2_conv_deconv import ConvDeconv
+#from models.SP2_conv_deconv import ConvDeconv
+from models.linear_deformation import DeformationLearner
 import torch
 import random
 import torch.nn as nn
@@ -19,12 +19,15 @@ class CNN_skipCo_trainer(object):
                  process_raw_data, pro_and_augm_only_image_type, do_heavy_augment,do_augment,
                  add_augment, do_rchannels,do_flip, do_blur, do_deform, do_crop,do_speckle_noise,
                  trunc_points, get_scale_center, single_sample,do_scale_center,
-
+                 oa_do_scale_center_before_pca,
+                 trunc_points_before_pca,
+                 oa_do_pca,oa_pca_fit_ratio, oa_pca_num_components,
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
-                 input_ds_mask, input_ss_mask, ds_mask_channels, add_skip):
+                 input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
+                 add_skip_at_first, concatenate_skip):
 
         self.image_type = image_type
 
@@ -41,32 +44,33 @@ class CNN_skipCo_trainer(object):
                                    image_type=image_type, get_scale_center=get_scale_center,
                                    single_sample=single_sample,
                                    do_scale_center=do_scale_center,
+                                   trunc_points_before_pca=trunc_points_before_pca,
+                                   oa_do_scale_center_before_pca=oa_do_scale_center_before_pca,
+                                   oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio,
+                                   oa_pca_num_components=oa_pca_num_components,
                                    height_channel_oa=height_channel_oa, use_regressed_oa=use_regressed_oa,
                                    include_regression_error=include_regression_error,
                                    add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                    channel_slice_oa=channel_slice_oa,
                                    process_all_raw_folders=process_all_raw_folders,
-                                   hetero_mask_to_mask=hetero_mask_to_mask)
-
-        '''self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
-                                           input_ds_mask=input_ds_mask,
-                                           input_ss_mask=input_ss_mask,
-                                           ds_mask_channels=ds_mask_channels,
-                                           datatype=data_type,
-                                           kernels=kernels,
-                                           model_name=model_name, input_size=input_size,
-                                           output_channels=output_channels, drop_probs=drop_probs,
-                                           add_skip=add_skip)'''
+                                   hetero_mask_to_mask=hetero_mask_to_mask,
+                                   attention_mask=attention_mask, pca_use_regress=pca_use_regress)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
+                                           #input_ds_mask=input_ds_mask,
+                                           #input_ss_mask=input_ss_mask,
+                                           #ds_mask_channels=ds_mask_channels,
+                                           #datatype=data_type,
                                            kernels=kernels,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs,
-                                           add_skip=add_skip)
+                                           add_skip=add_skip, attention_mask=attention_mask,
+                                           add_skip_at_first=add_skip_at_first, concatenate_skip=concatenate_skip)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
-        self.model = ImageTranslator([self.model_dilated])
+        # self.deformation_model = DeformationLearner(stride=3, kernel=3, padding=1)
+        self.model = ImageTranslator([self.model_convdeconv])
 
 
         # we need optimizer and loss here to not access anything from the model class
@@ -85,8 +89,6 @@ class CNN_skipCo_trainer(object):
 
         self.learning_rates = learning_rates
 
-
-
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
                              epochs=self.epochs,learning_rates=self.learning_rates,hyper_no=hyper_no,
@@ -99,6 +101,18 @@ class CNN_skipCo_trainer(object):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
+        if self.dataset.oa_do_pca:
+            # get pca model for logging
+            pca_model = self.dataset.load_pca_model()
+        else: pca_model = None
+        if self.dataset.oa_do_scale_center_before_pca:
+            scale_params_low_before_pca, scale_params_high_before_pca = self.dataset.load_params(
+                param_type="scale_params_before_pca")
+            mean_image_low_before_pca, mean_image_high_before_pca = self.dataset.load_params(
+                param_type="mean_images_before_pca")
+        else:
+            scale_params_low_before_pca, scale_params_high_before_pca = None, None
+            mean_image_low_before_pca, mean_image_high_before_pca = None, None
 
         # load validation set, normalize and parse into tensor
         input_tensor_val, target_tensor_val = self.dataset.scale_and_parse_to_tensor(
@@ -180,6 +194,9 @@ class CNN_skipCo_trainer(object):
                                 epochs=self.epochs,
                                 mean_images=[mean_image_low, mean_image_high],
                                 scale_params=[scale_params_low, scale_params_high],
+                                mean_images_before_pca=[mean_image_low_before_pca, mean_image_high_before_pca],
+                                scale_params_before_pca = [scale_params_low_before_pca, scale_params_high_before_pca],
+                                pca_model=pca_model,
                                 learning_rates=self.learning_rates)
 
     def find_lr(self, init_value=1e-8, final_value=10., beta=0.98):
@@ -303,14 +320,14 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    #batch_size = 16
-    log_period = 100
-    epochs = 200
+    batch_size = 16
+    log_period = 40
+    epochs = 120
 
     # dataset parameters
 
-    data_type = 'homo'
-    train_ratio = 0.9
+    data_type = 'hetero'
+    train_ratio = 0.90
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
@@ -321,16 +338,20 @@ def main():
 
     do_rchannels = False
     do_flip = True
-    do_blur = False
-    do_deform = True
+    do_blur = True
+    do_deform = False
     do_crop = False
-    do_speckle_noise = False
-    trunc_points = (0.0001, 0.9999)
-
+    do_speckle_noise = True
+    trunc_points = (0, 1)
+    trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
     single_sample = False
     do_scale_center = True
-
+    oa_do_scale_center_before_pca = False
+    oa_do_pca = False
+    oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
+    oa_pca_num_components = 7
+    pca_use_regress = False
     height_channel_oa = 201
     use_regressed_oa = False
     include_regression_error = False
@@ -340,20 +361,30 @@ def main():
     process_all_raw_folders = True
     hetero_mask_to_mask = False
 
+    add_skip = True
+    add_skip_at_first = False
+    concatenate_skip = False
+
+    attention_mask = 'complex'  # 'simple', 'Not', 'complex'
+
     # model parameters
 
-    # conv_channels = [3, 128, 256, 512, 1024, 2048]
+    # conv_channels = [7, 64, 128, 256, 512, 1024]
+    conv_channels = [5, 8, 8, 8, 8, 8]
     kernels = [(7, 7) for i in range(5)]
+
     model_name = 'deep_2_model'
-    input_size = (201, 401)
-    output_channels = None
-    drop_probs = [0 for i in range(5)]
+    input_size = (401, 401)
+    output_channels = 1
+    drop_probs = None
 
     add_skip = True
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
     ds_mask_channels = [1, 2, 4, 8, 16, 32]
+
+    learning_rate = 0.0001
 
     optimizer = torch.optim.Adam
     criterion = nn.MSELoss()
@@ -365,11 +396,9 @@ def main():
 
 
     # add hyper parameters for search
-    param_grid = {
-        'learning_rates' : [0.001,0.0001,0.00001],
-        'batch_size' : [16,8],
-        'conv_channels' : [[5, 128, 8, 8, 8, 8]]
-    }
+    #param_grid = {
+    #
+    #}
 
     # number of iterations to be performed for hyperparameter search
     max_evals=1
@@ -377,10 +406,10 @@ def main():
     # Iterate through the specified number of evaluations
     for i in range(max_evals):
 
-        params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
+        #params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
 
-        print(params)
-        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=params['batch_size'], log_period=log_period,
+        #print(params)
+        trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
                                      epochs=epochs, data_type=data_type, train_ratio=train_ratio,
                                      process_raw_data=process_raw_data,
                                      pro_and_augm_only_image_type=pro_and_augm_only_image_type,
@@ -389,27 +418,33 @@ def main():
                                      do_blur=do_blur, do_deform=do_deform, do_crop=do_crop,
                                      do_speckle_noise=do_speckle_noise,
                                      trunc_points=trunc_points, get_scale_center=get_scale_center,
+                                     trunc_points_before_pca=trunc_points_before_pca,
                                      single_sample=single_sample,
                                      do_scale_center=do_scale_center,
-                                     height_channel_oa=height_channel_oa, conv_channels=params['conv_channels'], kernels=kernels,
+                                     oa_do_scale_center_before_pca=oa_do_scale_center_before_pca,
+                                     oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio, oa_pca_num_components = oa_pca_num_components,
+                                     height_channel_oa=height_channel_oa, conv_channels=conv_channels, kernels=kernels,
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
                                      input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
                                      ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
                                      optimizer=optimizer, criterion=criterion,
-                                     learning_rates=params['learning_rates'],
+                                     learning_rates=learning_rate,
                                      use_regressed_oa=use_regressed_oa,
                                      include_regression_error=include_regression_error,
                                      add_f_test=add_f_test, only_f_test_in_target=only_f_test_in_target,
                                      channel_slice_oa=channel_slice_oa, process_all_raw_folders=process_all_raw_folders,
-                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i, add_skip=add_skip
+                                     hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
+                                     attention_mask=attention_mask, add_skip=add_skip,
+                                     add_skip_at_first=add_skip_at_first,
+                                     pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip
                                      )
 
         # fit the first model
         print('\n---------------------------')
         print('fitting model')
-        trainer.fit(learning_rate=0.0001, lr_method='one_cycle')
+        trainer.fit(learning_rate=learning_rate, lr_method='one_cycle')
 
     print('\nfinished')
 

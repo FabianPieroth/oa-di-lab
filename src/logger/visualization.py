@@ -36,6 +36,8 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
+        plt.clf()
+        plt.close('all')
 
 
 '''def plot_oa_spectra(im_input, im_target, im_predict, x, y, name, figsize=(18, 5)):
@@ -70,6 +72,8 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
     ax2.legend(loc=5)
     if save_name is not None:
         fig.savefig(save_name, bbox_inches='tight')
+        plt.clf()
+        plt.close('all')
 
 
 def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_threshold, json_processing=None):
@@ -103,6 +107,8 @@ def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
+        plt.clf()
+        plt.close('all')
 
 
 def get_relevant_spectra(image, p_threshold, json_processing=None):
@@ -198,6 +204,9 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
         rgb = np.zeros((image_3d.shape[0], image_3d.shape[1], 3))
         rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
         rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
+        rgb[:, :, 0] = rgb[:, :,0] / np.max(rgb[:, :,0])
+        rgb[:, :, 1] = rgb[:, :, 1] / np.max(rgb[:, :, 1])
+        rgb[:, :, 2] = rgb[:, :, 2] / np.max(rgb[:, :, 2])
         # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
         rgb = np.log(rgb)  # log scale
         # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
@@ -219,6 +228,8 @@ def plot_single_spectra(input_im, target_im, predict_im, save_name, regressed,
     fig1.savefig(save_name + '/' + 'Input', bbox_inches='tight')
     fig2.savefig(save_name + '/' + 'Target', bbox_inches='tight')
     fig3.savefig(save_name + '/' + 'Predict', bbox_inches='tight')
+    plt.clf()
+    plt.close('all')
 
 
 def load_file_to_numpy(full_file_name):

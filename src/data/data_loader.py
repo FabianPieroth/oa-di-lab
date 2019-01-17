@@ -7,6 +7,8 @@ import random
 import data.data_processing as dp
 import torch
 import scipy.io
+from sklearn.decomposition import IncrementalPCA
+from logger.oa_spectra_analysis.oa_for_DILab import linear_unmixing as lu
 
 
 class ProcessData(object):
@@ -31,6 +33,12 @@ class ProcessData(object):
                  process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
+                 trunc_points_before_pca=(0.0001,0.9999),
+                 oa_do_scale_center_before_pca=True,
+                 oa_do_pca= False,
+                 oa_pca_fit_ratio =1,
+                 oa_pca_num_components = 7,
+                 pca_use_regress=False,
                  height_channel_oa=201,
                  use_regressed_oa=False,
                  add_f_test=False,
@@ -48,6 +56,7 @@ class ProcessData(object):
                  get_scale_center=True,
                  do_scale_center=True,
                  hetero_mask_to_mask=False,
+                 attention_mask='Not',
                  trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
@@ -68,15 +77,24 @@ class ProcessData(object):
         self.do_rchannels = do_rchannels
         self.num_rchannels = num_rchannels
 
-        self.num_val_images_hetero = 15
+        self.num_val_images_hetero = 3
 
         self.do_speckle_noise = do_speckle_noise
 
+        self.trunc_points_before_pca=trunc_points_before_pca
+        self.oa_do_scale_center_before_pca=oa_do_scale_center_before_pca
+        self.oa_do_pca = oa_do_pca
+        self.oa_pca_fit_ratio = oa_pca_fit_ratio
+        self.oa_pca_num_components = oa_pca_num_components
+        self.pca_use_regress = pca_use_regress
         self.height_channel_oa = height_channel_oa
         self.use_regressed_oa = use_regressed_oa
         self.include_regression_error = include_regression_error
         self.add_f_test = add_f_test
         self.only_f_test_in_target = only_f_test_in_target
+
+        self.attention_mask = attention_mask
+
         if channel_slice_oa is None:
             self.channel_slice_oa = list(range(28))
         else:
@@ -157,6 +175,25 @@ class ProcessData(object):
 
             self.train_file_names = self._delete_val_from_augmented(val_names=self.val_file_names,
                                                                     train_names=self.train_file_names)
+
+        if self.oa_do_pca:
+            if self.process_raw == False or self.do_augment == False:
+                sys.exit('Please process and augment the data before doing the pca')
+            if self.image_type == 'US' or self.data_type == 'hetero':
+                sys.exit('PCA not implemented for US or hetero data')
+            # get normalization parameters before pca
+            if self.oa_do_scale_center_before_pca:
+                self._get_scale_center(before_pca=True)
+
+            # fit PCA on targets in train set
+            self.fit_pca_on_targets(self.train_file_names, self.oa_pca_fit_ratio, self.oa_pca_num_components)
+            # join train, val and test file names
+            self.all_data_files = []
+            self.all_data_files.extend(self.train_file_names)
+            self.all_data_files.extend(self.val_file_names)
+            self.all_data_files.extend(self.test_names)
+            # project all data files onto pca space and overwrite the files
+            self.do_pca_and_save_data(self.all_data_files)
 
         if self.get_scale_center:
             self._get_scale_center()
@@ -249,7 +286,8 @@ class ProcessData(object):
                     us_high_samples = [s for s in in_files if 'US_high' in s]
                     dp.pre_us_hetero(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
-                                     save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask)
+                                     save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask,
+                                     attention_mask=self.attention_mask)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -295,7 +333,8 @@ class ProcessData(object):
                     us_high_samples = [s for s in in_files if 'US_high' in s]
                     dp.pre_us_hetero(new_in_folder=dir_test_set, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
-                                     save_folder=save_dir, hetero_mask_to_mask=self.hetero_mask_to_mask)
+                                     save_folder=save_dir, hetero_mask_to_mask=self.hetero_mask_to_mask,
+                                     attention_mask=self.attention_mask)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
@@ -481,7 +520,7 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params, data_type=self.data_type)
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
                     if self.do_deform and self.data_type == 'homo':
                         for i in range(self.num_deform):
@@ -501,7 +540,7 @@ class ProcessData(object):
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                    filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params, data_type=self.data_type)
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
                 # additionally to the processed_all files the flipped ones are done for some augmentations
 
@@ -529,7 +568,7 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params, data_type=self.data_type)
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
                     if self.do_crop:
                         dp.do_crop(x=x, y=y, file_prefix=file_prefix,
@@ -541,7 +580,7 @@ class ProcessData(object):
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                             filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                            path_to_params=self.dir_params, data_type=self.data_type)
+                                            path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
         elif self.data_type == self.accepted_data_types[1]:
             if self.data_type == 'hetero' and self.do_deform:
@@ -571,12 +610,12 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params, data_type=self.data_type)
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                             filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                            path_to_params=self.dir_params, data_type=self.data_type)
+                                            path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
                 flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
                                                                end_folder, full_names=True)
@@ -589,12 +628,12 @@ class ProcessData(object):
                         dp.do_blur(x=x, y=y, file_prefix=file_prefix,
                                    filename=self.extract_name_from_path(filename, without_ch=False),
                                    end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                   path_to_params=self.dir_params, data_type=self.data_type)
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
                     if self.do_speckle_noise and end_folder == 'ultrasound':
                         dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
                                             filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
-                                            path_to_params=self.dir_params, data_type=self.data_type)
+                                            path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
 
         else:
@@ -618,6 +657,88 @@ class ProcessData(object):
         for f in file_list:
             os.remove(os.path.join(path_to_dir, f))
 
+    ##################################################################
+    # ###### fit PCA for OA data      ####################################
+    ##################################################################
+
+    def fit_pca_on_targets(self, train_set, fit_ratio, num_components, pca_batch_size = 100):
+        # fits pca on target images in the train_set. subsamples images with fit_ratio
+
+
+        indices_of_sample = random.sample(range(len(train_set)), int(len(train_set)*fit_ratio))
+        sample_files = [train_set[i] for i in indices_of_sample]
+        targets = np.array(np.array([np.array(self.load_file_to_numpy(full_file_name=file_name,
+            image_sign='OA' + '_high')) for file_name in sample_files]))
+
+        # truncate targets
+        targets = self.truncate_images_in_batch(batch=targets, trunc_points=self.trunc_points_before_pca)
+
+        if self.oa_do_scale_center_before_pca:
+            # get normalization parameters
+            var_low, var_high = self.load_params(param_type="scale_params_before_pca")
+            mean_low, mean_high = self.load_params(param_type="mean_images_before_pca")
+            # scale targets
+            targets = self.scale_and_center(targets, scale_params=var_high, mean_image=mean_high)
+        n_channels = targets.shape[-1]
+        targets = targets.reshape(-1,n_channels)
+        print('fits pca')
+        pca_model = IncrementalPCA(n_components = num_components, batch_size=pca_batch_size)
+        pca_model.fit(targets)
+        with open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'wb') as handle:
+            pickle.dump(pca_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    ##################################################################
+    # ###### do PCA and save data      ###############################
+    ##################################################################
+
+    def do_pca_and_save_data(self, file_paths):
+        print('transforms data into pca coefficients and save the new data')
+        # load model
+        model = self.load_pca_model()
+        if self.oa_do_scale_center_before_pca:
+            # load normalization parameters
+            var_low, var_high = self.load_params(param_type="scale_params_before_pca")
+            mean_low, mean_high = self.load_params(param_type="mean_images_before_pca")
+        for file_name in file_paths:
+            image_high = self.load_file_to_numpy(full_file_name=file_name,image_sign='OA' + '_high')
+            if self.oa_do_scale_center_before_pca:
+                image_high = self.scale_and_center(image_high, scale_params=var_high, mean_image=mean_high)
+
+            image_low = self.load_file_to_numpy(full_file_name=file_name, image_sign='OA' + '_low')
+            if self.oa_do_scale_center_before_pca:
+                image_low = self.scale_and_center(image_low, scale_params=var_low, mean_image=mean_low)
+
+            if self.pca_use_regress:
+                transformed_low = lu(image_low, spectra=model.components_)
+                transformed_high = lu(image_high, spectra=model.components_)
+            else:
+                im_shape = image_high.shape
+                image_high = image_high.reshape(-1, im_shape[-1])
+                transformed_high = model.transform(image_high)
+                new_shape = list(im_shape[:2])
+                new_shape.append(model.n_components)
+                transformed_high = transformed_high.reshape(new_shape)
+                im_shape = image_low.shape
+                image_low = image_low.reshape(-1, im_shape[-1])
+                transformed_low = model.transform(image_low)
+                new_shape = list(im_shape[:2])
+                new_shape.append(model.n_components)
+                transformed_low = transformed_low.reshape(new_shape)
+            short_file_name = file_name.rsplit('/', 1)[-1] # get only file name without rest of path
+            dic = {'OA_low_' + short_file_name: transformed_low, 'OA_high_' + short_file_name: transformed_high}
+            pickle.dump(dic, open(file_name, 'wb'))
+
+    def load_pca_model(self, path=None):
+        if path is None:
+            model = pickle.load(open(self.dir_params + '/PCA' + '/OA_pca_model.sav', 'rb'))
+        else:
+            model = pickle.load(open(path + '/OA_pca_model.sav', 'rb'))
+        return model
+
+    ##################################################################
+    # ###### Normalization parameters ################################
+    ##################################################################
+
     def update_mean_var(self, prev_agg, data):
         (n_prev_obs, prev_mean, prev_var) = prev_agg
         m = n_prev_obs
@@ -634,8 +755,14 @@ class ProcessData(object):
 
         return n_obs, mean, var
 
-    def _get_scale_center(self):
+    def _get_scale_center(self, before_pca=False):
         print('Calculates scaling parameters')
+
+        if self.oa_do_scale_center_before_pca and before_pca:
+            trunc_points = self.trunc_points_before_pca
+        else:
+            trunc_points = self.trunc_points
+
         # Initialize values
 
         if self.data_type == 'homo':
@@ -652,8 +779,8 @@ class ProcessData(object):
                 image_low = self.load_file_to_numpy(file, image_sign)
                 # truncating images
                 if self.image_type == 'OA':
-                    lq = np.quantile(image_low, self.trunc_points)
-                    hq = np.quantile(image_high, self.trunc_points)
+                    lq = np.quantile(image_low, trunc_points)
+                    hq = np.quantile(image_high, trunc_points)
                     image_low = image_low.clip(lq[0], lq[1])
                     image_high = image_high.clip(hq[0], hq[1])
                 # update values
@@ -680,35 +807,65 @@ class ProcessData(object):
                     high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                     (count_high, mean_high, var_high) = high_aggr
             else:
-                mean_low = [0,0]
-                var_low = [0,0]
-                count_low = 0
-                mean_high = 0
-                var_high = 0
-                count_high = 0
-                for file in self.train_file_names:
-                    image_sign = self.image_type + '_high'
-                    image_high = self.load_file_to_numpy(file, image_sign)
-                    image_sign = self.image_type + '_low'
-                    image_low = self.load_file_to_numpy(file, image_sign)
-                    image_low_image = image_low[:,:,0]
-                    image_low_sos = image_low[:,:,1:]
-                    # update values
-                    low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
-                    (count_low, mean_low_image, var_low_image) = low_aggr_image
-                    mean_low[0] = mean_low_image
-                    var_low[0] = var_low_image
-                    low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
-                    (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
-                    mean_low[1] = mean_low_sos
-                    var_low[1] = var_low_sos
-                    high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
-                    (count_high, mean_high, var_high) = high_aggr
+                if self.attention_mask == 'simple' or self.attention_mask == 'complex':
+                    mean_low = [0, 0, 0]
+                    var_low = [0, 0, 0]
+                    count_low = 0
+                    mean_high = 0
+                    var_high = 0
+                    count_high = 0
+                    for file in self.train_file_names:
+                        image_sign = self.image_type + '_high'
+                        image_high = self.load_file_to_numpy(file, image_sign)
+                        image_sign = self.image_type + '_low'
+                        image_low = self.load_file_to_numpy(file, image_sign)
+                        image_low_image1 = image_low[:, :, 0]
+                        image_low_image2 = image_low[:, :, 1]
+                        image_low_sos = image_low[:, :, 2:]
+                        # update values
+                        low_aggr_image1 = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image1)
+                        low_aggr_image2 = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_image2)
+                        (count_low, mean_low[0], var_low[0]) = low_aggr_image1
+                        (count_low, mean_low[1], var_low[1]) = low_aggr_image2
+                        low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                        (count_low, mean_low[2], var_low[2]) = low_aggr_sos
+                        high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                        (count_high, mean_high, var_high) = high_aggr
+                else:
+                    mean_low = [0,0]
+                    var_low = [0,0]
+                    count_low = 0
+                    mean_high = 0
+                    var_high = 0
+                    count_high = 0
+                    for file in self.train_file_names:
+                        image_sign = self.image_type + '_high'
+                        image_high = self.load_file_to_numpy(file, image_sign)
+                        image_sign = self.image_type + '_low'
+                        image_low = self.load_file_to_numpy(file, image_sign)
+                        image_low_image = image_low[:,:,0]
+                        image_low_sos = image_low[:,:,1:]
+                        # update values
+                        low_aggr_image = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image)
+                        (count_low, mean_low_image, var_low_image) = low_aggr_image
+                        mean_low[0] = mean_low_image
+                        var_low[0] = var_low_image
+                        low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                        (count_low, mean_low_sos, var_low_sos) = low_aggr_sos
+                        mean_low[1] = mean_low_sos
+                        var_low[1] = var_low_sos
+                        high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                        (count_high, mean_high, var_high) = high_aggr
         scale_params_low = var_low
         scale_params_high = var_high
         print(scale_params_low, scale_params_high)
         print(mean_low, mean_high)
 
+
+        if before_pca:
+            file_suffix = '_before_pca'
+        else:
+            file_suffix = ''
         # construct dictionaries and save parameters
         if self.image_type == 'US':
             us_scale_params = {'US_low': scale_params_low, 'US_high': scale_params_high}
@@ -718,11 +875,11 @@ class ProcessData(object):
             with open(self.dir_params + '/scale_and_center' + '/US_mean_images', 'wb') as handle:
                 pickle.dump(us_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            oa_scale_params = {'OA_low': scale_params_low, 'OA_high': scale_params_high, 'trunc_points': self.trunc_points}
-            oa_mean_images = {'OA_low': mean_low, 'OA_high': mean_high, 'trunc_points': self.trunc_points}
-            with open(self.dir_params + '/scale_and_center' + '/OA_scale_params', 'wb') as handle:
+            oa_scale_params = {'OA_low': scale_params_low, 'OA_high': scale_params_high, 'trunc_points': trunc_points}
+            oa_mean_images = {'OA_low': mean_low, 'OA_high': mean_high, 'trunc_points': trunc_points}
+            with open(self.dir_params + '/scale_and_center' + '/OA_scale_params' + file_suffix, 'wb') as handle:
                 pickle.dump(oa_scale_params, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(self.dir_params + '/scale_and_center' + '/OA_mean_images', 'wb') as handle:
+            with open(self.dir_params + '/scale_and_center' + '/OA_mean_images' + file_suffix, 'wb') as handle:
                 pickle.dump(oa_mean_images, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         ##################################################################
@@ -759,12 +916,15 @@ class ProcessData(object):
                     param_type: 'scale' or 'mean_image' (maybe more options later)
             output: params_low, params_high: the parameters."""
         # dir_params = '/mnt/local/mounted'
-        if not self.do_scale_center:
+        if not self.do_scale_center and param_type in ['scale_params', 'mean_images']:
             print('No Scaling done due to parameter do_scale_center=False.')
+            return None, None
+        if not self.oa_do_scale_center_before_pca and param_type in ['scale_params_before_pca', 'mean_images_before_pca']:
+            print('No Scaling done due to parameter oa_do_scale_center_before_pca=False.')
             return None, None
         if dir_params is None:
             dir_params = self.dir_params + '/' + 'scale_and_center/'
-        if param_type in ['scale_params', 'mean_images']:
+        if param_type in ['scale_params', 'mean_images', 'scale_params_before_pca', 'mean_images_before_pca']:
             file_name = self.image_type + '_' + param_type
             filepath = dir_params + file_name
             with open(filepath, 'rb') as handle:
@@ -780,10 +940,16 @@ class ProcessData(object):
                 params_trunc_points = params['trunc_points']
             else:
                 params_trunc_points = trunc_points
-            if self.trunc_points != params_trunc_points:
+            if param_type in ['scale_params_before_pca', 'mean_images_before_pca']:
+                trunc_points_to_compare = self.trunc_points_before_pca
+            else:
+                trunc_points_to_compare = self.trunc_points
+            if trunc_points_to_compare != params_trunc_points:
                 sys.exit('Truncation of saved parameters does not fit the chosen truncation. '
                          'Truncation of saved parameters is ' + str(params_trunc_points))
         return params_low, params_high
+
+
 
     ##################################################################
     # ###### Torch tensor shaping ####################################
@@ -795,11 +961,11 @@ class ProcessData(object):
             image = batch[im_ind, :, :, :]
             quantiles = np.quantile(image, trunc_points)
             batch[im_ind, :, :, :] = image.clip(quantiles[0], quantiles[1])
+
         return batch
 
     def scale_and_parse_to_tensor(self, batch_files, scale_params_low, scale_params_high,
                                   mean_image_low, mean_image_high):
-
         x, y = self.create_train_batches(batch_files)
 
         if self.image_type == 'OA':
@@ -832,6 +998,21 @@ class ProcessData(object):
                 if self.hetero_mask_to_mask:
                     scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                elif self.attention_mask == 'simple' or self.attention_mask == 'complex':
+                    x_image1 = x[:, :, :, 0]
+                    x_image2 = x[:, :, :, 1]
+                    x_sos = x[:, :, :, 2:]
+
+                    scale_center_x_image1 = self.scale_and_center(x_image1, scale_params_low[0], mean_image_low[0])
+                    scale_center_x_image2 = self.scale_and_center(x_image2, scale_params_low[1], mean_image_low[1])
+                    scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[2], mean_image_low[2])
+
+                    scale_center_x_val = np.empty(x.shape)
+                    scale_center_x_val[:, :, :, 0] = scale_center_x_image1
+                    scale_center_x_val[:, :, :, 1] = scale_center_x_image2
+                    scale_center_x_val[:, :, :, 2:] = scale_center_x_sos
+
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
                 else:
                     x_image = x[:, :, :, 0]
                     x_sos = x[:,:,:,1:]
@@ -860,6 +1041,7 @@ class ProcessData(object):
             # (N, H, W, C) to (N, C, H, W)
             scale_center_x_val = np.moveaxis(scale_center_x_val, [0, 1, 2, 3], [0, 2, 3, 1])
             scale_center_y_val = np.moveaxis(scale_center_y_val, [0, 1, 2, 3], [0, 2, 3, 1])
+
 
         input_tensor, target_tensor = torch.from_numpy(scale_center_x_val), torch.from_numpy(scale_center_y_val)
 

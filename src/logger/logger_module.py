@@ -56,7 +56,7 @@ class Logger(object):
         torch.save(self.model.state_dict(), self.save_dir + '/' + self.model_name
                    + 'model' + self.save_appendix + '.pt')
 
-    def predict_eval_images(self, mean_images, scale_params, num_images_train=2, num_images_val=3, num_images_test=5):
+    def predict_eval_images(self, mean_images, scale_params, num_images_train=2, num_images_val=3, num_images_test=4):
 
         train_length = min(len(self.dataset.train_file_names), num_images_train)
         train_names = random.sample(self.dataset.train_file_names, train_length)
@@ -120,14 +120,6 @@ class Logger(object):
             target_save = target_tensor.detach().cpu().numpy()[i, :, :, :]
             predict_new = predict.detach().cpu().numpy()[i, :, :, :]
 
-            '''if self.dataset.do_scale_center:
-                input_save = self.dataset.scale_and_center_reverse(input_save, scale_params_low,
-                                                                    mean_image_low)
-                target_save = self.dataset.scale_and_center_reverse(target_save, scale_params_high,
-                                                                    mean_image_high)
-                predict_new = self.dataset.scale_and_center_reverse(predict_new, scale_params_high,
-                                                                    mean_image_high)'''
-
             self.save_predictions(input_save=input_save, target_save=target_save, predict_save=predict_new,
                                   save_name=self.dataset.extract_name_from_path(names[i], without_ch=False),
                                   image_class=image_class)
@@ -181,14 +173,23 @@ class Logger(object):
         if self.val_loss is not None:
             np.save(self.save_dir + '/' + self.model_name + '_validation_loss', np.array(self.val_loss))
 
-    def save_scale_center_params(self, mean_images, scale_params):
+    def save_scale_center_params(self, mean_images, scale_params, before_pca=False):
         # write files into dictionary
         scale_param = {self.image_type + '_low': scale_params[0], self.image_type + '_high': scale_params[1]}
         mean_image = {self.image_type + '_low': mean_images[0], self.image_type + '_high': mean_images[1]}
-        with open(self.save_dir + '/' + self.image_type + '_mean_images', 'wb') as handle:
+        if before_pca:
+            file_suffix = '_before_pca'
+        else:
+            file_suffix = ''
+        with open(self.save_dir + '/' + self.image_type + '_mean_images' + file_suffix, 'wb') as handle:
             pickle.dump(mean_image, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(self.save_dir + '/' + self.image_type + '_scale_params', 'wb') as handle:
+        with open(self.save_dir + '/' + self.image_type + '_scale_params' + file_suffix, 'wb') as handle:
             pickle.dump(scale_param, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def save_pca_model(self, pca_model):
+        file_path = self.save_dir + '/' + 'OA_pca_model.sav'
+        with open(file_path, 'wb') as handle:
+            pickle.dump(pca_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def save_representation_of_model(self):
         text_file = open(self.save_dir + '/' + self.model_name + '_model_structure.txt', "w")
@@ -201,6 +202,9 @@ class Logger(object):
             epochs,
             mean_images,
             scale_params,
+            mean_images_before_pca,
+            scale_params_before_pca,
+            pca_model,
             learning_rates):
         # method to call the other methods and decide what should be saved, this should be called in the trainer
         self.save_appendix = save_appendix
@@ -223,6 +227,12 @@ class Logger(object):
             # only call this the first time, when training starts
             self.save_representation_of_model()
             self.save_scale_center_params(mean_images=mean_images, scale_params=scale_params)
+            if self.dataset.oa_do_pca:
+                self.save_pca_model(pca_model)
+                if self.dataset.oa_do_scale_center_before_pca:
+                    self.save_scale_center_params(mean_images=mean_images_before_pca,
+                                                  scale_params=scale_params_before_pca, before_pca=True)
+
             self.save_json_file()
 
             # copy the data_loader file and the model file to make reproducible examples
@@ -251,6 +261,12 @@ class Logger(object):
             "train_ratio": self.dataset.train_ratio,
             "data_type": self.dataset.data_type,
             "nr_epochs": self.epochs,
+            "trunc_points_before_pca": self.dataset.trunc_points_before_pca,
+            "oa_do_scale_center_before_pca": self.dataset.oa_do_scale_center_before_pca,
+            "oa_do_pca": self.dataset.oa_do_pca,
+            "oa_pca_num_components": self.dataset.oa_pca_num_components,
+            "oa_pca_fit_ratio": self.dataset.oa_pca_fit_ratio,
+            "pca_use_regress": self.dataset.pca_use_regress,
             "do_scale_center": self.dataset.do_scale_center,
             "get_scale_center": self.dataset.get_scale_center,
             "trunc_points": self.dataset.trunc_points,
