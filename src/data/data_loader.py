@@ -63,7 +63,7 @@ class ProcessData(object):
         # initialize and write into self, then call the prepare data and return the data to the trainer
         self.train_ratio = train_ratio
         self.data_type = data_type
-        self.accepted_data_types = ['homo', 'hetero']
+        self.accepted_data_types = ['homo', 'hetero', 'bi']
 
         if self.data_type not in self.accepted_data_types:
             sys.exit('No acceptable data_type selected!')
@@ -288,6 +288,17 @@ class ProcessData(object):
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
                                      save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask,
                                      attention_mask=self.attention_mask)
+                elif self.data_type == self.accepted_data_types[2]:
+                    if not self.image_type == 'US':
+                        sys.exit('There is only Ultrasound images in the bi data set.')
+                    in_files = dp.ret_all_files_in_folder(folder_path=self.dir_raw_in + '/' +
+                                                          chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
+                    us_low_samples = [s for s in in_files if 'US_low' in s]
+                    us_high_samples = [s for s in in_files if 'US_high' in s]
+                    dp.pre_us_bi(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
+                                     filename_low=us_low_samples[0], filename_high=us_high_samples[0],
+                                     save_folder=self.dir_processed_all, attention_mask=self.attention_mask)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -335,6 +346,15 @@ class ProcessData(object):
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
                                      save_folder=save_dir, hetero_mask_to_mask=self.hetero_mask_to_mask,
                                      attention_mask=self.attention_mask)
+                elif self.data_type == self.accepted_data_types[2]:
+                    in_files = dp.ret_all_files_in_folder(folder_path=dir_test_set + '/' +
+                                                                      chunk_folder + '/' + sample_folder,
+                                                          full_names=False)
+                    us_low_samples = [s for s in in_files if 'US_low' in s]
+                    us_high_samples = [s for s in in_files if 'US_high' in s]
+                    dp.pre_us_bi(new_in_folder=dir_test_set, study_folder=chunk_folder, scan_num=sample_folder,
+                                     filename_low=us_low_samples[0], filename_high=us_high_samples[0],
+                                     save_folder=save_dir, attention_mask=self.attention_mask)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
@@ -344,6 +364,15 @@ class ProcessData(object):
             train_size = int(len(original_file_names) * self.train_ratio)
             self.train_names, val_names = original_file_names[:train_size], original_file_names[train_size:]
         elif self.data_type == 'hetero':
+            shortened_file_names = list(set([self.extract_name_from_path(s) for s in original_file_names]))
+            train_size = int(len(shortened_file_names) * self.train_ratio)
+            short_train_names, short_val_names = shortened_file_names[:train_size], shortened_file_names[train_size:]
+            self.train_names = self._retrieve_file_names_from_short(name_list_short=short_train_names,
+                                                                    name_list_long=original_file_names)
+            val_names = self._retrieve_file_names_from_short(name_list_short=short_val_names,
+                                                             name_list_long=original_file_names,
+                                                             num_images=self.num_val_images_hetero)
+        elif self.data_type == 'bi':
             shortened_file_names = list(set([self.extract_name_from_path(s) for s in original_file_names]))
             train_size = int(len(shortened_file_names) * self.train_ratio)
             short_train_names, short_val_names = shortened_file_names[:train_size], shortened_file_names[train_size:]
@@ -634,6 +663,58 @@ class ProcessData(object):
                                             filename=self.extract_name_from_path(filename, without_ch=False),
                                             end_folder=end_folder, path_to_augment=self.dir_augmented,
                                             path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
+        elif self.data_type == self.accepted_data_types[2]:
+            if self.data_type == 'bi' and self.do_deform:
+                print('No deform augmentation for bi SoS data')
+            for end_folder in ['ultrasound', 'optoacoustic']:
+                to_be_aug_files = dp.ret_all_files_in_folder(folder_path=self.dir_processed_all + '/' + end_folder,
+                                                             full_names=True)
+                if end_folder == 'ultrasound':
+                    file_prefix = 'US'
+                else:
+                    file_prefix = 'OA'
+                if self.pro_and_augm_only_image_type and not self.image_type == file_prefix:
+                    continue
+                if len(to_be_aug_files) == 0:
+                    sys.exit('There are no processed files to be augmented, restart with pre process = True')
+
+                for filename in to_be_aug_files:
+                    print('augmenting file', self.extract_name_from_path(filename, without_ch=False))
+                    x = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
+                    if self.do_flip:
+                        dp.do_flip(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder,
+                                   path_to_augment=self.dir_augmented)
+                    if self.do_blur and end_folder == 'ultrasound':
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
+                                            end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                            path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
+
+                flipped_to_be_aug = dp.ret_all_files_in_folder(folder_path=self.dir_processed + '/augmented/flip/' +
+                                                               end_folder, full_names=True)
+                for filename in flipped_to_be_aug:
+                    print('augmenting file', self.extract_name_from_path(filename, without_ch=False))
+                    x = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_low')
+                    y = self.load_file_to_numpy(full_file_name=filename, image_sign=file_prefix + '_high')
+
+                    if self.do_blur and end_folder == 'ultrasound':
+                        dp.do_blur(x=x, y=y, file_prefix=file_prefix,
+                                   filename=self.extract_name_from_path(filename, without_ch=False),
+                                   end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                   path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
+                    if self.do_speckle_noise and end_folder == 'ultrasound':
+                        dp.do_speckle_noise(x=x, y=y, file_prefix=file_prefix,
+                                            filename=self.extract_name_from_path(filename, without_ch=False),
+                                            end_folder=end_folder, path_to_augment=self.dir_augmented,
+                                            path_to_params=self.dir_params, data_type=self.data_type, attention_mask=self.attention_mask)
 
 
         else:
@@ -788,7 +869,7 @@ class ProcessData(object):
                 (count_low, mean_low, var_low) = low_aggr
                 high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                 (count_high, mean_high, var_high) = high_aggr
-        else:
+        elif self.data_type == 'hetero':
             if self.hetero_mask_to_mask:
                 mean_low = 0
                 var_low = 0
@@ -856,6 +937,9 @@ class ProcessData(object):
                         var_low[1] = var_low_sos
                         high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                         (count_high, mean_high, var_high) = high_aggr
+        else:
+            # normalization for bi dataset
+            pass
         scale_params_low = var_low
         scale_params_high = var_high
         print(scale_params_low, scale_params_high)
@@ -994,7 +1078,7 @@ class ProcessData(object):
                                  ' or implement this case as well')
     
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)'''
-            else:
+            elif self.data_type=='hetero':
                 if self.hetero_mask_to_mask:
                     scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
@@ -1022,6 +1106,9 @@ class ProcessData(object):
                     scale_center_x_val[:, :, :, 0] = scale_center_x_image
                     scale_center_x_val[:, :, :, 1:] = scale_center_x_sos
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+            else:
+                # scale and center bi
+                pass
 
         else:
             scale_center_x_val = x
@@ -1036,6 +1123,10 @@ class ProcessData(object):
                                                             scale_center_x_val.shape[2], scale_center_x_val.shape[3])
             scale_center_y_val = scale_center_y_val.reshape(scale_center_y_val.shape[1], scale_center_y_val.shape[0],
                                                             scale_center_y_val.shape[2], scale_center_y_val.shape[3])
+
+        elif self.image_type == 'US' and self.data_type == 'bi':
+            # scale and center call for bi dataset
+            pass
 
         else:
             # (N, H, W, C) to (N, C, H, W)
