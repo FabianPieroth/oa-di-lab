@@ -341,13 +341,13 @@ def main():
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.90
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
 
     add_augment = False
 
@@ -385,7 +385,7 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [1, 8, 16, 32, 64, 128]
+    conv_channels = [4, 8, 16, 32, 64, 128]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
@@ -401,9 +401,8 @@ def main():
 
     learning_rate = 0.0001
 
-    #optimizer = torch.optim.Adam # torch.optim.Adam or torch.optim.SGD
     optim = 'Adam' # 'Adam' or 'SGDMom'
-    l2_reg = 1e-5
+    l2_reg = 0 # parameter for l2 regularization: 0... no reg
     momentum = 0.9 # only used when optim = 'SGDMom; if in doubt, choose 0.9
     criterion = nn.MSELoss()
 
