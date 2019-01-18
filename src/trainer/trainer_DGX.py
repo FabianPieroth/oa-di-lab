@@ -161,7 +161,7 @@ class CNN_skipCo_trainer(object):
             # go through all the batches
 
             for i in range(self.dataset.batch_number):
-                start_time = time.clock()
+                start_time = time.time()
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
@@ -189,7 +189,7 @@ class CNN_skipCo_trainer(object):
                     return loss
 
                 self.optimizer.step(closure)
-                end_time = time.clock()
+                end_time = time.time()
                 if i == 1 and e == 0:
                     batches_per_epoch = len(self.dataset.train_batch_chunks)
                     time_per_batch = (end_time - start_time)/60
@@ -342,9 +342,9 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 8
-    log_period = 1
-    epochs = 2
+    batch_size = 16*8
+    log_period = 25
+    epochs = 100
 
     # dataset parameters
 
@@ -356,7 +356,7 @@ def main():
     do_heavy_augment = False
     do_augment = False
 
-    add_augment = False
+    add_augment = True
 
     do_rchannels = False
     do_flip = True
@@ -385,14 +385,15 @@ def main():
 
     add_skip = True
     add_skip_at_first = False
-    concatenate_skip = False
+    concatenate_skip = True
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 4, 8, 16, 16, 16]
+    conv_channels = [4, 4, 4, 4, 4, 4]
+    #conv_channels = [4, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
@@ -408,7 +409,7 @@ def main():
     learning_rate = 0.0001
 
     optim = 'AdamW' # 'Adam', 'AdamW' or 'SGDMom'
-    l2_reg = 1e-5 # parameter for l2 regularization: 0... no reg
+    l2_reg = 0.1 # parameter for l2 regularization: 0... no reg
     momentum = 0.9 # only used when optim = 'SGDMom'; if in doubt, choose 0.9
     criterion = nn.MSELoss()
 
