@@ -25,7 +25,8 @@ class CNN_skipCo_trainer(object):
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
                  conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
-                 di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
+                 di_conv_channels, dilations, learning_rates, optim, criterion,
+                 l2_reg, momentum, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip):
 
@@ -76,7 +77,17 @@ class CNN_skipCo_trainer(object):
         # we need optimizer and loss here to not access anything from the model class
         self.model_params = self.model.get_parameters()
 
-        self.optimizer = optimizer
+        self.optim = optim
+        self.l2_reg = l2_reg
+        self.momentum = momentum
+        if optim == 'Adam':
+            self.optimizer = torch.optim.Adam
+            self.momentum = 0
+        elif optim == 'SGDMom':
+            self.optimizer = torch.optim.SGD
+        else: sys.exit("Please select valid optimizer: optim = 'Adam' or 'SGDMom' ")
+
+
         self.criterion = criterion
         self.model_file_path = self.model.model_file_name
         self.model_name = self.model.model_name
@@ -92,12 +103,13 @@ class CNN_skipCo_trainer(object):
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
                              epochs=self.epochs,learning_rates=self.learning_rates,hyper_no=hyper_no,
-                             model_file_path=self.model_file_path, model_name= self.model_name)
+                             model_file_path=self.model_file_path, model_name= self.model_name,
+                             optim=self.optim, l2_reg=self.l2_reg, momentum=self.momentum)
 
 
 
 
-    def fit(self, learning_rate, lr_method='standard'):
+    def fit(self, learning_rate, l2_reg, momentum, lr_method='standard'):
         # get scale and center parameters
         scale_params_low, scale_params_high = self.dataset.load_params(param_type="scale_params")
         mean_image_low, mean_image_high = self.dataset.load_params(param_type="mean_images")
@@ -127,7 +139,10 @@ class CNN_skipCo_trainer(object):
             target_tensor_val = target_tensor_val.cuda()
 
         # activate optimizer with the base learning rate
-        self.optimizer = self.optimizer(self.model_params, lr=learning_rate)
+        if self.optim == 'Adam':
+            self.optimizer = self.optimizer(self.model_params, lr=learning_rate, weight_decay=l2_reg)
+        else:
+            self.optimizer = self.optimizer(self.model_params, lr=learning_rate, weight_decay=l2_reg, momentum=momentum)
 
         # now calculate the learning rates list
         self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
@@ -320,15 +335,15 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 16
-    log_period = 40
-    epochs = 120
+    batch_size = 8
+    log_period = 1
+    epochs = 2
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.90
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -370,7 +385,7 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [5, 8, 8, 8, 8, 8]
+    conv_channels = [1, 8, 16, 32, 64, 128]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
@@ -386,7 +401,10 @@ def main():
 
     learning_rate = 0.0001
 
-    optimizer = torch.optim.Adam
+    #optimizer = torch.optim.Adam # torch.optim.Adam or torch.optim.SGD
+    optim = 'Adam' # 'Adam' or 'SGDMom'
+    l2_reg = 1e-5
+    momentum = 0.9 # only used when optim = 'SGDMom; if in doubt, choose 0.9
     criterion = nn.MSELoss()
 
     # dilated model parameters
@@ -429,7 +447,8 @@ def main():
                                      ds_mask_channels=ds_mask_channels,
                                      drop_probs=drop_probs,
                                      di_conv_channels=di_conv_channels, dilations=dilations,
-                                     optimizer=optimizer, criterion=criterion,
+                                     optim=optim, criterion=criterion,
+                                     l2_reg=l2_reg, momentum=momentum,
                                      learning_rates=learning_rate,
                                      use_regressed_oa=use_regressed_oa,
                                      include_regression_error=include_regression_error,
@@ -444,7 +463,7 @@ def main():
         # fit the first model
         print('\n---------------------------')
         print('fitting model')
-        trainer.fit(learning_rate=learning_rate, lr_method='one_cycle')
+        trainer.fit(learning_rate=learning_rate, lr_method='one_cycle', l2_reg=l2_reg, momentum=momentum)
 
     print('\nfinished')
 
