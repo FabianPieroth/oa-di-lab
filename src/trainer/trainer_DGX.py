@@ -188,8 +188,13 @@ class CNN_skipCo_trainer(object):
 
                 self.optimizer.step(closure)
                 end_time = time.clock()
-                if i == 1:
-                    print("Time per batch", end_time-start_time)
+                if i == 1 and e == 0:
+                    batches_per_epoch = len(self.dataset.train_batch_chunks)
+                    time_per_batch = (end_time - start_time)/60
+                    time_per_epoch = time_per_batch*batches_per_epoch
+
+                    print(" Minutes per batch: %4.2f, per epoch approx: %4.2f" % (time_per_batch, time_per_epoch))
+
 
 
             # calculate the validation loss and add to validation history
@@ -343,11 +348,11 @@ def main():
 
     data_type = 'hetero'
     train_ratio = 0.90
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
 
     add_augment = False
 
@@ -380,12 +385,12 @@ def main():
     add_skip_at_first = False
     concatenate_skip = False
 
-    attention_mask = 'complex'  # 'simple', 'Not', 'complex'
+    attention_mask = 'simple'  # 'simple', 'Not', 'complex'
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 8, 16, 32, 64, 128]
+    conv_channels = [4, 4, 8, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
@@ -393,7 +398,6 @@ def main():
     output_channels = 1
     drop_probs = None
 
-    add_skip = True
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -403,7 +407,7 @@ def main():
 
     optim = 'Adam' # 'Adam' or 'SGDMom'
     l2_reg = 0 # parameter for l2 regularization: 0... no reg
-    momentum = 0.9 # only used when optim = 'SGDMom; if in doubt, choose 0.9
+    momentum = 0.9 # only used when optim = 'SGDMom'; if in doubt, choose 0.9
     criterion = nn.MSELoss()
 
     # dilated model parameters
