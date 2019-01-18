@@ -5,9 +5,8 @@ from models.conv_deconv import ConvDeconv
 from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
 #from models.SP2_conv_deconv import ConvDeconv
-from models.linear_deformation import DeformationLearner
+from utils_dir.adamW import AdamW
 import torch
-import random
 import torch.nn as nn
 import sys
 import time
@@ -83,9 +82,12 @@ class CNN_skipCo_trainer(object):
         if optim == 'Adam':
             self.optimizer = torch.optim.Adam
             self.momentum = 0
+        elif optim == 'AdamW':
+            self.momentum = 0
+            self.optimizer = AdamW
         elif optim == 'SGDMom':
             self.optimizer = torch.optim.SGD
-        else: sys.exit("Please select valid optimizer: optim = 'Adam' or 'SGDMom' ")
+        else: sys.exit("Please select valid optimizer: optim = 'Adam', 'AdamW' or 'SGDMom' ")
 
 
         self.criterion = criterion
@@ -139,7 +141,7 @@ class CNN_skipCo_trainer(object):
             target_tensor_val = target_tensor_val.cuda()
 
         # activate optimizer with the base learning rate
-        if self.optim == 'Adam':
+        if self.optim == 'Adam' or self.optim == 'AdamW':
             self.optimizer = self.optimizer(self.model_params, lr=learning_rate, weight_decay=l2_reg)
         else:
             self.optimizer = self.optimizer(self.model_params, lr=learning_rate, weight_decay=l2_reg, momentum=momentum)
@@ -405,8 +407,8 @@ def main():
 
     learning_rate = 0.0001
 
-    optim = 'Adam' # 'Adam' or 'SGDMom'
-    l2_reg = 0 # parameter for l2 regularization: 0... no reg
+    optim = 'AdamW' # 'Adam', 'AdamW' or 'SGDMom'
+    l2_reg = 1e-5 # parameter for l2 regularization: 0... no reg
     momentum = 0.9 # only used when optim = 'SGDMom'; if in doubt, choose 0.9
     criterion = nn.MSELoss()
 
