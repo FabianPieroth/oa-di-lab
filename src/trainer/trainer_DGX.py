@@ -362,27 +362,27 @@ def main():
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'bi'
     train_ratio = 0.90
     process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
 
-    add_augment = False
+    add_augment = True
 
     do_rchannels = False
     do_flip = True
-    do_blur = False
+    do_blur = True
     do_deform = False
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = False
     single_sample = False
-    do_scale_center = True
+    do_scale_center = False
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
