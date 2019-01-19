@@ -265,7 +265,8 @@ class ConvDeconv(nn.Module):
                 num_anchors[np.argmax(num_anchors)] = (num_anchors[np.argmax(num_anchors)] - np.sum(num_anchors) +
                                                        shape_tensor[2]).astype(int)
             if start == 'simple':
-                intermediate_zero = np.ones((3, shape_tensor[2], shape_tensor[3]))
+                num_sos_masks = shape_tensor[1] - np.sum(self.attention_input_dist)
+                intermediate_zero = np.ones((num_sos_masks, shape_tensor[2], shape_tensor[3]))
                 for i in range(len(self.attention_anchors)):
                     channel = create_single_mask(shape_image=(shape_tensor[2], shape_tensor[3]),
                                                  start=np.sum(num_anchors[:i+1])-num_anchors[i],

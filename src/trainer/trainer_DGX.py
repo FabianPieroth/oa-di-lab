@@ -362,9 +362,9 @@ def main():
 
     # dataset parameters
 
-    data_type = 'bi'
+    data_type = 'hetero'
     train_ratio = 0.90
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -380,7 +380,7 @@ def main():
     do_speckle_noise = False
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = True
+    get_scale_center = False
     single_sample = False
     do_scale_center = True
     oa_do_scale_center_before_pca = False
@@ -409,7 +409,7 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [8, 8, 8, 16, 16, 16]
+    conv_channels = [7, 8, 8, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'

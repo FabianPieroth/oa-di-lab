@@ -313,7 +313,7 @@ class ProcessData(object):
                     dp.pre_us_hetero(new_in_folder=self.dir_raw_in, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
                                      save_folder=self.dir_processed_all, hetero_mask_to_mask=self.hetero_mask_to_mask,
-                                     attention_mask=self.attention_mask)
+                                     attention_mask=self.attention_mask, attention_input_dist=self.attention_input_dist)
                 elif self.data_type == self.accepted_data_types[2]:
                     if not self.image_type == 'US':
                         sys.exit('There is only Ultrasound images in the bi data set.')
@@ -373,7 +373,7 @@ class ProcessData(object):
                     dp.pre_us_hetero(new_in_folder=dir_test_set, study_folder=chunk_folder, scan_num=sample_folder,
                                      filename_low=us_low_samples[0], filename_high=us_high_samples[0],
                                      save_folder=save_dir, hetero_mask_to_mask=self.hetero_mask_to_mask,
-                                     attention_mask=self.attention_mask)
+                                     attention_mask=self.attention_mask, attention_input_dist=self.attention_input_dist)
                 elif self.data_type == self.accepted_data_types[2]:
                     if not self.image_type == 'US':
                         sys.exit('There is only Ultrasound images in the bi data set.')
@@ -897,7 +897,7 @@ class ProcessData(object):
                 (count_low, mean_low, var_low) = low_aggr
                 high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                 (count_high, mean_high, var_high) = high_aggr
-        elif self.data_type == 'hetero':
+        elif self.data_type == 'hetero' or self.data_type == 'bi':
             if self.hetero_mask_to_mask:
                 mean_low = 0
                 var_low = 0
@@ -916,7 +916,7 @@ class ProcessData(object):
                     high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                     (count_high, mean_high, var_high) = high_aggr
             else:
-                if self.attention_mask == 'simple' or self.attention_mask == 'complex':
+                if self.attention_mask == 'simple':
                     mean_low = [0, 0, 0]
                     var_low = [0, 0, 0]
                     count_low = 0
@@ -929,8 +929,8 @@ class ProcessData(object):
                         image_sign = self.image_type + '_low'
                         image_low = self.load_file_to_numpy(file, image_sign)
                         image_low_image1 = image_low[:, :, 0]
-                        image_low_image2 = image_low[:, :, 1]
-                        image_low_sos = image_low[:, :, 2:]
+                        image_low_image2 = image_low[:, :, self.attention_input_dist[0]]  # take the first tissue sos
+                        image_low_sos = image_low[:, :, np.sum(self.attention_input_dist):]
                         # update values
                         low_aggr_image1 = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image1)
                         low_aggr_image2 = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_image2)
@@ -940,6 +940,30 @@ class ProcessData(object):
                         (count_low, mean_low[2], var_low[2]) = low_aggr_sos
                         high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                         (count_high, mean_high, var_high) = high_aggr
+                    '''if self.attention_mask == 'simple' or self.attention_mask == 'complex':
+                        mean_low = [0, 0, 0]
+                        var_low = [0, 0, 0]
+                        count_low = 0
+                        mean_high = 0
+                        var_high = 0
+                        count_high = 0
+                        for file in self.train_file_names:
+                            image_sign = self.image_type + '_high'
+                            image_high = self.load_file_to_numpy(file, image_sign)
+                            image_sign = self.image_type + '_low'
+                            image_low = self.load_file_to_numpy(file, image_sign)
+                            image_low_image1 = image_low[:, :, 0]
+                            image_low_image2 = image_low[:, :, 1]
+                            image_low_sos = image_low[:, :, 2:]
+                            # update values
+                            low_aggr_image1 = self.update_mean_var((count_low, mean_low[0], var_low[0]), image_low_image1)
+                            low_aggr_image2 = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_image2)
+                            (count_low, mean_low[0], var_low[0]) = low_aggr_image1
+                            (count_low, mean_low[1], var_low[1]) = low_aggr_image2
+                            low_aggr_sos = self.update_mean_var((count_low, mean_low[1], var_low[1]), image_low_sos)
+                            (count_low, mean_low[2], var_low[2]) = low_aggr_sos
+                            high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
+                            (count_high, mean_high, var_high) = high_aggr'''
                 else:
                     mean_low = [0,0]
                     var_low = [0,0]
@@ -966,8 +990,8 @@ class ProcessData(object):
                         high_aggr = self.update_mean_var((count_high, mean_high, var_high), image_high)
                         (count_high, mean_high, var_high) = high_aggr
         else:
-            # now we are in the bi case
-            if self.attention_mask == 'simple' or self.attention_mask == 'complex':
+            # now we are in the bi case; this should be redundant later on!
+            if self.attention_mask == 'simple':
                 mean_low = [0, 0, 0]
                 var_low = [0, 0, 0]
                 count_low = 0
@@ -1128,12 +1152,27 @@ class ProcessData(object):
                                  ' or implement this case as well')
     
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)'''
-            elif self.data_type=='hetero':
+            elif self.data_type=='hetero' or self.data_type=='bi':
                 if self.hetero_mask_to_mask:
                     scale_center_x_val = self.scale_and_center(x, scale_params_low, mean_image_low)
                     scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
                 elif self.attention_mask == 'simple' or self.attention_mask == 'complex':
-                    x_image1 = x[:, :, :, 0]
+                    x_image1 = x[:, :, :, 0:self.attention_input_dist[0]]
+                    x_image2 = x[:, :, :, self.attention_input_dist[0]:np.sum(self.attention_input_dist)]
+                    x_sos = x[:, :, :, np.sum(self.attention_input_dist):]
+
+                    scale_center_x_image1 = self.scale_and_center(x_image1, scale_params_low[0], mean_image_low[0])
+                    scale_center_x_image2 = self.scale_and_center(x_image2, scale_params_low[1], mean_image_low[1])
+                    scale_center_x_sos = self.scale_and_center(x_sos, scale_params_low[2], mean_image_low[2])
+
+                    scale_center_x_val = np.empty(x.shape)
+                    scale_center_x_val[:, :, :, 0:self.attention_input_dist[0]] = scale_center_x_image1
+                    scale_center_x_val[:, :, :,
+                    self.attention_input_dist[0]:np.sum(self.attention_input_dist)] = scale_center_x_image2
+                    scale_center_x_val[:, :, :, np.sum(self.attention_input_dist):] = scale_center_x_sos
+
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                    '''x_image1 = x[:, :, :, 0]
                     x_image2 = x[:, :, :, 1]
                     x_sos = x[:, :, :, 2:]
 
@@ -1146,7 +1185,7 @@ class ProcessData(object):
                     scale_center_x_val[:, :, :, 1] = scale_center_x_image2
                     scale_center_x_val[:, :, :, 2:] = scale_center_x_sos
 
-                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)
+                    scale_center_y_val = self.scale_and_center(y, scale_params_high, mean_image_high)'''
                 else:
                     x_image = x[:, :, :, 0]
                     x_sos = x[:,:,:,1:]
