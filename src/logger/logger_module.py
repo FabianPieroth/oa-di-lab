@@ -275,6 +275,10 @@ class Logger(object):
             "pca_use_regress": self.dataset.pca_use_regress,
             "do_scale_center": self.dataset.do_scale_center,
             "get_scale_center": self.dataset.get_scale_center,
+            "attention_mask": self.dataset.attention_mask,
+            "attention_anchors": self.dataset.attention_anchors,
+            "attention_input_dist": self.dataset.attention_input_dist,
+            "attention_network_dist": self.attention_network_dist,
             "trunc_points": self.dataset.trunc_points,
             "applied_augmentations": {
                 "process_raw_data": self.dataset.process_raw,

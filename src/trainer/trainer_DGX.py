@@ -27,7 +27,8 @@ class CNN_skipCo_trainer(object):
                  di_conv_channels, dilations, learning_rates, optim, criterion,
                  l2_reg, momentum, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
-                 add_skip_at_first, concatenate_skip):
+                 add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
+                 attention_network_dist):
 
         self.image_type = image_type
 
@@ -54,7 +55,9 @@ class CNN_skipCo_trainer(object):
                                    channel_slice_oa=channel_slice_oa,
                                    process_all_raw_folders=process_all_raw_folders,
                                    hetero_mask_to_mask=hetero_mask_to_mask,
-                                   attention_mask=attention_mask, pca_use_regress=pca_use_regress)
+                                   attention_mask=attention_mask, pca_use_regress=pca_use_regress,
+                                   attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
+                                   attention_network_dist=attention_network_dist)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
@@ -65,7 +68,10 @@ class CNN_skipCo_trainer(object):
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs,
                                            add_skip=add_skip, attention_mask=attention_mask,
-                                           add_skip_at_first=add_skip_at_first, concatenate_skip=concatenate_skip)
+                                           add_skip_at_first=add_skip_at_first, concatenate_skip=concatenate_skip,
+                                           attention_input_dist=attention_input_dist,
+                                           attention_anchors=attention_anchors,
+                                           attention_network_dist=attention_network_dist)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -177,8 +183,6 @@ class CNN_skipCo_trainer(object):
                 X = input_tensor
                 y = target_tensor
 
-
-
                 def closure():
                     self.optimizer.zero_grad()
                     out = self.model(X)
@@ -196,8 +200,6 @@ class CNN_skipCo_trainer(object):
                     time_per_epoch = time_per_batch*batches_per_epoch
 
                     print(" Minutes per batch: %4.2f, per epoch approx: %4.2f" % (time_per_batch, time_per_epoch))
-
-
 
             # calculate the validation loss and add to validation history
             # self.logger.get_val_loss(val_in=input_tensor_val, val_target=target_tensor_val)
@@ -303,7 +305,6 @@ class CNN_skipCo_trainer(object):
         '''
         return log_lrs, losses
 
-
     def get_learning_rate(self, learning_rate, epochs, method):
         """
         Method creating the learning rates corresponding to the corresponding adaptive-method.
@@ -339,6 +340,19 @@ class CNN_skipCo_trainer(object):
         return lrs
 
 
+def error_catch(data_type, attention_network_dist, attention_input_dist, attention_anchors):
+    if data_type == 'bi':
+        if not np.sum(attention_input_dist) == len(attention_anchors):
+            sys.exit('The number of given attention anchors must match the sum of attention_input_dist.')
+        if not np.sum(attention_input_dist) == len(attention_network_dist):
+            sys.exit('The number given by attention_network_dist must match the sum of attention_network_dist.')
+        if not np.sum(attention_anchors) == 1:
+            sys.exit('The sum of the distribution of the attention_anchors must be 1')
+        if not np.sum(attention_network_dist) == 1:
+            sys.exit('The sum of attention_network_dist must be 1')
+    return
+
+
 def main():
 
     image_type = 'US'
@@ -348,9 +362,9 @@ def main():
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'bi'
     train_ratio = 0.90
-    process_raw_data = False
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -360,10 +374,10 @@ def main():
 
     do_rchannels = False
     do_flip = True
-    do_blur = True
+    do_blur = False
     do_deform = False
     do_crop = False
-    do_speckle_noise = True
+    do_speckle_noise = False
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
@@ -388,11 +402,14 @@ def main():
     concatenate_skip = False
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
+    attention_anchors = [0.1, 0.1, 0.2, 0.3, 0.3]  # must sum up to 1
+    attention_input_dist = [2, 3]  # distribution of input files for multiple attention masks
+    attention_network_dist = list(np.array([1.0, 1.0, 1.0, 1.0, 1.0]) / 5.0)  # the distribution of the attention masks in the network
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 4, 8, 16, 16, 16]
+    conv_channels = [8, 8, 8, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
@@ -417,7 +434,8 @@ def main():
     di_conv_channels = [3, 64, 64, 64, 64, 64]
     dilations = [1, 2, 4, 8, 16]
 
-
+    error_catch(data_type=data_type, attention_network_dist=attention_network_dist,
+                attention_input_dist=attention_input_dist, attention_anchors=attention_anchors)
     # add hyper parameters for search
     #param_grid = {
     #
@@ -462,7 +480,9 @@ def main():
                                      hetero_mask_to_mask=hetero_mask_to_mask, hyper_no=i,
                                      attention_mask=attention_mask, add_skip=add_skip,
                                      add_skip_at_first=add_skip_at_first,
-                                     pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip
+                                     pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip,
+                                     attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
+                                     attention_network_dist=attention_network_dist
                                      )
 
         # fit the first model

@@ -213,8 +213,74 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
                                   folder_name=save_folder + '/ultrasound', file_name=name_us_save)
 
 
+def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, attention_mask='Not',
+              attention_anchors=None, attention_input_dist=None):
+
+    us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
+                                  scan_num + '/' + filename_low)
+    us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
+                                   scan_num + '/' + filename_high)
+
+    us_low_tissue = us_raw_low['US_low_tissue']
+    us_low_couplant = us_raw_low['US_low_couplant']
+    low_tissue_sos = [np.float64(s) for s in us_raw_low['tissue_SoS'].flatten()]
+
+    couplant_sos = np.float64(us_raw_high['couplant_SoS'].flatten()[0])
+    tissue_mask = np.array(us_raw_high['tissue_mask']).astype('float')
+    tissue_sos = [np.float64(s) for s in us_raw_high['tissue_SoS'].flatten()]
+    us_high_samples = us_raw_high['US_high_samples']
+
+    if not low_tissue_sos == tissue_sos:
+        print('The dual speed of sounds of the given low does not coincide with the given high in' + str(study_folder)
+              + str(scan_num))
+        print('Low Tissue Speed:' + str(low_tissue_sos))
+        print('High Tissue Speed:' + str(tissue_sos))
+
+    # on which axis to expand the dimension of the numpy array
+    common_axis = 2
+
+    single_sos_channel = np.full(tissue_mask.shape, couplant_sos)
+    single_sos_channel = np.expand_dims(single_sos_channel, axis=common_axis)
+
+    us_low_couplant = np.expand_dims(us_low_couplant, axis=common_axis)
+
+    for high_channel in range(us_high_samples.shape[2]):
+
+        # fill mask with sos parameters
+        custom_mask = np.copy(tissue_mask)
+        custom_mask[custom_mask == 0] = couplant_sos
+        custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+        custom_mask = np.expand_dims(custom_mask, axis=common_axis)
+
+        single_tissue_sos_channel = np.full(tissue_mask.shape, tissue_sos[high_channel])
+        single_tissue_sos_channel = np.expand_dims(single_tissue_sos_channel, axis=common_axis)
+
+        # create names and save
+        name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+
+        us_low_ex_dim = np.expand_dims(us_low_tissue[:, :, high_channel], axis=common_axis)
+
+        '''if attention_mask == 'simple':
+            us_low_save = np.concatenate((us_low_couplant, us_low_ex_dim, custom_mask, single_sos_channel,
+                                          single_tissue_sos_channel), axis=common_axis)
+        elif attention_mask == 'complex' and attention_anchors is not None:'''
+        us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=attention_input_dist[0], axis=common_axis),
+                                      np.repeat(us_low_ex_dim, repeats=attention_input_dist[1], axis=common_axis),
+                                      custom_mask, single_sos_channel,
+                                      single_tissue_sos_channel), axis=common_axis)
+        us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
+
+        dict_us_single = {name_us_low: us_low_save,
+                          name_us_high: us_high_save}
+
+        save_dict_with_pickle(file=dict_us_single,
+                              folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+
 
 # File Saving and Loading
+
 
 def save_dict_with_pickle(file, folder_name, file_name):
     # use this to save pairs of low and high quality pictures
