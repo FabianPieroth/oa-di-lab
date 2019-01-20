@@ -65,6 +65,13 @@ def extract_and_process_logged_folder(folder_name):
                                             save_name=save_folder + '/' + images,
                                             slice=json_dict['processing']['channel_slice_oa'],
                                             regressed=json_dict['processing']['use_regressed_oa'])
+            input_im_shape = input_im.shape
+
+    if not json_dict['data_type'] == 'homo':
+        vis.plot_attention_masks(folder=folder_name + '/plots', input_shape=input_im_shape,
+                                 attention_input_dist=json_dict['attention_input_dist'],
+                                 attention_network_dist=json_dict['attention_network_dist'],
+                                 attention_anchors=json_dict['attention_anchors'])
 
 
 def open_json_file(folder_name, file_name):
@@ -187,7 +194,7 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'bi/combined_model_hyper_1_2019_01_19_17_31'
+    folder_name = 'bi/combined_model_hyper_1_2019_01_20_12_30'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 

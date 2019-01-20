@@ -11,6 +11,7 @@ import math
 import sys
 from logger.oa_spectra_analysis.generate_unmixing_figures import generate_figure as gf
 import os
+import models.utils as ut
 
 
 def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None, attention_input_dist=None,
@@ -61,20 +62,22 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
         plt.close('all')
 
 
-'''def plot_oa_spectra(im_input, im_target, im_predict, x, y, name, figsize=(18, 5)):
-    for i in range(2):
-        plt.figure(figsize=figsize)
-        plt.subplot(1, 3, 1)
-        plt.title('input ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_input[:,x + i, y,])
+def plot_attention_masks(folder, input_shape, attention_input_dist, attention_network_dist, attention_anchors):
+    input_shape = (1,) + input_shape
+    zero_one = ut.create_zero_one_ratio(attention_anchors=attention_anchors,
+                                        attention_input_dist=attention_input_dist,
+                                        attention_network_dist=attention_network_dist,
+                                        shape_tensor=input_shape, ratio_overlap=0.0,
+                                        upper_ratio=0.0, start='simple')
+    plt.figure(figsize=(18, 18))
+    for i in range(np.sum(attention_input_dist)):
+        plt.subplot(1, np.sum(attention_input_dist), i + 1)
+        plt.title('input_mask' + '_' + str(i+1))
+        plt.imshow(zero_one[0, i, :, :], cmap='gray')
+    plt.savefig(folder + '/attention_masks', bbox_inches='tight')
+    plt.clf()
+    plt.close('all')
 
-        plt.subplot(1, 3, 2)
-        plt.title('target ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_target[:, x + i, y])
-
-        plt.subplot(1, 3, 3)
-        plt.title('predicted ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_predict[:, x + i, y])'''
 
 
 def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, save_name=None):

@@ -47,7 +47,7 @@ def create_zero_one_ratio(attention_anchors, attention_input_dist, attention_net
         if start == 'simple':
             num_sos_masks = shape_tensor[1] - np.sum(attention_input_dist)
             intermediate_zero = np.ones((num_sos_masks, shape_tensor[2], shape_tensor[3]))
-            for i in range(len(attention_anchors)):
+            for i in range(len(attention_anchors) - 1, -1, -1):
                 channel = create_single_mask(shape_image=(shape_tensor[2], shape_tensor[3]),
                                              start=np.sum(num_anchors[:i + 1]) - num_anchors[i],
                                              width=num_anchors[i], increase_ratio=ratio_overlap)
@@ -70,7 +70,7 @@ def create_zero_one_ratio(attention_anchors, attention_input_dist, attention_net
                                              width=num_anchors[i], increase_ratio=ratio_overlap)
                 channel = np.expand_dims(channel, axis=0)
                 channel = np.repeat(channel, repeats=network_dist[i], axis=0)
-                intermediate_zero = np.concatenate((channel, intermediate_zero), axis=0)
+                intermediate_zero = np.concatenate((intermediate_zero, channel), axis=0)
             zero_one = np.repeat(np.expand_dims(intermediate_zero, axis=0), repeats=shape_tensor[0], axis=0)
 
     zero_one = torch.tensor(zero_one)
