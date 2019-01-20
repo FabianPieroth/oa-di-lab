@@ -26,7 +26,7 @@ class DeConvLayer(nn.Module):
         return self.bn(self.deconv(x))
 
 
-class ConvDeconv(nn.Module):
+class Conv3d(nn.Module):
 
     def __init__(self, conv_channels, output_channels=None, strides=None,
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
