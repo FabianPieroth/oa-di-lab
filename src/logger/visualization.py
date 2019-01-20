@@ -2,6 +2,7 @@ import matplotlib
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from matplotlib.colors import PowerNorm
 import numpy as np
 import pickle
@@ -12,7 +13,8 @@ from logger.oa_spectra_analysis.generate_unmixing_figures import generate_figure
 import os
 
 
-def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None):
+def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None, attention_input_dist=None,
+                 data_type='homo'):
     if channel is None:
         in_channel = min(im_input.shape) - 1
         tar_channel = min(im_target.shape) - 1
@@ -21,18 +23,37 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
         in_channel = channel
         tar_channel = channel
         pre_channel = channel
-    plt.figure(figsize=(18, 18))
-    plt.subplot(1, 3, 1)
-    plt.title('input' + '_' + name)
-    plt.imshow(im_input[in_channel, :, :], cmap='gray')
+    if data_type == 'homo' or data_type == 'hetero':
+        plt.figure(figsize=(18, 18))
+        plt.subplot(1, 3, 1)
+        plt.title('input' + '_' + name)
+        plt.imshow(im_input[in_channel, :, :], cmap='gray')
 
-    plt.subplot(1, 3, 2)
-    plt.title('target' + '_' + name)
-    plt.imshow(im_target[tar_channel, :, :], cmap='gray')
+        plt.subplot(1, 3, 2)
+        plt.title('target' + '_' + name)
+        plt.imshow(im_target[tar_channel, :, :], cmap='gray')
 
-    plt.subplot(1, 3, 3)
-    plt.title('predict' + '_' + name)
-    plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
+        plt.subplot(1, 3, 3)
+        plt.title('predict' + '_' + name)
+        plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
+    else:
+        plt.figure(figsize=(18, 18))
+        gs1 = GridSpec(4, 6, hspace=0.0)
+        plt.subplot(gs1[0:2, 0:2])
+        plt.title('input_couplant' + '_' + name)
+        plt.imshow(im_input[0, :, :], cmap='gray')
+
+        plt.subplot(gs1[2:4, 0:2])
+        plt.title('input_tissue' + '_' + name)
+        plt.imshow(im_input[attention_input_dist[0], :, :], cmap='gray')
+
+        plt.subplot(gs1[1:3, 2:4])
+        plt.title('target' + '_' + name)
+        plt.imshow(im_target[tar_channel, :, :], cmap='gray')
+
+        plt.subplot(gs1[1:3, 4:6])
+        plt.title('predict' + '_' + name)
+        plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')

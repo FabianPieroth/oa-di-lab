@@ -368,9 +368,9 @@ def main():
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
 
-    add_augment = True
+    add_augment = False
 
     do_rchannels = False
     do_flip = True
@@ -381,7 +381,7 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = False
-    single_sample = False
+    single_sample = True
     do_scale_center = False
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -399,7 +399,7 @@ def main():
 
     add_skip = True
     add_skip_at_first = False
-    concatenate_skip = False
+    concatenate_skip = True
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
     attention_anchors = [0.1, 0.1, 0.2, 0.3, 0.3]  # must sum up to 1
@@ -409,7 +409,7 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [7, 8, 8, 16, 16, 16]
+    conv_channels = [8, 8, 8, 16, 16, 16]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'

@@ -51,6 +51,8 @@ def extract_and_process_logged_folder(folder_name):
                                                                               mean_high=mean_high_before_pca, data_loader=data_loader)
 
                 vis.plot_channel(input_im, target_im, predict_im, name=images, channel=0,
+                                 attention_input_dist=json_dict['attention_input_dist'],
+                                 data_type=json_dict['data_type'],
                                  save_name=save_folder + '/' + images)
                 if json_dict['image_type'] == 'OA':
                     if json_dict['oa_do_pca']:
@@ -99,7 +101,12 @@ def load_data_loader_module(path, json_dict):
     data_loader = foo.ProcessData(train_ratio=json_dict['train_ratio'], image_type=json_dict['image_type'],
                                   data_type=json_dict['data_type'],
                                   logger_call=True, trunc_points=json_dict['trunc_points'],
-                                  do_scale_center=json_dict['do_scale_center'])
+                                  do_scale_center=json_dict['do_scale_center'],
+                                  attention_anchors=json_dict['attention_anchors'],
+                                  attention_input_dist=json_dict['attention_input_dist'],
+                                  attention_network_dist=json_dict['attention_network_dist'],
+                                  attention_mask=json_dict['attention_mask']
+                                  )
     return data_loader
 
 
@@ -180,9 +187,9 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/combined_model_hyper_1_2019_01_16_15_00'
+    folder_name = 'bi/combined_model_hyper_1_2019_01_19_17_31'
 
-    # extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
+    extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
     plot_train_val_loss(folder_name=path_to_project + folder_name)
 
