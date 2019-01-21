@@ -167,7 +167,7 @@ class CNN_skipCo_trainer(object):
             # go through all the batches
 
             for i in range(self.dataset.batch_number):
-                start_time = time.clock()
+                start_time = time.time()
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
@@ -193,7 +193,7 @@ class CNN_skipCo_trainer(object):
                     return loss
 
                 self.optimizer.step(closure)
-                end_time = time.clock()
+                end_time = time.time()
                 if i == 1 and e == 0:
                     batches_per_epoch = len(self.dataset.train_batch_chunks)
                     time_per_batch = (end_time - start_time)/60
@@ -356,15 +356,15 @@ def error_catch(data_type, attention_network_dist, attention_input_dist, attenti
 def main():
 
     image_type = 'US'
-    batch_size = 8
-    log_period = 1
-    epochs = 2
+    batch_size = 8*8
+    log_period = 25
+    epochs = 100
 
     # dataset parameters
 
-    data_type = 'bi'
-    train_ratio = 0.90
-    process_raw_data = False
+    data_type = 'hetero'
+    train_ratio = 0.95
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -380,9 +380,9 @@ def main():
     do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = False
-    single_sample = True
-    do_scale_center = False
+    get_scale_center = True
+    single_sample = False
+    do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
@@ -402,14 +402,14 @@ def main():
     concatenate_skip = True
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
-    attention_anchors = [0.1, 0.1, 0.2, 0.3, 0.3]  # must sum up to 1
-    attention_input_dist = [2, 3]  # distribution of input files for multiple attention masks
-    attention_network_dist = list(np.array([1.0, 1.0, 1.0, 1.0, 1.0]) / 5.0)  # the distribution of the attention masks in the network
+    attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1
+    attention_input_dist = [1, 3]  # distribution of input files for multiple attention masks
+    attention_network_dist = list(np.array([0.5, 1.5, 1.5, 0.5]) / 4.0)  # the distribution of the attention masks in the network
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [8, 8, 8, 16, 16, 16]
+    conv_channels = [8, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
 
     model_name = 'deep_2_model'
