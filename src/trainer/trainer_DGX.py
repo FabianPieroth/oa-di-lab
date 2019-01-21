@@ -28,7 +28,7 @@ class CNN_skipCo_trainer(object):
                  l2_reg, momentum, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
-                 attention_network_dist):
+                 attention_network_dist, use_upsampling):
 
         self.image_type = image_type
 
@@ -71,7 +71,8 @@ class CNN_skipCo_trainer(object):
                                            add_skip_at_first=add_skip_at_first, concatenate_skip=concatenate_skip,
                                            attention_input_dist=attention_input_dist,
                                            attention_anchors=attention_anchors,
-                                           attention_network_dist=attention_network_dist)
+                                           attention_network_dist=attention_network_dist,
+                                           use_upsampling=use_upsampling)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -362,7 +363,7 @@ def main():
 
     # dataset parameters
 
-    data_type = 'hetero'
+    data_type = 'homo'
     train_ratio = 0.95
     process_raw_data = True
     pro_and_augm_only_image_type = True
@@ -381,7 +382,7 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = False
+    single_sample = True
     do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -401,7 +402,7 @@ def main():
     add_skip_at_first = False
     concatenate_skip = True
 
-    attention_mask = 'simple'  # 'simple', 'Not', 'complex'
+    attention_mask = 'Not'  # 'simple', 'Not', 'complex'
     attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1
     attention_input_dist = [1, 3]  # distribution of input files for multiple attention masks
     attention_network_dist = list(np.array([0.5, 1.5, 1.5, 0.5]) / 4.0)  # the distribution of the attention masks in the network
@@ -409,9 +410,9 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [8, 64, 128, 256, 512, 1024]
+    conv_channels = [1, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
-
+    use_upsampling=True
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
@@ -482,7 +483,7 @@ def main():
                                      add_skip_at_first=add_skip_at_first,
                                      pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip,
                                      attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
-                                     attention_network_dist=attention_network_dist
+                                     attention_network_dist=attention_network_dist, use_upsampling=use_upsampling
                                      )
 
         # fit the first model
