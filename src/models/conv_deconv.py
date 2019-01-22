@@ -113,8 +113,9 @@ class ConvDeconv(nn.Module):
             self.deconv_layers[-1].stride = 1
             same_padding_h = int((last_kernel_size[0]-1)/2)
             same_padding_w = int((last_kernel_size[1]-1)/2)
-            self.last_deconv = DeConvLayer(conv_channels[0]+deconv_channels[-1],deconv_channels[-1],
-                                           stride=1,padding=(same_padding_h,same_padding_w),kernel_size=last_kernel_size,
+            self.last_deconv = DeConvLayer(conv_channels[0]+deconv_channels[-1], deconv_channels[-1],
+                                           stride=1, padding=(same_padding_h,same_padding_w),
+                                           kernel_size=last_kernel_size,
                                            output_padding=0, drop_prob=0)
 
 

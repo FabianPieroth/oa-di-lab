@@ -357,15 +357,15 @@ def error_catch(data_type, attention_network_dist, attention_input_dist, attenti
 def main():
 
     image_type = 'US'
-    batch_size = 8*8
-    log_period = 25
-    epochs = 100
+    batch_size = 8
+    log_period = 1
+    epochs = 2
 
     # dataset parameters
 
-    data_type = 'homo'
+    data_type = 'hetero'
     train_ratio = 0.95
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
@@ -381,9 +381,9 @@ def main():
     do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = True
+    get_scale_center = False
     single_sample = True
-    do_scale_center = True
+    do_scale_center = False
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
@@ -400,10 +400,12 @@ def main():
 
     add_skip = True
     add_skip_at_first = True
-    concatenate_skip = False
-    last_kernel_size = (7,7)
+    concatenate_skip = True
+    last_kernel_size = (7, 7)
 
-    attention_mask = 'Not'  # 'simple', 'Not', 'complex'
+    use_upsampling = False
+
+    attention_mask = 'simple'  # 'simple', 'Not', 'complex'
     attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1
     attention_input_dist = [1, 3]  # distribution of input files for multiple attention masks
     attention_network_dist = list(np.array([0.5, 1.5, 1.5, 0.5]) / 4.0)  # the distribution of the attention masks in the network
@@ -411,9 +413,8 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [1, 64, 128, 256, 512, 1024]
+    conv_channels = [6, 8, 8, 8, 8, 8]
     kernels = [(7, 7) for i in range(5)]
-    use_upsampling=True
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
