@@ -403,7 +403,7 @@ def main():
     concatenate_skip = True
     last_kernel_size = (7, 7)
 
-    use_upsampling = False
+    use_upsampling = True
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
     attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1

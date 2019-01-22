@@ -67,11 +67,11 @@ class ConvDeconv(nn.Module):
             drop_probs = [0 for i in range(self.num_layers)]
 
         dstrides, dkernels, dpadding, output_padding, ddrop_probs = self.compute_strides_and_kernels(strides=strides,
-                                                                                        kernels=kernels,
-                                                                                        padding=padding,
-                                                                                        drop_probs=drop_probs,
-                                                                                        output_padding=output_padding,
-                                                                                        input_size=self.input_size)
+                                                                                                     kernels=kernels,
+                                                                                                     padding=padding,
+                                                                                                     drop_probs=drop_probs,
+                                                                                                     output_padding=output_padding,
+                                                                                                     input_size=self.input_size)
 
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i], padding=padding[i],
@@ -108,15 +108,6 @@ class ConvDeconv(nn.Module):
         # using upsampling in the last layer to get higher definition without skip
         self.use_upsampling = use_upsampling
 
-        if use_upsampling:
-            print('Using upsampling!')
-            self.deconv_layers[-1].stride = 1
-            same_padding_h = int((last_kernel_size[0]-1)/2)
-            same_padding_w = int((last_kernel_size[1]-1)/2)
-            self.last_deconv = DeConvLayer(conv_channels[0]+deconv_channels[-1], deconv_channels[-1],
-                                           stride=1, padding=(same_padding_h,same_padding_w),
-                                           kernel_size=last_kernel_size,
-                                           output_padding=0, drop_prob=0)
 
 
         self.criterion = criterion
@@ -130,6 +121,16 @@ class ConvDeconv(nn.Module):
         self.attention_anchors = attention_anchors
         self.attention_input_dist = attention_input_dist
         self.attention_network_dist = attention_network_dist
+        self.conv_channels = conv_channels
+        if use_upsampling:
+            print('Using upsampling!')
+            self.deconv_layers[-1].stride = 1
+            same_padding_h = int((last_kernel_size[0]-1)/2)
+            same_padding_w = int((last_kernel_size[1]-1)/2)
+            self.last_deconv = DeConvLayer(np.sum(self.attention_input_dist)+deconv_channels[-1], deconv_channels[-1],
+                                           stride=1, padding=(same_padding_h,same_padding_w),
+                                           kernel_size=last_kernel_size,
+                                           output_padding=0, drop_prob=0)
 
     def forward(self, x):
 
@@ -159,7 +160,7 @@ class ConvDeconv(nn.Module):
 
             if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None and self.add_skip_at_first:
-                    skip_connection += [x[:,0:1,:,:]]
+                    skip_connection += [x[:,0:np.sum(self.attention_input_dist),:,:]]
                 else:
                     skip_connection += [x]
 
