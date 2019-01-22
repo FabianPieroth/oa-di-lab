@@ -36,7 +36,7 @@ class ConvDeconv(nn.Module):
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
                  add_skip=True, attention_mask='Not',
                  add_skip_at_first=True, concatenate_skip=False, attention_anchors=None,
-                 attention_input_dist=None, attention_network_dist=None, use_upsampling=False):
+                 attention_input_dist=None, attention_network_dist=None, use_upsampling=False, last_kernel_size=(7,7)):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -106,10 +106,17 @@ class ConvDeconv(nn.Module):
                                             for i in range(self.num_layers)])
 
         # using upsampling in the last layer to get higher definition without skip
+        self.use_upsampling = use_upsampling
+
         if use_upsampling:
             print('Using upsampling!')
             self.deconv_layers[-1].stride = 1
-            self.deconv_layers.append(nn.UpsamplingBilinear2d(size=(401,401)))
+            same_padding_h = int((last_kernel_size[0]-1)/2)
+            same_padding_w = int((last_kernel_size[1]-1)/2)
+            self.last_deconv = DeConvLayer(conv_channels[0]+deconv_channels[-1],deconv_channels[-1],
+                                           stride=1,padding=(same_padding_h,same_padding_w),kernel_size=last_kernel_size,
+                                           output_padding=0, drop_prob=0)
+
 
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
@@ -172,8 +179,14 @@ class ConvDeconv(nn.Module):
                 else:
                     x = x + skip
 
+            # think about taking this out
             if i is not len(self.deconv_layers)-1:
                 x = relu(x)
+
+        if self.use_upsampling:
+            x = torch.nn.functional.interpolate(x, size=(401,401), mode='bilinear')
+            if self.concatenate_skip and self.add_skip_at_first:
+                x = self.last_deconv(x)
 
         return x
 

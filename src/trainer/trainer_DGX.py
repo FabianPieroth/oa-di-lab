@@ -28,7 +28,7 @@ class CNN_skipCo_trainer(object):
                  l2_reg, momentum, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
-                 attention_network_dist, use_upsampling):
+                 attention_network_dist, use_upsampling, last_kernel_size):
 
         self.image_type = image_type
 
@@ -399,8 +399,9 @@ def main():
     hetero_mask_to_mask = False
 
     add_skip = True
-    add_skip_at_first = False
-    concatenate_skip = True
+    add_skip_at_first = True
+    concatenate_skip = False
+    last_kernel_size = (7,7)
 
     attention_mask = 'Not'  # 'simple', 'Not', 'complex'
     attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1
@@ -483,7 +484,8 @@ def main():
                                      add_skip_at_first=add_skip_at_first,
                                      pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip,
                                      attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
-                                     attention_network_dist=attention_network_dist, use_upsampling=use_upsampling
+                                     attention_network_dist=attention_network_dist, use_upsampling=use_upsampling,
+                                     last_kernel_size=last_kernel_size
                                      )
 
         # fit the first model
