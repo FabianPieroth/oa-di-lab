@@ -216,7 +216,7 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
 
 
 def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, attention_mask='Not',
-              attention_anchors=None, attention_input_dist=None):
+              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
@@ -263,11 +263,14 @@ def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high
         name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
 
         us_low_ex_dim = np.expand_dims(us_low_tissue[:, :, high_channel], axis=common_axis)
-
-        us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=attention_input_dist[0], axis=common_axis),
-                                      np.repeat(us_low_ex_dim, repeats=attention_input_dist[1], axis=common_axis),
-                                      custom_mask, single_sos_channel,
-                                      single_tissue_sos_channel), axis=common_axis)
+        if bi_only_couplant:
+            us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=np.sum(attention_input_dist), axis=common_axis),
+                                          custom_mask, single_sos_channel), axis=common_axis)
+        else:
+            us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=attention_input_dist[0], axis=common_axis),
+                                          np.repeat(us_low_ex_dim, repeats=attention_input_dist[1], axis=common_axis),
+                                          custom_mask, single_sos_channel,
+                                          single_tissue_sos_channel), axis=common_axis)
         us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
 
         dict_us_single = {name_us_low: us_low_save,

@@ -28,7 +28,8 @@ class CNN_skipCo_trainer(object):
                  l2_reg, momentum, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
-                 attention_network_dist, use_upsampling, last_kernel_size):
+                 attention_network_dist, use_upsampling, last_kernel_size,
+                 bi_only_couplant):
 
         self.image_type = image_type
 
@@ -57,7 +58,7 @@ class CNN_skipCo_trainer(object):
                                    hetero_mask_to_mask=hetero_mask_to_mask,
                                    attention_mask=attention_mask, pca_use_regress=pca_use_regress,
                                    attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
-                                   attention_network_dist=attention_network_dist)
+                                   attention_network_dist=attention_network_dist, bi_only_couplant=bi_only_couplant)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
@@ -357,21 +358,21 @@ def error_catch(data_type, attention_network_dist, attention_input_dist, attenti
 def main():
 
     image_type = 'US'
-    batch_size = 8
-    log_period = 1
-    epochs = 2
+    batch_size = 8*8
+    log_period = 10
+    epochs = 100
 
     # dataset parameters
 
-    data_type = 'hetero'
-    train_ratio = 0.95
-    process_raw_data = False
+    data_type = 'bi'
+    train_ratio = 0.90
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
 
-    add_augment = False
+    add_augment = True
 
     do_rchannels = False
     do_flip = True
@@ -381,9 +382,9 @@ def main():
     do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = False
-    single_sample = True
-    do_scale_center = False
+    get_scale_center = True
+    single_sample = False
+    do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
     oa_pca_fit_ratio = 1 # percentage of the train data files to sample for fitting the pca
@@ -401,19 +402,20 @@ def main():
     add_skip = True
     add_skip_at_first = True
     concatenate_skip = True
-    last_kernel_size = (7, 7)
+    last_kernel_size = (42, 16)
+    bi_only_couplant = False
 
     use_upsampling = True
 
     attention_mask = 'simple'  # 'simple', 'Not', 'complex'
-    attention_anchors = [0.12, 0.15, 0.43, 0.3]  # must sum up to 1
+    attention_anchors = [0.10, 0.17, 0.43, 0.3]  # must sum up to 1
     attention_input_dist = [1, 3]  # distribution of input files for multiple attention masks
     attention_network_dist = list(np.array([0.5, 1.5, 1.5, 0.5]) / 4.0)  # the distribution of the attention masks in the network
 
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [6, 8, 8, 8, 8, 8]
+    conv_channels = [6, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
@@ -486,7 +488,7 @@ def main():
                                      pca_use_regress=pca_use_regress, concatenate_skip=concatenate_skip,
                                      attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
                                      attention_network_dist=attention_network_dist, use_upsampling=use_upsampling,
-                                     last_kernel_size=last_kernel_size
+                                     last_kernel_size=last_kernel_size, bi_only_couplant=bi_only_couplant
                                      )
 
         # fit the first model
