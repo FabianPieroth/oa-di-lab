@@ -61,6 +61,7 @@ class ProcessData(object):
                  attention_input_dist=None,
                  attention_network_dist=None,
                  bi_only_couplant=False,
+                 complex_bi_process=False,
                  trunc_points=(0.0001, 0.9999),
                  logger_call=False):
 
@@ -102,6 +103,7 @@ class ProcessData(object):
         self.attention_input_dist = attention_input_dist
         self.attention_network_dist = attention_network_dist
         self.bi_only_couplant = bi_only_couplant
+        self.complex_bi_process = complex_bi_process
 
         # if self.attention_mask == 'complex':
         if self.attention_anchors is None:
@@ -329,7 +331,8 @@ class ProcessData(object):
                                  save_folder=self.dir_processed_all, attention_mask=self.attention_mask,
                                  attention_anchors=self.attention_anchors,
                                  attention_input_dist=self.attention_input_dist,
-                                 bi_only_couplant=self.bi_only_couplant)
+                                 bi_only_couplant=self.bi_only_couplant,
+                                 complex_bi_process=self.complex_bi_process)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -390,7 +393,8 @@ class ProcessData(object):
                                  save_folder=save_dir, attention_mask=self.attention_mask,
                                  attention_anchors=self.attention_anchors,
                                  attention_input_dist=self.attention_input_dist,
-                                 bi_only_couplant=self.bi_only_couplant)
+                                 bi_only_couplant=self.bi_only_couplant,
+                                 complex_bi_process=self.complex_bi_process)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed

@@ -216,7 +216,7 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
 
 
 def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, attention_mask='Not',
-              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False):
+              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False, complex_bi_process=False):
 
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
@@ -261,8 +261,14 @@ def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high
         name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
         name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
         name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        us_low_tissue_depricated = us_low_tissue[:, :, high_channel]
+        if complex_bi_process:
+            # process like we want it
+            dist = find_highest_row(tissue_mask)
+            crop_int = int(np.floor((tissue_sos[high_channel] - couplant_sos) * 0.30))
+            us_low_tissue_depricated = crop_and_pad_sos(img=us_low_tissue_depricated, crop_int=crop_int)
 
-        us_low_ex_dim = np.expand_dims(us_low_tissue[:, :, high_channel], axis=common_axis)
+        us_low_ex_dim = np.expand_dims(us_low_tissue_depricated, axis=common_axis)
         if bi_only_couplant:
             us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=np.sum(attention_input_dist), axis=common_axis),
                                           custom_mask, single_sos_channel), axis=common_axis)
@@ -300,6 +306,20 @@ def find_suitable_index(single, multiple, threshold):
         suitable = True
 
     return suitable, index_min
+
+
+def crop_and_pad_sos(img, crop_int):
+    end_img = np.zeros(img.shape)
+    if crop_int < 0:
+        end_img[-crop_int:, :] = img[:end_img.shape[0]+crop_int, :]
+    else:
+        end_img[:end_img.shape[0]-crop_int, :] = img[crop_int:, :]
+    return end_img
+
+
+def find_highest_row(mask):
+    rows, _ = np.where(mask>0)
+    return np.min(rows)
 
 
 # Augmentations
