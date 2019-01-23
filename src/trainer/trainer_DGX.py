@@ -29,7 +29,7 @@ class CNN_skipCo_trainer(object):
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
                  attention_network_dist, use_upsampling, last_kernel_size,
-                 bi_only_couplant, complex_bi_process):
+                 bi_only_couplant, complex_bi_process, after_skip_channels):
 
         self.image_type = image_type
 
@@ -74,14 +74,14 @@ class CNN_skipCo_trainer(object):
                                            attention_input_dist=attention_input_dist,
                                            attention_anchors=attention_anchors,
                                            attention_network_dist=attention_network_dist,
-                                           use_upsampling=use_upsampling)
+                                           use_upsampling=use_upsampling, after_skip_channels=after_skip_channels)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
         # self.deformation_model = DeformationLearner(stride=3, kernel=3, padding=1)
         self.model = ImageTranslator([self.model_convdeconv])
 
-
+        print(self.model_convdeconv)
         # we need optimizer and loss here to not access anything from the model class
         self.model_params = self.model.get_parameters()
 
@@ -384,7 +384,7 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
-    single_sample = False
+    single_sample = True
     do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -423,6 +423,7 @@ def main():
     input_size = (401, 401)
     output_channels = 1
     drop_probs = None
+    after_skip_channels=[8]
 
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
@@ -491,7 +492,7 @@ def main():
                                      attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
                                      attention_network_dist=attention_network_dist, use_upsampling=use_upsampling,
                                      last_kernel_size=last_kernel_size, bi_only_couplant=bi_only_couplant,
-                                     complex_bi_process=complex_bi_process
+                                     complex_bi_process=complex_bi_process, after_skip_channels=after_skip_channels
                                      )
 
         # fit the first model

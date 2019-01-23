@@ -36,7 +36,8 @@ class ConvDeconv(nn.Module):
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
                  add_skip=True, attention_mask='Not',
                  add_skip_at_first=True, concatenate_skip=False, attention_anchors=None,
-                 attention_input_dist=None, attention_network_dist=None, use_upsampling=False, last_kernel_size=(7,7)):
+                 attention_input_dist=None, attention_network_dist=None, use_upsampling=False, last_kernel_sizes=None,
+                 after_skip_channels=None):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -125,12 +126,28 @@ class ConvDeconv(nn.Module):
         if use_upsampling:
             print('Using upsampling!')
             self.deconv_layers[-1].stride = 1
-            same_padding_h = int((last_kernel_size[0]-1)/2)
-            same_padding_w = int((last_kernel_size[1]-1)/2)
-            self.last_deconv = DeConvLayer(np.sum(self.attention_input_dist)+deconv_channels[-1], deconv_channels[-1],
-                                           stride=1, padding=(same_padding_h,same_padding_w),
-                                           kernel_size=last_kernel_size,
-                                           output_padding=0, drop_prob=0)
+
+        self.last_layers = None
+        if after_skip_channels is not None:
+            # the first channel of these layers is depending on the amount of masked channels we concat
+            # the last channel will be out_channel so the last of deconv_channels
+            # the channels in between can be chosen
+            # preparing the list to these needs
+            after_skip_channels = [np.sum(self.attention_input_dist)+deconv_channels[-1]] \
+                                  + after_skip_channels + [deconv_channels[-1]]
+            if last_kernel_sizes is None:
+                last_kernel_sizes = [(41,11) for _ in range(len(after_skip_channels)+1)]
+            self.last_layers = nn.ModuleList()
+
+            for i in range(len(after_skip_channels)-1):
+                same_padding_h = int((last_kernel_sizes[i][0]-1)/2)
+                same_padding_w = int((last_kernel_sizes[i][1]-1)/2)
+                self.last_layers.append(DeConvLayer(after_skip_channels[i], after_skip_channels[i+1],
+                                                     stride=1, padding=(same_padding_h,same_padding_w),
+                                                     kernel_size=last_kernel_sizes[i],
+                                                     output_padding=0, drop_prob=0))
+
+
 
     def forward(self, x):
 
@@ -182,14 +199,21 @@ class ConvDeconv(nn.Module):
                     x = x + skip
 
             # think about taking this out
-            if i is not len(self.deconv_layers)-1:
+            if self.last_layers is not None or i is not len(self.deconv_layers)-1:
                 x = relu(x)
 
         if self.use_upsampling:
             x = torch.nn.functional.interpolate(x, size=(401,401), mode='bilinear')
             if self.concatenate_skip and self.add_skip_at_first:
-                x = self.last_deconv(x)
-
+                if self.last_layers is None:
+                    print('you need last layers to fuse the concatenated layers')
+                # x = self.last_deconv(x)
+        if self.last_layers is not None:
+            for i in range(len(self.last_layers)):
+                l = self.last_layers[i]
+                if i is not len(self.last_layers)-1:
+                    x = relu(x)
+                x = l(x)
         return x
 
     def compute_strides_and_kernels(self, strides, kernels, padding, drop_probs, input_size=(401,401),
