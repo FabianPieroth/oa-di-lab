@@ -178,7 +178,8 @@ def blur_helper(image, sigma = 2):
     return transformed_image
 
 
-def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo', attention_mask='Not'):
+def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo', attention_mask='Not',
+         attention_input_dist=None):
     """ blurs image1 with a blur_helper, only use for US data
         input: image1: the image to be blurred
                image2: the target image, not to be blurred
@@ -192,16 +193,14 @@ def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo', att
             transformed_image1_temp = blur_helper(input_image1, sigma=sig)
             image1[:, :, 0] = transformed_image1_temp
             transformed_image1 = image1
-        elif attention_mask == 'simple' or attention_mask == 'complex':
+        elif attention_mask == 'simple':
             sig = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
             input_image1a = image1[:, :, 0]
-            input_image1b = image1[:, :, 1]
             transformed_image1a_temp = blur_helper(input_image1a, sigma=sig)
-            transformed_image1b_temp = blur_helper(input_image1b, sigma=sig)
-            image1[:, :, 0] = transformed_image1a_temp
-            image1[:, :, 1] = transformed_image1b_temp
+            for i in range(np.sum(attention_input_dist)):
+                image1[:, :, i] = transformed_image1a_temp
             transformed_image1 = image1
-        elif attention_mask == 'complex':
+        '''elif attention_mask == 'complex':
             sig_a = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
             sig_b = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
             input_image1a = image1[:, :, 0]
@@ -211,7 +210,20 @@ def blur(image1, image2, lower_lim = 0.2, upper_lim = 1.5, data_type='homo', att
             image1[:, :, 0] = transformed_image1a_temp
             image1[:, :, 1] = transformed_image1b_temp
             transformed_image1 = image1
-            sig = [sig_a, sig_b]
+            sig = [sig_a, sig_b]'''
+    elif data_type == 'bi':
+        sig_a = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
+        sig_b = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
+        input_image1a = image1[:, :, 0]
+        input_image1b = image1[:, :, attention_input_dist[1]]
+        transformed_image1a_temp = blur_helper(input_image1a, sigma=sig_a)
+        transformed_image1b_temp = blur_helper(input_image1b, sigma=sig_b)
+        for i in range(attention_input_dist[1]):
+            image1[:, :, i] = transformed_image1a_temp
+        for i in range(attention_input_dist[0], np.sum(attention_input_dist)):
+            image1[:, :, i] = transformed_image1b_temp
+        transformed_image1 = image1
+        sig = [sig_a, sig_b]
     else:
         sig = np.random.random(1)[0] * (upper_lim - lower_lim) + lower_lim
         transformed_image1 = blur_helper(image1, sigma=sig)
@@ -272,7 +284,8 @@ def speckle_noise_helper(image, mult_noise):
     return transformed_image
 
 
-def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, data_type='homo', attention_mask='Not'):
+def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, data_type='homo', attention_mask='Not',
+                  attention_input_dist=None):
     """ """
     stdev = np.random.random(1)*(upper_lim_stdev - lower_lim_stdev) + lower_lim_stdev
     shape = image1.shape
@@ -290,13 +303,11 @@ def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, dat
             eta = np.random.randn(dim) * stdev + 1
             eta = eta.reshape(shape[:2])
             input_image1a = image1[:, :, 0]
-            input_image1b = image1[:, :, 1]
             transformed_image1a_temp = speckle_noise_helper(input_image1a, mult_noise=eta)
-            transformed_image1b_temp = speckle_noise_helper(input_image1b, mult_noise=eta)
-            image1[:, :, 0] = transformed_image1a_temp
-            image1[:, :, 1] = transformed_image1b_temp
+            for i in range(np.sum(attention_input_dist)):
+                image1[:, :, i] = transformed_image1a_temp
             transformed_image1 = image1
-        elif attention_mask == 'complex':
+        '''elif attention_mask == 'complex':
             eta_a = np.random.randn(dim) * stdev + 1
             eta_a = eta_a.reshape(shape[:2])
             eta_b = np.random.randn(dim) * stdev + 1
@@ -308,7 +319,22 @@ def speckle_noise(image1, image2, lower_lim_stdev=0.1, upper_lim_stdev=0.15, dat
             image1[:, :, 0] = transformed_image1a_temp
             image1[:, :, 1] = transformed_image1b_temp#
             transformed_image1 = image1
-            eta = [eta_a, eta_b]
+            eta = [eta_a, eta_b]'''
+    elif data_type == 'bi':
+        eta_a = np.random.randn(dim) * stdev + 1
+        eta_a = eta_a.reshape(shape[:2])
+        eta_b = np.random.randn(dim) * stdev + 1
+        eta_b = eta_b.reshape(shape[:2])
+        input_image1a = image1[:, :, 0]
+        input_image1b = image1[:, :, attention_input_dist[1]]
+        transformed_image1a_temp = speckle_noise_helper(input_image1a, mult_noise=eta_a)
+        transformed_image1b_temp = speckle_noise_helper(input_image1b, mult_noise=eta_b)
+        for i in range(attention_input_dist[1]):
+            image1[:, :, i] = transformed_image1a_temp
+        for i in range(attention_input_dist[0], np.sum(attention_input_dist)):
+            image1[:, :, i] = transformed_image1b_temp
+        transformed_image1 = image1
+        eta = [eta_a, eta_b]
     else:
         eta = np.random.randn(dim) * stdev + 1
         eta = eta.reshape(shape[:2])

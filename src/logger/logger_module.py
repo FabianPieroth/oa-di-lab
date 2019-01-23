@@ -247,6 +247,7 @@ class Logger(object):
             augmentation_file_path = self.project_root_dir + '/src/data' + '/augmentation.py'
             data_processing_file_path = self.project_root_dir + '/src/data' + '/data_processing.py'
             visualizer_path = self.project_root_dir + '/src/' + '/logger/visualization.py'
+            utils_models_path = self.project_root_dir + '/src/models/' + '/utils.py'
 
             os.makedirs(self.save_dir + '/data')
             os.makedirs(self.save_dir + '/models')
@@ -257,6 +258,8 @@ class Logger(object):
             shutil.copy(data_processing_file_path, self.save_dir + '/data')
             shutil.copy(visualizer_path, self.save_dir + '/data')
             shutil.copy(model_file_path, self.save_dir + '/models')
+            shutil.copy(utils_models_path, self.save_dir + '/models')
+
 
     def save_json_file(self):
 
@@ -275,6 +278,10 @@ class Logger(object):
             "pca_use_regress": self.dataset.pca_use_regress,
             "do_scale_center": self.dataset.do_scale_center,
             "get_scale_center": self.dataset.get_scale_center,
+            "attention_mask": self.dataset.attention_mask,
+            "attention_anchors": self.dataset.attention_anchors,
+            "attention_input_dist": self.dataset.attention_input_dist,
+            "attention_network_dist": self.dataset.attention_network_dist,
             "trunc_points": self.dataset.trunc_points,
             "applied_augmentations": {
                 "process_raw_data": self.dataset.process_raw,

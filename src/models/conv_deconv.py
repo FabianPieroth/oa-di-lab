@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.functional import relu
 import numpy as np
+import models.utils as ut
 
 class ConvLayer (nn.Module):
     def __init__(self, c_in, c_out, stride, kernel_size, padding, drop_prob):
@@ -33,7 +34,9 @@ class ConvDeconv(nn.Module):
                  kernels=None, padding=None, output_padding=None, drop_probs=None,
                  criterion=nn.MSELoss(), optimizer=torch.optim.Adam,
                  learning_rate=0.01, model_name='shallow_model', dropout=0, input_size=(401, 401),
-                 add_skip=True, attention_mask='Not', add_skip_at_first=True, concatenate_skip=False):
+                 add_skip=True, attention_mask='Not',
+                 add_skip_at_first=True, concatenate_skip=False, attention_anchors=None,
+                 attention_input_dist=None, attention_network_dist=None, use_upsampling=False, last_kernel_size=(7,7)):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -43,7 +46,6 @@ class ConvDeconv(nn.Module):
         :param kernels: kernel sizes of the conv layers, same dimension as conv_channels
         """
         super().__init__()
-
 
         self.model_file_name = __file__  # save file name to copy file in logger into logging folder
 
@@ -65,11 +67,11 @@ class ConvDeconv(nn.Module):
             drop_probs = [0 for i in range(self.num_layers)]
 
         dstrides, dkernels, dpadding, output_padding, ddrop_probs = self.compute_strides_and_kernels(strides=strides,
-                                                                                        kernels=kernels,
-                                                                                        padding=padding,
-                                                                                        drop_probs=drop_probs,
-                                                                                        output_padding=output_padding,
-                                                                                        input_size=self.input_size)
+                                                                                                     kernels=kernels,
+                                                                                                     padding=padding,
+                                                                                                     drop_probs=drop_probs,
+                                                                                                     output_padding=output_padding,
+                                                                                                     input_size=self.input_size)
 
         self.conv_layers = nn.ModuleList([ConvLayer(conv_channels[i], conv_channels[i + 1],
                                                     strides[i], kernels[i], padding=padding[i],
@@ -103,6 +105,11 @@ class ConvDeconv(nn.Module):
                                                         output_padding=output_padding[i])
                                             for i in range(self.num_layers)])
 
+        # using upsampling in the last layer to get higher definition without skip
+        self.use_upsampling = use_upsampling
+
+
+
         self.criterion = criterion
         self.optimizer = optimizer(self.parameters(), lr=learning_rate)
         self.train_loss = []
@@ -111,6 +118,19 @@ class ConvDeconv(nn.Module):
 
         self.add_skip = add_skip
         self.attention_mask = attention_mask
+        self.attention_anchors = attention_anchors
+        self.attention_input_dist = attention_input_dist
+        self.attention_network_dist = attention_network_dist
+        self.conv_channels = conv_channels
+        if use_upsampling:
+            print('Using upsampling!')
+            self.deconv_layers[-1].stride = 1
+            same_padding_h = int((last_kernel_size[0]-1)/2)
+            same_padding_w = int((last_kernel_size[1]-1)/2)
+            self.last_deconv = DeConvLayer(np.sum(self.attention_input_dist)+deconv_channels[-1], deconv_channels[-1],
+                                           stride=1, padding=(same_padding_h,same_padding_w),
+                                           kernel_size=last_kernel_size,
+                                           output_padding=0, drop_prob=0)
 
     def forward(self, x):
 
@@ -123,18 +143,24 @@ class ConvDeconv(nn.Module):
             # use attention mask on forwarded channels, skips influenced as well
             if self.attention_mask == 'simple':
                 if i == 0:
-                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
-                                                          upper_ratio=0.2, start='simple')
+                    zero_one = ut.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                        upper_ratio=0.2, start='simple',
+                                                        attention_anchors=self.attention_anchors,
+                                                        attention_input_dist=self.attention_input_dist,
+                                                        attention_network_dist=self.attention_network_dist)
                 else:
-                    zero_one = self.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
-                                                          upper_ratio=0.2, start='Not')
+                    zero_one = ut.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
+                                                        upper_ratio=0.2, start='Not',
+                                                        attention_anchors=self.attention_anchors,
+                                                        attention_input_dist=self.attention_input_dist,
+                                                        attention_network_dist=self.attention_network_dist)
                 if torch.cuda.is_available():
                     zero_one = zero_one.cuda()
                 x = zero_one * x
 
             if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None and self.add_skip_at_first:
-                    skip_connection += [x[:,0:1,:,:]]
+                    skip_connection += [x[:,0:np.sum(self.attention_input_dist),:,:]]
                 else:
                     skip_connection += [x]
 
@@ -155,8 +181,14 @@ class ConvDeconv(nn.Module):
                 else:
                     x = x + skip
 
+            # think about taking this out
             if i is not len(self.deconv_layers)-1:
                 x = relu(x)
+
+        if self.use_upsampling:
+            x = torch.nn.functional.interpolate(x, size=(401,401), mode='bilinear')
+            if self.concatenate_skip and self.add_skip_at_first:
+                x = self.last_deconv(x)
 
         return x
 
@@ -220,40 +252,3 @@ class ConvDeconv(nn.Module):
         # change returning values
         print('used output padding in this configuration: ', opad)
         return dstrides, dkernels, dpadding, opad, ddrop_probs
-
-    def create_zero_one_ratio(self, shape_tensor, ratio_overlap, upper_ratio, start='Not', ratio_up_to_low_channel=0.5):
-        # shape_tensor: (N, C, H, W)
-        zero_one = np.zeros(shape_tensor)
-        lower_ratio = 1 - upper_ratio + (upper_ratio) * ratio_overlap
-        upper_ratio = upper_ratio + (1 - upper_ratio) * ratio_overlap
-        num_upper = int(shape_tensor[2] * upper_ratio)
-        num_lower = shape_tensor[2] - int(shape_tensor[2] * lower_ratio)
-        single_upper = np.zeros((shape_tensor[2], shape_tensor[3]))
-        single_lower = np.ones((shape_tensor[2], shape_tensor[3]))
-        single_upper[:num_upper, :] = 1.0
-        single_lower[:num_lower, :] = 0.0
-        if start == 'simple':
-            for i in range(shape_tensor[0]):
-                zero_one[i, 0, :, :] = single_upper
-                zero_one[i, 1, :, :] = single_lower
-                zero_one[i, 2, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-                zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-        elif start == 'complex':
-            for i in range(shape_tensor[0]):
-                zero_one[i, 0, :, :] = single_upper
-                zero_one[i, 1, :, :] = single_lower
-                zero_one[i, 2, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-                zero_one[i, 3, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-                zero_one[i, 4, :, :] = np.ones((shape_tensor[2], shape_tensor[3]))
-        else:
-            num_channel_till_up = int(shape_tensor[1] * ratio_up_to_low_channel)
-            for i in range(shape_tensor[0]):
-                for j in range(shape_tensor[1]):
-                    if j < num_channel_till_up:
-                        zero_one[i, j, :, :] = single_upper
-                    else:
-                        zero_one[i, j, :, :] = single_lower
-        zero_one = torch.tensor(zero_one)
-        if torch.cuda.is_available():
-            zero_one = zero_one.cuda()
-        return zero_one
