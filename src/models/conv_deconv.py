@@ -147,8 +147,6 @@ class ConvDeconv(nn.Module):
                                                      kernel_size=last_kernel_sizes[i],
                                                      output_padding=0, drop_prob=0))
 
-
-
     def forward(self, x):
 
         skip_connection = []
