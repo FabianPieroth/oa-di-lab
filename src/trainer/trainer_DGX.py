@@ -321,7 +321,7 @@ class CNN_skipCo_trainer(object):
 def main():
 
     image_type = 'US'
-    batch_size = 16*8
+    batch_size = 8*8
     log_period = 50
     epochs = 200
 
