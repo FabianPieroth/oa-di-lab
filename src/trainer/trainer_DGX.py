@@ -24,7 +24,7 @@ class CNN_skipCo_trainer(object):
                  oa_do_pca,oa_pca_fit_ratio, oa_pca_num_components,
                  height_channel_oa, use_regressed_oa, include_regression_error, add_f_test,
                  only_f_test_in_target, channel_slice_oa, process_all_raw_folders,
-                 conv_channels,kernels, model_name, input_size,output_channels, drop_probs,
+                 conv_channels,kernels, strides, model_name, input_size, output_channels, drop_probs,
                  di_conv_channels, dilations, learning_rates, optimizer, criterion, hetero_mask_to_mask,hyper_no,
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip):
@@ -62,6 +62,7 @@ class CNN_skipCo_trainer(object):
                                            #ds_mask_channels=ds_mask_channels,
                                            #datatype=data_type,
                                            kernels=kernels,
+                                           strides=strides,
                                            model_name=model_name, input_size=input_size,
                                            output_channels=output_channels, drop_probs=drop_probs,
                                            add_skip=add_skip, attention_mask=attention_mask,
@@ -144,7 +145,7 @@ class CNN_skipCo_trainer(object):
             # go through all the batches
 
             for i in range(self.dataset.batch_number):
-                start_time = time.clock()
+                start_time = time.time()
                 input_tensor, target_tensor = self.dataset.scale_and_parse_to_tensor(
                     batch_files=self.dataset.train_batch_chunks[i],
                     scale_params_low=scale_params_low,
@@ -172,8 +173,8 @@ class CNN_skipCo_trainer(object):
                     return loss
 
                 self.optimizer.step(closure)
-                end_time = time.clock()
-                if i == 1:
+                end_time = time.time()
+                if i == 1 and e == 0:
                     print("Time per batch", end_time-start_time)
 
 
@@ -319,10 +320,10 @@ class CNN_skipCo_trainer(object):
 
 def main():
 
-    image_type = 'OA'
-    batch_size = 16*8
-    log_period = 100
-    epochs = 300
+    image_type = 'US'
+    batch_size = 8*8
+    log_period = 50
+    epochs = 200
 
     # dataset parameters
 
@@ -336,12 +337,12 @@ def main():
 
     add_augment = True
 
-    do_rchannels = False
+    do_rchannels = True
     do_flip = True
-    do_blur = False
+    do_blur = True
     do_deform = True
     do_crop = False
-    do_speckle_noise = False
+    do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = True
@@ -353,7 +354,7 @@ def main():
     oa_pca_num_components = 7
     pca_use_regress = False
     height_channel_oa = 201
-    use_regressed_oa = True
+    use_regressed_oa = False
     include_regression_error = False
     add_f_test = False
     only_f_test_in_target = False
@@ -370,11 +371,13 @@ def main():
     # model parameters
 
     # conv_channels = [7, 64, 128, 256, 512, 1024]
-    conv_channels = [4, 128, 256, 512, 1024, 2048]
-    kernels = [(7, 7) for i in range(5)]
+    conv_channels = [1, 64, 128, 128, 256, 256, 512, 512]
+
+    kernels = [(7, 7) for i in range(7)]
+
 
     model_name = 'deep_2_model'
-    input_size = (201, 401)
+    input_size = (401, 401)
     output_channels = None
     drop_probs = None
 
@@ -394,17 +397,17 @@ def main():
 
 
     # add hyper parameters for search
-    #param_grid = {
-    #
-    #}
+    param_grid = { 'strides': [[(2, 2) for i in range(7)], [(1,1),(2,2),(1,1),(2,2),(1,1),(2,2),(1,1)]]
+
+    }
 
     # number of iterations to be performed for hyperparameter search
-    max_evals=1
+    max_evals=2
 
     # Iterate through the specified number of evaluations
     for i in range(max_evals):
 
-        #params = {key: random.sample(value, 1)[0] for key, value in param_grid.items()}
+        params = {key: value[i] for key, value in param_grid.items()}
 
         #print(params)
         trainer = CNN_skipCo_trainer(image_type=image_type, batch_size=batch_size, log_period=log_period,
@@ -422,6 +425,7 @@ def main():
                                      oa_do_scale_center_before_pca=oa_do_scale_center_before_pca,
                                      oa_do_pca=oa_do_pca, oa_pca_fit_ratio=oa_pca_fit_ratio, oa_pca_num_components = oa_pca_num_components,
                                      height_channel_oa=height_channel_oa, conv_channels=conv_channels, kernels=kernels,
+                                     strides=params['strides'],
                                      model_name=model_name, input_size=input_size, output_channels=output_channels,
                                      input_ss_mask=input_ss_mask, input_ds_mask=input_ds_mask,
                                      ds_mask_channels=ds_mask_channels,
