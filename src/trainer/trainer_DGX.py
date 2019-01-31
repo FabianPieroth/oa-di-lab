@@ -366,7 +366,7 @@ def main():
     # dataset parameters
 
     data_type = 'bi'
-    train_ratio = 0.90
+    train_ratio = 0.95
     process_raw_data = True
     pro_and_augm_only_image_type = True
 
@@ -401,9 +401,8 @@ def main():
     hetero_mask_to_mask = False
 
     add_skip = True
-    add_skip_at_first = True
+    add_skip_at_first = False
     concatenate_skip = True
-    last_kernel_size = (48, 10)
     bi_only_couplant = False
     complex_bi_process = True  # this is a one shot implementation, set to false if everything else should be working
 
@@ -424,7 +423,9 @@ def main():
     input_size = (401, 401)
     output_channels = 1
     drop_probs = None
-    after_skip_channels=[8]
+    strides_conv_deconv = [(1, 1) for i in range(3)]
+    after_skip_channels = None  # [8]
+    last_kernel_size = None  # (48, 10)
 
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
@@ -493,8 +494,7 @@ def main():
                                      attention_network_dist=attention_network_dist, use_upsampling=use_upsampling,
                                      last_kernel_size=last_kernel_size, bi_only_couplant=bi_only_couplant,
                                      complex_bi_process=complex_bi_process, after_skip_channels=after_skip_channels,
-                                     strides=strides
-                                     )
+                                     strides=strides)
 
         # fit the first model
         print('\n---------------------------')
