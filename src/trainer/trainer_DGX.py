@@ -418,7 +418,7 @@ def main():
     # conv_channels = [7, 64, 128, 256, 512, 1024]
     conv_channels = [7, 64, 128, 256, 512, 1024]
     kernels = [(7, 7) for i in range(5)]
-    strides = [(1,1) for _ in range(5)]
+    strides = [(1,1), (2,2), (1,1), (2,2), (1,1)]
     model_name = 'deep_2_model'
     input_size = (401, 401)
     output_channels = 1
