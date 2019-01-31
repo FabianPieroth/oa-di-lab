@@ -8,7 +8,7 @@ import importlib.util
 import pickle
 
 
-def extract_and_process_logged_folder(folder_name):
+def extract_and_process_logged_folder(folder_name, logging_for_documentation=False):
     print('Read and create input, target and predicted images.')
     rescale_images = True
     json_dict = open_json_file(folder_name=folder_name, file_name='config.json')
@@ -57,12 +57,14 @@ def extract_and_process_logged_folder(folder_name):
                         json_dict['processing']['channel_slice_oa'] = list(range(28))
                     vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
                                            save_name=save_folder + '/' + images + '_spectra', p_threshold=0.05,
-                                           json_processing=json_dict)
+                                           json_processing=json_dict,
+                                           logging_for_documentation=logging_for_documentation)
                     vis.plot_single_spectra(input_im=input_im, target_im=target_im, predict_im=predict_im,
                                             input_us=None, target_us=None, predict_us=None,
                                             save_name=save_folder + '/' + images,
                                             slice=json_dict['processing']['channel_slice_oa'],
-                                            regressed=json_dict['processing']['use_regressed_oa'])
+                                            regressed=json_dict['processing']['use_regressed_oa'],
+                                            logging_for_documentation=logging_for_documentation)
 
 
 def open_json_file(folder_name, file_name):
@@ -180,9 +182,12 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'homo/2019_01_27_18_11_OA_with_PCA'
+    logging_for_documentation = True
 
-    extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
+    folder_name = 'homo/Documentation/combined_model_hyper_1_2019_01_26_22_54_sliced'
+
+    extract_and_process_logged_folder(folder_name=path_to_project + folder_name,
+                                      logging_for_documentation=logging_for_documentation)
 
     plot_train_val_loss(folder_name=path_to_project + folder_name)
 
