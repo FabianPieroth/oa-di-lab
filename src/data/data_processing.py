@@ -6,6 +6,7 @@ import os
 from logger.oa_spectra_analysis.oa_for_DILab import linear_unmixing as lu
 from logger.oa_spectra_analysis.oa_for_DILab import spectral_F_test as f_test
 
+
 # this File contains several helper functions
 
 # Pre-processing
@@ -23,6 +24,7 @@ def filter_hidden_files(string):
     bool2 = ('._' in string)
 
     return not any([bool1, bool2])
+
 
 # homo
 
@@ -94,12 +96,12 @@ def pre_oa_homo(new_in_folder, study_folder, filename, scan_num, save_folder, cu
     save_dict_with_pickle(file=dict_oa, folder_name=save_folder + '/optoacoustic',
                           file_name=name_oa_save)
 
+
 # hetero
 
 
 def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, hetero_mask_to_mask,
-                  attention_mask='Not'):
-
+                  attention_mask='Not', attention_input_dist=None):
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
     us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
@@ -133,64 +135,67 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
                 # create names and save
                 name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(low_channel)
                 name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
-                name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(low_channel) + 'and' + str(high_channel)
+                name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(low_channel) + 'and' + str(
+                    high_channel)
 
-                us_low_ex_dim = np.expand_dims(us_low_samples[:,:,low_channel], axis=common_axis)
+                us_low_ex_dim = np.expand_dims(us_low_samples[:, :, low_channel], axis=common_axis)
 
                 if attention_mask == 'simple':
-                    us_low_save = np.concatenate((us_low_ex_dim, us_low_ex_dim, custom_mask, single_sos_channel),
+                    us_low_ex_dim = np.repeat(us_low_ex_dim, repeats=np.sum(attention_input_dist),
+                                              axis=common_axis)
+                    us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel),
                                                  axis=common_axis)
                 else:
                     us_low_save = np.concatenate((us_low_ex_dim, custom_mask, single_sos_channel), axis=common_axis)
-                us_high_save = np.expand_dims(us_high_samples[:,:,high_channel], axis=common_axis)
-
-                dict_us_single = {name_us_low: us_low_save,
-                                  name_us_high: us_high_save}
-
-                save_dict_with_pickle(file=dict_us_single,
-                                      folder_name=save_folder + '/ultrasound', file_name=name_us_save)
-    elif attention_mask == 'complex':
-        suitable_couplant, index_couplant = find_suitable_index(single=couplant_sos, multiple=single_sos, threshold=16)
-        if not suitable_couplant:
-            # if we cannot find a suitable low quality image with couplant sos, this sample has no value in complex
-            return
-        else:
-            single_sos_couplant = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_couplant]),
-                                                 axis=common_axis)
-            low_single_couplant = np.expand_dims(us_low_samples[:, :, index_couplant], axis=common_axis)
-
-        for high_channel in range(us_high_samples.shape[2]):
-            suitable_dual, index_dual = find_suitable_index(single=tissue_sos[high_channel], multiple=single_sos,
-                                                            threshold=32)
-            if not suitable_dual:
-                # if we cannot find a suitable low quality image with couplant sos, this dual sample is skipped
-                continue
-            else:
-                single_sos_dual = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_dual]),
-                                                 axis=common_axis)
-                low_single_dual = np.expand_dims(us_low_samples[:, :, index_dual], axis=common_axis)
-
-                custom_mask = np.copy(tissue_mask)
-                custom_mask[custom_mask == 0] = couplant_sos
-                custom_mask[custom_mask == 1] = tissue_sos[high_channel]
-                custom_mask = np.expand_dims(custom_mask, axis=common_axis)
-
-                us_low_save = np.concatenate((low_single_couplant, low_single_dual, custom_mask, single_sos_couplant,
-                                              single_sos_dual), axis=common_axis)
-
                 us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
 
-                name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
-                    index_dual)
-                name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
-                name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
-                    index_dual) + 'to' + str(high_channel)
-
                 dict_us_single = {name_us_low: us_low_save,
                                   name_us_high: us_high_save}
 
                 save_dict_with_pickle(file=dict_us_single,
                                       folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+        '''elif attention_mask == 'complex':
+            suitable_couplant, index_couplant = find_suitable_index(single=couplant_sos, multiple=single_sos, threshold=16)
+            if not suitable_couplant:
+                # if we cannot find a suitable low quality image with couplant sos, this sample has no value in complex
+                return
+            else:
+                single_sos_couplant = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_couplant]),
+                                                     axis=common_axis)
+                low_single_couplant = np.expand_dims(us_low_samples[:, :, index_couplant], axis=common_axis)
+
+            for high_channel in range(us_high_samples.shape[2]):
+                suitable_dual, index_dual = find_suitable_index(single=tissue_sos[high_channel], multiple=single_sos,
+                                                                threshold=32)
+                if not suitable_dual:
+                    # if we cannot find a suitable low quality image with couplant sos, this dual sample is skipped
+                    continue
+                else:
+                    single_sos_dual = np.expand_dims(np.full(tissue_mask.shape, single_sos[index_dual]),
+                                                     axis=common_axis)
+                    low_single_dual = np.expand_dims(us_low_samples[:, :, index_dual], axis=common_axis)
+
+                    custom_mask = np.copy(tissue_mask)
+                    custom_mask[custom_mask == 0] = couplant_sos
+                    custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+                    custom_mask = np.expand_dims(custom_mask, axis=common_axis)
+
+                    us_low_save = np.concatenate((low_single_couplant, low_single_dual, custom_mask, single_sos_couplant,
+                                                  single_sos_dual), axis=common_axis)
+
+                    us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
+
+                    name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
+                        index_dual)
+                    name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+                    name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(index_couplant) + 'and' + str(
+                        index_dual) + 'to' + str(high_channel)
+
+                    dict_us_single = {name_us_low: us_low_save,
+                                      name_us_high: us_high_save}
+
+                    save_dict_with_pickle(file=dict_us_single,
+                                          folder_name=save_folder + '/ultrasound', file_name=name_us_save)'''
 
     else:
         for sos in range(us_high_samples.shape[2]):
@@ -213,8 +218,79 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
                                   folder_name=save_folder + '/ultrasound', file_name=name_us_save)
 
 
+def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, attention_mask='Not',
+              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False, complex_bi_process=False):
+    us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
+                                  scan_num + '/' + filename_low)
+    us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
+                                   scan_num + '/' + filename_high)
+
+    us_low_tissue = us_raw_low['US_low_tissue']
+    us_low_couplant = us_raw_low['US_low_couplant']
+    low_tissue_sos = [np.float64(s) for s in us_raw_low['tissue_SoS'].flatten()]
+
+    couplant_sos = np.float64(us_raw_high['couplant_SoS'].flatten()[0])
+    tissue_mask = np.array(us_raw_high['tissue_mask']).astype('float')
+    tissue_sos = [np.float64(s) for s in us_raw_high['tissue_SoS'].flatten()]
+    us_high_samples = us_raw_high['US_high_samples']
+
+    if not low_tissue_sos == tissue_sos:
+        print('The dual speed of sounds of the given low does not coincide with the given high in' + str(study_folder)
+              + str(scan_num))
+        print('Low Tissue Speed:' + str(low_tissue_sos))
+        print('High Tissue Speed:' + str(tissue_sos))
+
+    # on which axis to expand the dimension of the numpy array
+    common_axis = 2
+
+    single_sos_channel = np.full(tissue_mask.shape, couplant_sos)
+    single_sos_channel = np.expand_dims(single_sos_channel, axis=common_axis)
+
+    us_low_couplant = np.expand_dims(us_low_couplant, axis=common_axis)
+
+    for high_channel in range(us_high_samples.shape[2]):
+
+        # fill mask with sos parameters
+        custom_mask = np.copy(tissue_mask)
+        custom_mask[custom_mask == 0] = couplant_sos
+        custom_mask[custom_mask == 1] = tissue_sos[high_channel]
+        custom_mask = np.expand_dims(custom_mask, axis=common_axis)
+
+        single_tissue_sos_channel = np.full(tissue_mask.shape, tissue_sos[high_channel])
+        single_tissue_sos_channel = np.expand_dims(single_tissue_sos_channel, axis=common_axis)
+
+        # create names and save
+        name_us_low = 'US_low_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        name_us_high = 'US_high_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        name_us_save = 'US_' + study_folder + '_' + scan_num + '_ch' + str(high_channel)
+        us_low_tissue_depricated = us_low_tissue[:, :, high_channel]
+        if complex_bi_process:
+            # process like we want it
+            dist = find_highest_row(tissue_mask)
+            crop_int = int(np.floor((tissue_sos[high_channel] - couplant_sos) * 0.30))
+            us_low_tissue_depricated = crop_and_pad_sos(img=us_low_tissue_depricated, crop_int=crop_int)
+
+        us_low_ex_dim = np.expand_dims(us_low_tissue_depricated, axis=common_axis)
+        if bi_only_couplant:
+            us_low_save = np.concatenate(
+                (np.repeat(us_low_couplant, repeats=np.sum(attention_input_dist), axis=common_axis),
+                 custom_mask, single_sos_channel), axis=common_axis)
+        else:
+            us_low_save = np.concatenate((np.repeat(us_low_couplant, repeats=attention_input_dist[0], axis=common_axis),
+                                          np.repeat(us_low_ex_dim, repeats=attention_input_dist[1], axis=common_axis),
+                                          custom_mask, single_sos_channel,
+                                          single_tissue_sos_channel), axis=common_axis)
+        us_high_save = np.expand_dims(us_high_samples[:, :, high_channel], axis=common_axis)
+
+        dict_us_single = {name_us_low: us_low_save,
+                          name_us_high: us_high_save}
+
+        save_dict_with_pickle(file=dict_us_single,
+                              folder_name=save_folder + '/ultrasound', file_name=name_us_save)
+
 
 # File Saving and Loading
+
 
 def save_dict_with_pickle(file, folder_name, file_name):
     # use this to save pairs of low and high quality pictures
@@ -235,11 +311,24 @@ def find_suitable_index(single, multiple, threshold):
     return suitable, index_min
 
 
+def crop_and_pad_sos(img, crop_int):
+    end_img = np.zeros(img.shape)
+    if crop_int < 0:
+        end_img[-crop_int:, :] = img[:end_img.shape[0] + crop_int, :]
+    else:
+        end_img[:end_img.shape[0] - crop_int, :] = img[crop_int:, :]
+    return end_img
+
+
+def find_highest_row(mask):
+    rows, _ = np.where(mask > 0)
+    return np.min(rows)
+
+
 # Augmentations
 
 
 def do_flip(x, y, file_prefix, filename, end_folder, path_to_augment):
-
     aug_x, aug_y = data.augmentation.flip(x, y)
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='flip')
     save_dict_with_pickle(dict_save, path_to_augment + "/flip/" + end_folder, name_save)
@@ -255,9 +344,12 @@ def do_deform(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_
     save_dict_with_pickle(params, path_to_params + '/augmentation/deform/' + end_folder, name_save_params)
 
 
-def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type, attention_mask):
+def do_blur(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type, attention_mask,
+            attention_input_dist):
     aug_x, aug_y, params = data.augmentation.blur(x, y,
-                                                  lower_lim=0.5, upper_lim=1.5, data_type=data_type, attention_mask=attention_mask)
+                                                  lower_lim=0.5, upper_lim=1.5, data_type=data_type,
+                                                  attention_mask=attention_mask,
+                                                  attention_input_dist=attention_input_dist)
 
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='blur')
 
@@ -284,8 +376,10 @@ def do_rchannels(end_folder, filename, read_in_folder, num_channels, path_to_aug
         save_dict_with_pickle(dict_list[i], path_to_augment + "/rchannels/" + end_folder, save_names[i])
 
 
-def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type, attention_mask):
-    aug_x, aug_y, params = data.augmentation.speckle_noise(x, y, data_type=data_type, attention_mask=attention_mask)
+def do_speckle_noise(x, y, file_prefix, filename, end_folder, path_to_augment, path_to_params, data_type,
+                     attention_mask, attention_input_dist):
+    aug_x, aug_y, params = data.augmentation.speckle_noise(x, y, data_type=data_type, attention_mask=attention_mask,
+                                                           attention_input_dist=attention_input_dist)
     dict_save, name_save = create_file_names_and_dict(aug_x, aug_y, file_prefix, filename, aug_type='speckle_noise')
 
     save_dict_with_pickle(dict_save, path_to_augment + "/speckle_noise/" + end_folder, name_save)

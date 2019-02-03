@@ -2,6 +2,7 @@ import matplotlib
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from matplotlib.colors import PowerNorm
 import numpy as np
 import pickle
@@ -10,9 +11,11 @@ import math
 import sys
 from logger.oa_spectra_analysis.generate_unmixing_figures import generate_figure as gf
 import os
+import models.utils as ut
 
 
-def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None):
+def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=None, attention_input_dist=None,
+                 data_type='homo'):
     if channel is None:
         in_channel = min(im_input.shape) - 1
         tar_channel = min(im_target.shape) - 1
@@ -21,18 +24,37 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
         in_channel = channel
         tar_channel = channel
         pre_channel = channel
-    plt.figure(figsize=(18, 18))
-    plt.subplot(1, 3, 1)
-    plt.title('input' + '_' + name)
-    plt.imshow(im_input[in_channel, :, :], cmap='gray')
+    if data_type == 'homo' or data_type == 'hetero':
+        plt.figure(figsize=(18, 18))
+        plt.subplot(1, 3, 1)
+        plt.title('input' + '_' + name)
+        plt.imshow(im_input[in_channel, :, :], cmap='gray')
 
-    plt.subplot(1, 3, 2)
-    plt.title('target' + '_' + name)
-    plt.imshow(im_target[tar_channel, :, :], cmap='gray')
+        plt.subplot(1, 3, 2)
+        plt.title('target' + '_' + name)
+        plt.imshow(im_target[tar_channel, :, :], cmap='gray')
 
-    plt.subplot(1, 3, 3)
-    plt.title('predict' + '_' + name)
-    plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
+        plt.subplot(1, 3, 3)
+        plt.title('predict' + '_' + name)
+        plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
+    else:
+        plt.figure(figsize=(18, 18))
+        gs1 = GridSpec(4, 6, hspace=0.0)
+        plt.subplot(gs1[0:2, 0:2])
+        plt.title('input_couplant' + '_' + name)
+        plt.imshow(im_input[0, :, :], cmap='gray')
+
+        plt.subplot(gs1[2:4, 0:2])
+        plt.title('input_tissue' + '_' + name)
+        plt.imshow(im_input[attention_input_dist[0], :, :], cmap='gray')
+
+        plt.subplot(gs1[1:3, 2:4])
+        plt.title('target' + '_' + name)
+        plt.imshow(im_target[tar_channel, :, :], cmap='gray')
+
+        plt.subplot(gs1[1:3, 4:6])
+        plt.title('predict' + '_' + name)
+        plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
@@ -40,20 +62,22 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
         plt.close('all')
 
 
-'''def plot_oa_spectra(im_input, im_target, im_predict, x, y, name, figsize=(18, 5)):
-    for i in range(2):
-        plt.figure(figsize=figsize)
-        plt.subplot(1, 3, 1)
-        plt.title('input ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_input[:,x + i, y,])
+def plot_attention_masks(folder, input_shape, attention_input_dist, attention_network_dist, attention_anchors):
+    input_shape = (1,) + input_shape
+    zero_one = ut.create_zero_one_ratio(attention_anchors=attention_anchors,
+                                        attention_input_dist=attention_input_dist,
+                                        attention_network_dist=attention_network_dist,
+                                        shape_tensor=input_shape, ratio_overlap=0.0,
+                                        upper_ratio=0.0, start='simple')
+    plt.figure(figsize=(18, 18))
+    for i in range(np.sum(attention_input_dist)):
+        plt.subplot(1, np.sum(attention_input_dist), i + 1)
+        plt.title('input_mask' + '_' + str(i+1))
+        plt.imshow(zero_one[0, i, :, :], cmap='gray')
+    plt.savefig(folder + '/attention_masks', bbox_inches='tight')
+    plt.clf()
+    plt.close('all')
 
-        plt.subplot(1, 3, 2)
-        plt.title('target ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_target[:, x + i, y])
-
-        plt.subplot(1, 3, 3)
-        plt.title('predicted ' + name + '_pixel:' + str(x + i) + ', ' + str(y))
-        plt.plot(im_predict[:, x + i, y])'''
 
 
 def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, save_name=None):
@@ -76,8 +100,7 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
         plt.close('all')
 
 
-def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_threshold, json_processing=None,
-                       logging_for_documentation=False):
+def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_threshold, json_processing=None):
     rgb_input = get_relevant_spectra(input_im, p_threshold=p_threshold, json_processing=json_processing)
     rgb_target = get_relevant_spectra(target_im, p_threshold=p_threshold, json_processing=json_processing)
     rgb_predict = get_relevant_spectra(predict_im, p_threshold=p_threshold, json_processing=json_processing)
@@ -89,38 +112,22 @@ def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_thres
     if min(rgb_predict.shape) == 1:
         rgb_predict = rgb_predict[:, :, 0]
 
-    plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name,
-                             logging_for_documentation=logging_for_documentation)
+    plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name)
 
 
-def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name, logging_for_documentation):
+def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name):
+    plt.figure(figsize=(18, 18))
+    plt.subplot(1, 3, 1)
+    plt.title('input' + '_' + name)
+    plt.imshow(rgb_input, norm=PowerNorm(gamma=.5))
 
-    if logging_for_documentation:
-        f, axarr = plt.subplots(1, 3, figsize=(18, 18))
-        axarr[0].imshow(rgb_input, norm=PowerNorm(gamma=.5))
-        axarr[0].axis('off')
-        axarr[0].set_title('Input')
+    plt.subplot(1, 3, 2)
+    plt.title('target' + '_' + name)
+    plt.imshow(rgb_target, norm=PowerNorm(gamma=.5))
 
-        axarr[1].imshow(rgb_target, norm=PowerNorm(gamma=.5))
-        axarr[1].axis('off')
-        axarr[1].set_title('Target')
-
-        axarr[2].imshow(rgb_predict, norm=PowerNorm(gamma=.5))
-        axarr[2].axis('off')
-        axarr[2].set_title('Predict')
-    else:
-        plt.figure(figsize=(18, 18))
-        plt.subplot(1, 3, 1)
-        plt.title('input' + '_' + name)
-        plt.imshow(rgb_input, norm=PowerNorm(gamma=.5))
-
-        plt.subplot(1, 3, 2)
-        plt.title('target' + '_' + name)
-        plt.imshow(rgb_target, norm=PowerNorm(gamma=.5))
-
-        plt.subplot(1, 3, 3)
-        plt.title('predict' + '_' + name)
-        plt.imshow(rgb_predict, norm=PowerNorm(gamma=.5))
+    plt.subplot(1, 3, 3)
+    plt.title('predict' + '_' + name)
+    plt.imshow(rgb_predict, norm=PowerNorm(gamma=.5))
 
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
@@ -217,17 +224,15 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
     elif coloring_type == 'continuous':
         if np.min(image_3d.shape) > 4:
             sys.exit('There is no continuous spectra for the input available, check the parameters.')
-        # increase the brightness in depth
-        image_3d = exp_increasing_with_depth(image_3d)
         image_3d = np.maximum(0, image_3d)
         rgb = np.zeros((image_3d.shape[0], image_3d.shape[1], 3))
         rgb[:, :, 0] = image_3d[:, :, 0] + image_3d[:, :, 1]
         rgb[:, :, [1,2]] = image_3d[:, :, [2,3]]
-        rgb[:, :, 0] = rgb[:, :, 0] / np.max(rgb[:, :, 0])
+        rgb[:, :, 0] = rgb[:, :,0] / np.max(rgb[:, :,0])
         rgb[:, :, 1] = rgb[:, :, 1] / np.max(rgb[:, :, 1])
         rgb[:, :, 2] = rgb[:, :, 2] / np.max(rgb[:, :, 2])
         # rgb = rgb - np.min(rgb) + 1.0  # shift to positive scale, so that we can use the log transform
-        # rgb = np.log(rgb)  # log scale
+        rgb = np.log(rgb)  # log scale
         # rgb = (rgb - np.min(rgb))/ (np.max(rgb) - np.min(rgb))  # normalize for displaying the image to [0,1] range
         # rgb = rgb / np.max(rgb)
     else:
@@ -235,26 +240,13 @@ def create_rgb_image(image_2d, image_3d=None, coloring_type='continuous'):
     return rgb
 
 
-def exp_increasing_with_depth(image, constant=0.0):
-    # this is so inefficient it hurts, but it was fast to implement
-    factors = np.arange(start=0, stop=image.shape[0])
-    factors = np.exp(constant * factors)
-    factors = np.repeat(np.expand_dims(factors, axis=1), repeats=image.shape[1], axis=1)
-    factors = np.repeat(np.expand_dims(factors, axis=2), repeats=image.shape[2], axis=2)
-
-    return image * factors
-
-
 def plot_single_spectra(input_im, target_im, predict_im, save_name, regressed,
-                        input_us=None, target_us=None, predict_us=None, slice=None, logging_for_documentation=False):
+                        input_us=None, target_us=None, predict_us=None, slice=None):
     if not os.path.exists(save_name):
         os.makedirs(save_name)
-    fig1 = gf(img=input_im, us=input_us, slice=slice, regressed=regressed,
-              logging_for_documentation=logging_for_documentation)
-    fig2 = gf(img=target_im, us=target_us, slice=slice, regressed=regressed,
-              logging_for_documentation=logging_for_documentation)
-    fig3 = gf(img=predict_im, us=predict_us, slice=slice, regressed=regressed,
-              logging_for_documentation=logging_for_documentation)
+    fig1 = gf(img=input_im, us=input_us, slice=slice, regressed=regressed)
+    fig2 = gf(img=target_im, us=target_us, slice=slice, regressed=regressed)
+    fig3 = gf(img=predict_im, us=predict_us, slice=slice, regressed=regressed)
 
     # save the plots
     fig1.savefig(save_name + '/' + 'Input', bbox_inches='tight')

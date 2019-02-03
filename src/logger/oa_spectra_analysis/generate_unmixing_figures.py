@@ -16,7 +16,7 @@ import happy.plots as hpp
 from pathlib import Path
 
 
-def generate_figure(img, us, regressed=True, slice=None, logging_for_documentation=False):
+def generate_figure(img, us, regressed=True, slice=None):
     '''
     Creates plot with unmixing results
 
@@ -61,10 +61,8 @@ def generate_figure(img, us, regressed=True, slice=None, logging_for_documentati
     with np.errstate(divide='ignore', invalid='ignore'):
         ## Blood oxygenation level
         so2 = np.nan_to_num(unmix[...,1] / tbv)
-    if logging_for_documentation:
-        fig, axes = plt.subplots(1, 3, figsize=(5 * 3, 5))
-    else:
-        fig, axes = plt.subplots(1,d, figsize=(5*d,5))
+
+    fig, axes = plt.subplots(1,d, figsize=(5*d,5))
 
     if us is None:
         us = np.zeros((h,w))
@@ -79,57 +77,42 @@ def generate_figure(img, us, regressed=True, slice=None, logging_for_documentati
     ax = axes[0]
     ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
     im = ax.imshow(tbv, cmap=hpp.cmap(['t', 'orange', 'yellow']), norm=PowerNorm(gamma=.5))
-    if logging_for_documentation:
-        ax.axis('off')
-    else:
-        hpp.set_ticks_cm(ax, 100, tbv.shape)
+    hpp.set_ticks_cm(ax, 100, tbv.shape)
     ax.set_title('Total blood volume')
 
-    if not logging_for_documentation:
-        ## SO2 plot
-        ax = axes[1]
-        ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
-        c = hpp.cmap(['xkcd:apple green', 'xkcd:tomato red'])(so2)
-        c[...,-1] = blood_signal_ratio
-        im = ax.imshow(c)
+    ## SO2 plot
+    ax = axes[1]
+    ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
+    c = hpp.cmap(['xkcd:apple green', 'xkcd:tomato red'])(so2)
+    c[...,-1] = blood_signal_ratio
+    im = ax.imshow(c)
 
-        ## black colorbar background
-        c = np.zeros_like(c)
-        c[-20:,:,-1] = 1
-        im = ax.imshow(c)
-        ## colorbar
-        c = np.zeros_like(c)
-        colorbar = np.linspace(0,1,w)
-        c[-20:] = hpp.cmap(['xkcd:apple green', 'xkcd:tomato red'])(colorbar)[None]
-        c[-20:,:,-1] = np.linspace(0,1,20)[::-1,None]
-        im = ax.imshow(c)
-        ## colorbar text
-        ax.text(10,h-10,'0%', color='w', verticalalignment='center', fontsize=8)
-        ax.text(w-10,h-10,'100%', color='w', verticalalignment='center', horizontalalignment='right', fontsize=8)
-        ax.text(w/2,h-10,'sO$_2$', color='w', verticalalignment='center', horizontalalignment='center', fontsize=8)
+    ## black colorbar background
+    c = np.zeros_like(c)
+    c[-20:,:,-1] = 1
+    im = ax.imshow(c)
+    ## colorbar
+    c = np.zeros_like(c)
+    colorbar = np.linspace(0,1,w)
+    c[-20:] = hpp.cmap(['xkcd:apple green', 'xkcd:tomato red'])(colorbar)[None]
+    c[-20:,:,-1] = np.linspace(0,1,20)[::-1,None]
+    im = ax.imshow(c)
+    ## colorbar text
+    ax.text(10,h-10,'0%', color='w', verticalalignment='center', fontsize=8)
+    ax.text(w-10,h-10,'100%', color='w', verticalalignment='center', horizontalalignment='right', fontsize=8)
+    ax.text(w/2,h-10,'sO$_2$', color='w', verticalalignment='center', horizontalalignment='center', fontsize=8)
 
-        hpp.set_ticks_cm(ax, 100, tbv.shape)
-        ax.set_title('Blood oxygenation')
+    hpp.set_ticks_cm(ax, 100, tbv.shape)
+    ax.set_title('Blood oxygenation')
 
     cmaps = [hpp.cmap(['t', 'xkcd:darkish purple', 'xkcd:pinky purple']),
              hpp.cmap(['t', 'xkcd:dark sky blue', 'xkcd:bright sky blue'])]
-    if logging_for_documentation:
-        for j in range(2,d):
-            ax = axes[j-1]
-            ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
-            im = ax.imshow(unmix[..., j], cmap=cmaps[j-2], norm=PowerNorm(gamma=.5))
-            if logging_for_documentation:
-                ax.axis('off')
-            else:
-                hpp.set_ticks_cm(ax, 100, tbv.shape)
-            ax.set_title(chromophore_names[j])
-    else:
-        for j in range(2,d):
-            ax = axes[j]
-            ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
-            im = ax.imshow(unmix[..., j], cmap=cmaps[j-2], norm=PowerNorm(gamma=.5))
-            hpp.set_ticks_cm(ax, 100, tbv.shape)
-            ax.set_title(chromophore_names[j])
+    for j in range(2,d):
+        ax = axes[j]
+        ax.imshow(us, extent=(-.5,w-.5,h-.5, -.5), cmap='gray')
+        im = ax.imshow(unmix[..., j], cmap=cmaps[j-2], norm=PowerNorm(gamma=.5))
+        hpp.set_ticks_cm(ax, 100, tbv.shape)
+        ax.set_title(chromophore_names[j])
 
     return fig
 
