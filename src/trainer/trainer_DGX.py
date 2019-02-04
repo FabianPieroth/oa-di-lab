@@ -31,7 +31,7 @@ class CNN_skipCo_trainer(object):
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
                  attention_network_dist, use_upsampling, last_kernel_size,
                  bi_only_couplant, complex_bi_process, after_skip_channels, strides,
-                 reports_folder_to_continue, continue_training_from_checkpoint, name_of_checkpoint
+                 reports_folder_to_continue, continue_training_from_checkpoint, name_of_checkpoint, starting_point
                  ):
 
         self.image_type = image_type
@@ -108,6 +108,8 @@ class CNN_skipCo_trainer(object):
         self.model_file_path = self.model.model_file_name
         self.model_name = self.model.model_name
 
+        self.learning_rates = learning_rates
+
         if torch.cuda.is_available():
             torch.cuda.current_device()
             self.model.cuda()
@@ -115,12 +117,10 @@ class CNN_skipCo_trainer(object):
             self.model = nn.DataParallel(self.model)
 
         if self.continue_training_from_checkpoint:
-            self.dataset, self.model, self.loaded_learning_rates = load_torch_model(path_to_load=reports_folder_to_continue,
-                                                                               name_to_load=name_of_checkpoint,
-                                                                               data_loader=self.dataset,
-                                                                               model=self.model)
-
-        self.learning_rates = learning_rates
+            self.dataset, self.model, self.loaded_learning_rates = load_torch_model(
+                path_to_load=reports_folder_to_continue, name_to_load=name_of_checkpoint,
+                data_loader=self.dataset, model=self.model, starting_point=starting_point)
+            self.learning_rates = self.loaded_learning_rates
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
                              image_type=self.image_type, dataset=self.dataset, batch_size=self.batch_size,
@@ -461,6 +461,7 @@ def main():
     # resume training process
     continue_training_from_checkpoint = True
     reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_01_31_10_33'
+    starting_point = 25
     name_of_checkpoint = 'combined_modelmodel_epoch_25.pt'  # make sure that train val loss end at same place
 
     # add hyper parameters for search
@@ -514,7 +515,7 @@ def main():
                                      complex_bi_process=complex_bi_process, after_skip_channels=after_skip_channels,
                                      strides=strides, reports_folder_to_continue=reports_folder_to_continue,
                                      continue_training_from_checkpoint=continue_training_from_checkpoint,
-                                     name_of_checkpoint=name_of_checkpoint
+                                     name_of_checkpoint=name_of_checkpoint, starting_point=starting_point
 
                                      )
 
