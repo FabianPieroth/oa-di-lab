@@ -6,6 +6,7 @@ from models.dilated_conv import DilatedTranslator
 from models.model_superclass import ImageTranslator
 #from models.SP2_conv_deconv import ConvDeconv
 from utils_dir.adamW import AdamW
+from utils_dir.load_model import load_torch_model
 import torch
 import torch.nn as nn
 import sys
@@ -29,13 +30,17 @@ class CNN_skipCo_trainer(object):
                  input_ds_mask, input_ss_mask, ds_mask_channels, attention_mask, add_skip, pca_use_regress,
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
                  attention_network_dist, use_upsampling, last_kernel_size,
-                 bi_only_couplant, complex_bi_process, after_skip_channels, strides):
+                 bi_only_couplant, complex_bi_process, after_skip_channels, strides,
+                 reports_folder_to_continue, continue_training_from_checkpoint, name_of_checkpoint
+                 ):
 
         self.image_type = image_type
 
         self.batch_size = batch_size
         self.log_period = log_period
         self.epochs = epochs
+
+        self.continue_training_from_checkpoint = continue_training_from_checkpoint
 
         self.dataset = ProcessData(data_type=data_type, train_ratio=train_ratio, process_raw_data=process_raw_data,
                                    pro_and_augm_only_image_type=pro_and_augm_only_image_type,
@@ -109,6 +114,12 @@ class CNN_skipCo_trainer(object):
             # here now wrap the model in Data.Parallel class
             self.model = nn.DataParallel(self.model)
 
+        if self.continue_training_from_checkpoint:
+            self.dataset, self.model, self.loaded_learning_rates = load_torch_model(path_to_load=reports_folder_to_continue,
+                                                                               name_to_load=name_of_checkpoint,
+                                                                               data_loader=self.dataset,
+                                                                               model=self.model)
+
         self.learning_rates = learning_rates
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
@@ -157,6 +168,8 @@ class CNN_skipCo_trainer(object):
 
         # now calculate the learning rates list
         self.learning_rates = self.get_learning_rate(learning_rate, self.epochs, lr_method)
+        if self.continue_training_from_checkpoint:
+            self.learning_rates = self.loaded_learning_rates
 
         for e in range(0, self.epochs):
             # setting the learning rate each epoch
@@ -360,18 +373,18 @@ def main():
 
     image_type = 'US'
     batch_size = 1*8
-    log_period = 5
+    log_period = 2
     epochs = 140
 
     # dataset parameters
 
     data_type = 'bi'
     train_ratio = 0.90
-    process_raw_data = True
+    process_raw_data = False
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = True
+    do_augment = False
 
     add_augment = True
 
@@ -383,7 +396,7 @@ def main():
     do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = True
+    get_scale_center = False
     single_sample = False
     do_scale_center = True
     oa_do_scale_center_before_pca = False
@@ -444,6 +457,12 @@ def main():
 
     error_catch(data_type=data_type, attention_network_dist=attention_network_dist,
                 attention_input_dist=attention_input_dist, attention_anchors=attention_anchors)
+
+    # resume training process
+    continue_training_from_checkpoint = True
+    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_01_31_10_33'
+    name_of_checkpoint = 'combined_modelmodel_epoch_25.pt'  # make sure that train val loss end at same place
+
     # add hyper parameters for search
     #param_grid = {
     #
@@ -493,7 +512,10 @@ def main():
                                      attention_network_dist=attention_network_dist, use_upsampling=use_upsampling,
                                      last_kernel_size=last_kernel_size, bi_only_couplant=bi_only_couplant,
                                      complex_bi_process=complex_bi_process, after_skip_channels=after_skip_channels,
-                                     strides=strides
+                                     strides=strides, reports_folder_to_continue=reports_folder_to_continue,
+                                     continue_training_from_checkpoint=continue_training_from_checkpoint,
+                                     name_of_checkpoint=name_of_checkpoint
+
                                      )
 
         # fit the first model

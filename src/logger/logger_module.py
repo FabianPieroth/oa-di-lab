@@ -53,8 +53,6 @@ class Logger(object):
 
         self.model_file_path = model_file_path
 
-
-
     def save_model(self):
         # This Method should save the model in a serialized folder structure
         # Serialize a model and its weights into json and h5 file.
