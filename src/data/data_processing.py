@@ -21,8 +21,9 @@ def ret_all_files_in_folder(folder_path, full_names=True):
 def filter_hidden_files(string):
     bool1 = ('.DS_' in string)
     bool2 = ('._' in string)
+    bool3 = ('overlay' in string)
 
-    return not any([bool1, bool2])
+    return not any([bool1, bool2, bool3])
 
 # homo
 

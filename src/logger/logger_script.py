@@ -32,6 +32,14 @@ def extract_and_process_logged_folder(folder_name, logging_for_documentation=Fal
             for images in image_list:
                 input_im, target_im, predict_im = vis.load_file_to_numpy(folder_name + '/' + folder + '/' + data
                                                                          + '/' + images)
+                if os.path.exists(folder_name + '/' + folder + '/' + data + '/overlay'):
+                    input_us = vis.load_processed_file(full_file_name=folder_name + '/' + folder + '/' + data
+                                                       + '/overlay/' + 'US' + images[2:], image_sign='_low')
+                    target_us = vis.load_processed_file(full_file_name=folder_name + '/' + folder + '/' + data
+                                                        + '/overlay/' + 'US' + images[2:], image_sign='_high')
+                else:
+                    input_us = None
+                    target_us = None
                 if json_dict['data_type'] == 'homo':
                     if rescale_images and json_dict['do_scale_center']:
                         input_im, target_im, predict_im = reverse_scaling(input_im=input_im, target_im=target_im,
@@ -56,11 +64,12 @@ def extract_and_process_logged_folder(folder_name, logging_for_documentation=Fal
                     if json_dict['oa_do_pca']:
                         json_dict['processing']['channel_slice_oa'] = list(range(28))
                     vis.plot_spectral_test(input_im=input_im, target_im=target_im, predict_im=predict_im, name=images,
+                                           input_us=input_us, target_us=target_us, predict_us=target_us,
                                            save_name=save_folder + '/' + images + '_spectra', p_threshold=0.05,
                                            json_processing=json_dict,
                                            logging_for_documentation=logging_for_documentation)
                     vis.plot_single_spectra(input_im=input_im, target_im=target_im, predict_im=predict_im,
-                                            input_us=None, target_us=None, predict_us=None,
+                                            input_us=input_us, target_us=target_us, predict_us=target_us,
                                             save_name=save_folder + '/' + images,
                                             slice=json_dict['processing']['channel_slice_oa'],
                                             regressed=json_dict['processing']['use_regressed_oa'],
@@ -184,7 +193,7 @@ def main():
 
     logging_for_documentation = True
 
-    folder_name = 'homo/Documentation/combined_model_hyper_1_2019_01_26_22_54_sliced'
+    folder_name = 'homo/Documentation/combined_model_hyper_1_2019_01_26_16_21_regressed'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name,
                                       logging_for_documentation=logging_for_documentation)

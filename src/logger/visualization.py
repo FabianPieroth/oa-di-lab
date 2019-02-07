@@ -77,7 +77,7 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
 
 
 def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_threshold, json_processing=None,
-                       logging_for_documentation=False):
+                       logging_for_documentation=False, input_us=None, target_us=None, predict_us=None):
     rgb_input = get_relevant_spectra(input_im, p_threshold=p_threshold, json_processing=json_processing)
     rgb_target = get_relevant_spectra(target_im, p_threshold=p_threshold, json_processing=json_processing)
     rgb_predict = get_relevant_spectra(predict_im, p_threshold=p_threshold, json_processing=json_processing)
@@ -90,21 +90,34 @@ def plot_spectral_test(input_im, target_im, predict_im, name, save_name, p_thres
         rgb_predict = rgb_predict[:, :, 0]
 
     plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name,
-                             logging_for_documentation=logging_for_documentation)
+                             logging_for_documentation=logging_for_documentation,
+                             input_us=input_us, target_us=target_us, predict_us=target_us)
 
 
-def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name, logging_for_documentation):
+def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name, logging_for_documentation,
+                             input_us=None, target_us=None, predict_us=None):
+    input_us = prepare_us_for_overlay(us=input_us, rgb=rgb_input)
+    target_us = prepare_us_for_overlay(us=target_us, rgb=rgb_target)
+    predict_us = prepare_us_for_overlay(us=predict_us, rgb=rgb_predict)
+
+    rgb_input = overlay_us_rgb(us=input_us, rgb=rgb_input)
+    rgb_input = overlay_us_rgb(us=target_us, rgb=rgb_target)
+    rgb_input = overlay_us_rgb(us=predict_us, rgb=rgb_predict)
+
 
     if logging_for_documentation:
         f, axarr = plt.subplots(1, 3, figsize=(18, 18))
+        axarr[0].imshow(input_us, extent=(-.5, rgb_input.shape[1] - .5, rgb_input.shape[0] - .5, -.5), cmap='gray')
         axarr[0].imshow(rgb_input, norm=PowerNorm(gamma=.5))
         axarr[0].axis('off')
         axarr[0].set_title('Input')
 
+        axarr[1].imshow(target_us, extent=(-.5, rgb_target.shape[1] - .5, rgb_target.shape[0] - .5, -.5), cmap='gray')
         axarr[1].imshow(rgb_target, norm=PowerNorm(gamma=.5))
         axarr[1].axis('off')
         axarr[1].set_title('Target')
 
+        axarr[2].imshow(predict_us, extent=(-.5, rgb_predict.shape[1] - .5, rgb_predict.shape[0] - .5, -.5), cmap='gray')
         axarr[2].imshow(rgb_predict, norm=PowerNorm(gamma=.5))
         axarr[2].axis('off')
         axarr[2].set_title('Predict')
@@ -126,6 +139,23 @@ def plot_and_save_rgb_images(rgb_input, rgb_target, rgb_predict, name, save_name
         plt.savefig(save_name, bbox_inches='tight')
         plt.clf()
         plt.close('all')
+
+
+def prepare_us_for_overlay(us, rgb):
+    if us is None:
+        us = np.zeros((rgb.shape[0], rgb.shape[1]))
+    else:
+        if np.max(us) == np.min(us):
+            us = us - np.min(us)
+        else:
+            us = (us - np.min(us)) / (np.max(us) - np.min(us))
+    return us[:rgb.shape[0], :rgb.shape[1]]
+
+
+def overlay_us_rgb(us, rgb):
+    for i in range(rgb.shape[2]):
+        rgb[:, :, i] = np.maximum(us, rgb[:, :, i])
+    return rgb
 
 
 def get_relevant_spectra(image, p_threshold, json_processing=None):
@@ -249,6 +279,10 @@ def plot_single_spectra(input_im, target_im, predict_im, save_name, regressed,
                         input_us=None, target_us=None, predict_us=None, slice=None, logging_for_documentation=False):
     if not os.path.exists(save_name):
         os.makedirs(save_name)
+    input_us = prepare_us_for_overlay(us=input_us, rgb=input_im[0, :, :])
+    target_us = prepare_us_for_overlay(us=target_us, rgb=target_im[0, :, :])
+    predict_us = prepare_us_for_overlay(us=predict_us, rgb=predict_im[0, :, :])
+
     fig1 = gf(img=input_im, us=input_us, slice=slice, regressed=regressed,
               logging_for_documentation=logging_for_documentation)
     fig2 = gf(img=target_im, us=target_us, slice=slice, regressed=regressed,
@@ -273,3 +307,12 @@ def load_file_to_numpy(full_file_name):
     target_im = np.array([value for key, value in sample.items() if 'target_image' in key][0])
     predict_im = np.array([value for key, value in sample.items() if 'predict_image' in key][0])
     return input_im, target_im, predict_im
+
+
+def load_processed_file(full_file_name, image_sign):
+    # helper function to load and read the data; pretty inefficient right now
+    #  as we need to open every dict two times
+    with open(full_file_name, 'rb') as handle:
+        sample = pickle.load(handle)
+    sample_array = [value for key, value in sample.items() if image_sign in key][0]
+    return sample_array
