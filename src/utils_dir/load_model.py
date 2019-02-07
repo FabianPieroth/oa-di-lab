@@ -10,6 +10,7 @@ import json
 
 
 def load_torch_model(path_to_load, name_to_load, data_loader, model, starting_point):
+    print('Loading saved model from starting point ' + str(starting_point) + ' and model ' + str(name_to_load) + '.')
     project_root_dir = data_loader.project_root_dir
     # overwrite epochs, learning rate, train and val files
     json_dict = open_json_file(folder_name=project_root_dir + '/' + path_to_load, file_name='config.json')
@@ -19,7 +20,7 @@ def load_torch_model(path_to_load, name_to_load, data_loader, model, starting_po
 
     data_loader.train_file_names = loaded_train_files
     data_loader.val_file_names = loaded_val_names
-    loaded_learning_rates = np.roll(loaded_learning_rates, starting_point)
+    loaded_learning_rates = np.roll(loaded_learning_rates, -starting_point)
     # load model and initialize the weights
     # model = nn.DataParallel(model)
     # state_parallel = model.state_dict()

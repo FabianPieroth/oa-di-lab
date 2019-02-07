@@ -460,8 +460,8 @@ def main():
 
     # resume training process
     continue_training_from_checkpoint = True
-    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_01_31_10_33'
-    starting_point = 25
+    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_01_31_10_33_first'
+    starting_point = 26
     name_of_checkpoint = 'combined_modelmodel_epoch_25.pt'  # make sure that train val loss end at same place
 
     # add hyper parameters for search
