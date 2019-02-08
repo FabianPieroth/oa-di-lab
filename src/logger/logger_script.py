@@ -194,7 +194,7 @@ def backproject_image_pca(pca_image, pca_model, json_dict):
 def main():
     path_to_project = str(Path().resolve().parents[1]) + '/reports/'
 
-    folder_name = 'bi/big_run_final_attempt_2019_02_04_15_24_second'
+    folder_name = 'bi/big_run_final_attempt_2019_02_07_09_21_second'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name)
 
