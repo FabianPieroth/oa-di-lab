@@ -63,12 +63,15 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
         aggregate_by = nr_epochs
     agg_size = int(math.ceil(len(train_loss) / aggregate_by))
     fig, ax = plt.subplots()
-    ax.plot(np.mean(train_loss.reshape(-1, agg_size), axis=1), label='training loss')
-    ax.plot(val_loss, label='validation loss')
+    ax.plot(np.mean(train_loss.reshape(-1, agg_size), axis=1), label='Training loss')
+    ax.plot(val_loss, label='Validation loss')
     ax.legend()
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Loss")
 
     ax2 = ax.twinx()
-    ax2.plot(learning_rates, label='learning rate', c='grey')
+    ax2.plot(learning_rates, label='Learning Rate', c='grey')
+    ax2.set_ylabel("Learning Rate")
     ax2.legend(loc=5)
     if save_name is not None:
         fig.savefig(save_name, bbox_inches='tight')

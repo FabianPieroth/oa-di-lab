@@ -193,7 +193,7 @@ def main():
 
     logging_for_documentation = True
 
-    folder_name = 'homo/Documentation/combined_model_hyper_1_2019_01_26_16_21_regressed'
+    folder_name = 'homo/Documentation/combined_model_hyper_1_2019_01_26_22_54_sliced'
 
     extract_and_process_logged_folder(folder_name=path_to_project + folder_name,
                                       logging_for_documentation=logging_for_documentation)
