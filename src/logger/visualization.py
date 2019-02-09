@@ -27,33 +27,40 @@ def plot_channel(im_input, im_target, im_predict, name, channel=None, save_name=
     if data_type == 'homo' or data_type == 'hetero':
         plt.figure(figsize=(18, 18))
         plt.subplot(1, 3, 1)
-        plt.title('input' + '_' + name)
+        # plt.title('input' + '_' + name)
+        plt.title('Input sos')
         plt.imshow(im_input[in_channel, :, :], cmap='gray')
 
         plt.subplot(1, 3, 2)
-        plt.title('target' + '_' + name)
+        # plt.title('target' + '_' + name)
+        plt.title('Target dual')
         plt.imshow(im_target[tar_channel, :, :], cmap='gray')
 
         plt.subplot(1, 3, 3)
-        plt.title('predict' + '_' + name)
+        # plt.title('Predict' + '_' + name)
+        plt.title('Predict')
         plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
     else:
         plt.figure(figsize=(18, 18))
-        gs1 = GridSpec(4, 6, hspace=0.0)
-        plt.subplot(gs1[0:2, 0:2])
-        plt.title('input_couplant' + '_' + name)
+        gs1 = GridSpec(8, 6, hspace=0.0)
+        plt.subplot(gs1[0:4, 0:2])
+        # plt.title('Input couplant sos' + '_' + name)
+        plt.title('Input couplant sos')
         plt.imshow(im_input[0, :, :], cmap='gray')
 
-        plt.subplot(gs1[2:4, 0:2])
-        plt.title('input_tissue' + '_' + name)
+        plt.subplot(gs1[4:8, 0:2])
+        # plt.title('input_tissue' + '_' + name)
+        plt.title('Input tissue sos')
         plt.imshow(im_input[attention_input_dist[0], :, :], cmap='gray')
 
-        plt.subplot(gs1[1:3, 2:4])
-        plt.title('target' + '_' + name)
+        plt.subplot(gs1[2:6, 2:4])
+        # plt.title('target' + '_' + name)
+        plt.title('Target')
         plt.imshow(im_target[tar_channel, :, :], cmap='gray')
 
-        plt.subplot(gs1[1:3, 4:6])
-        plt.title('predict' + '_' + name)
+        plt.subplot(gs1[2:6, 4:6])
+        # plt.title('predict' + '_' + name)
+        plt.title('Predict')
         plt.imshow(im_predict[pre_channel, :, :], cmap='gray')
 
     if save_name is not None:
@@ -95,6 +102,7 @@ def plot_train_val_loss_graph(train_loss, val_loss, learning_rates, nr_epochs, s
     ax2 = ax.twinx()
     ax2.plot(learning_rates, label='learning rate', c='grey')
     ax2.legend(loc=5)
+    ax2.set_ylabel("Learning Rate")
     if save_name is not None:
         fig.savefig(save_name, bbox_inches='tight')
         plt.clf()
