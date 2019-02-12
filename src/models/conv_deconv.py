@@ -37,7 +37,8 @@ class ConvDeconv(nn.Module):
                  add_skip=True, attention_mask='Not',
                  add_skip_at_first=True, concatenate_skip=False, attention_anchors=None,
                  attention_input_dist=None, attention_network_dist=None, use_upsampling=False, last_kernel_sizes=None,
-                 after_skip_channels=None):
+                 after_skip_channels=None, pass_complete_input=False,
+                 membrane_as_mask=False):
         """
         initializes net with the specified attributes. The stride, kernels and paddings and output paddings for the
         deconv layers are computed to fit.
@@ -53,6 +54,8 @@ class ConvDeconv(nn.Module):
         self.num_layers = len(conv_channels)-1
         self.out_channels = output_channels
         self.input_size = input_size
+        self.pass_complete_input = pass_complete_input
+        self.membrane_as_mask = membrane_as_mask
 
         if strides is None:
             # initialize list with default strides (2,2)
@@ -133,7 +136,11 @@ class ConvDeconv(nn.Module):
             # the last channel will be out_channel so the last of deconv_channels
             # the channels in between can be chosen
             # preparing the list to these needs
-            after_skip_channels = [np.sum(self.attention_input_dist)+deconv_channels[-1]] \
+            if self.pass_complete_input:
+                masks_channels = 3
+            else:
+                masks_channels = 0
+            after_skip_channels = [np.sum(self.attention_input_dist)+deconv_channels[-1] + masks_channels] \
                                   + after_skip_channels + [deconv_channels[-1]]
             if last_kernel_sizes is None:
                 last_kernel_sizes = [(41,11) for _ in range(len(after_skip_channels)+1)]
@@ -160,24 +167,33 @@ class ConvDeconv(nn.Module):
             # use attention mask on forwarded channels, skips influenced as well
             if self.attention_mask == 'simple':
                 if i == 0:
+                    if self.membrane_as_mask:
+                        masks = x[:, 4, :, :]
+                    else:
+                        masks = None
                     zero_one = ut.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
                                                         upper_ratio=0.2, start='simple',
                                                         attention_anchors=self.attention_anchors,
                                                         attention_input_dist=self.attention_input_dist,
-                                                        attention_network_dist=self.attention_network_dist)
+                                                        attention_network_dist=self.attention_network_dist,
+                                                        masks=masks)
                 else:
                     zero_one = ut.create_zero_one_ratio(shape_tensor=x.shape, ratio_overlap=overlaps[i],
                                                         upper_ratio=0.2, start='Not',
                                                         attention_anchors=self.attention_anchors,
                                                         attention_input_dist=self.attention_input_dist,
-                                                        attention_network_dist=self.attention_network_dist)
+                                                        attention_network_dist=self.attention_network_dist,
+                                                        masks=masks)
                 if torch.cuda.is_available():
                     zero_one = zero_one.cuda()
                 x = zero_one * x
 
             if (i + self.adding_one)% 2 == 0:
                 if i==0 and self.out_channels is not None and self.add_skip_at_first:
-                    skip_connection += [x[:,0:np.sum(self.attention_input_dist),:,:]]
+                    if self.pass_complete_input:
+                        skip_connection += [x]
+                    else:
+                        skip_connection += [x[:,0:np.sum(self.attention_input_dist),:,:]]
                 else:
                     skip_connection += [x]
 

@@ -219,7 +219,8 @@ def pre_us_hetero(new_in_folder, study_folder, scan_num, filename_low, filename_
 
 
 def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high, save_folder, attention_mask='Not',
-              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False, complex_bi_process=False):
+              attention_anchors=None, attention_input_dist=None, bi_only_couplant=False, complex_bi_process=False,
+              calculate_shift_individually=False):
     us_raw_low = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
                                   scan_num + '/' + filename_low)
     us_raw_high = scipy.io.loadmat(new_in_folder + '/' + study_folder + '/' +
@@ -266,8 +267,12 @@ def pre_us_bi(new_in_folder, study_folder, scan_num, filename_low, filename_high
         us_low_tissue_depricated = us_low_tissue[:, :, high_channel]
         if complex_bi_process:
             # process like we want it
-            dist = find_highest_row(tissue_mask)
-            crop_int = int(np.floor((tissue_sos[high_channel] - couplant_sos) * 0.30))
+            if calculate_shift_individually:
+                dist = find_highest_row(tissue_mask)
+                factor = (4.0 + dist / 100.0) / 100.0 / couplant_sos * 10000.0
+                crop_int = int(np.floor((tissue_sos[high_channel] - couplant_sos) * factor))
+            else:
+                crop_int = int(np.floor((tissue_sos[high_channel] - couplant_sos) * 0.30))
             us_low_tissue_depricated = crop_and_pad_sos(img=us_low_tissue_depricated, crop_int=crop_int)
 
         us_low_ex_dim = np.expand_dims(us_low_tissue_depricated, axis=common_axis)

@@ -31,7 +31,8 @@ class CNN_skipCo_trainer(object):
                  add_skip_at_first, concatenate_skip, attention_anchors, attention_input_dist,
                  attention_network_dist, use_upsampling, last_kernel_size,
                  bi_only_couplant, complex_bi_process, after_skip_channels, strides,
-                 reports_folder_to_continue, continue_training_from_checkpoint, name_of_checkpoint, starting_point
+                 reports_folder_to_continue, continue_training_from_checkpoint, name_of_checkpoint, starting_point,
+                 pass_complete_input, calculate_shift_individually, membrane_as_mask
                  ):
 
         self.image_type = image_type
@@ -41,6 +42,7 @@ class CNN_skipCo_trainer(object):
         self.epochs = epochs
 
         self.continue_training_from_checkpoint = continue_training_from_checkpoint
+        self.pass_complete_input = pass_complete_input
 
         self.dataset = ProcessData(data_type=data_type, train_ratio=train_ratio, process_raw_data=process_raw_data,
                                    pro_and_augm_only_image_type=pro_and_augm_only_image_type,
@@ -64,7 +66,8 @@ class CNN_skipCo_trainer(object):
                                    attention_mask=attention_mask, pca_use_regress=pca_use_regress,
                                    attention_anchors=attention_anchors, attention_input_dist=attention_input_dist,
                                    attention_network_dist=attention_network_dist, bi_only_couplant=bi_only_couplant,
-                                   complex_bi_process=complex_bi_process)
+                                   complex_bi_process=complex_bi_process,
+                                   calculate_shift_individually=calculate_shift_individually)
 
         self.model_convdeconv = ConvDeconv(conv_channels=conv_channels,
                                            #input_ds_mask=input_ds_mask,
@@ -80,7 +83,8 @@ class CNN_skipCo_trainer(object):
                                            attention_anchors=attention_anchors,
                                            attention_network_dist=attention_network_dist,
                                            use_upsampling=use_upsampling, after_skip_channels=after_skip_channels,
-                                           strides=strides)
+                                           strides=strides, pass_complete_input=pass_complete_input,
+                                           membrane_as_mask=membrane_as_mask)
 
         self.model_dilated = DilatedTranslator(conv_channels=di_conv_channels, dilations=dilations)
 
@@ -119,7 +123,8 @@ class CNN_skipCo_trainer(object):
         if self.continue_training_from_checkpoint:
             self.dataset, self.model, self.loaded_learning_rates = load_torch_model(
                 path_to_load=reports_folder_to_continue, name_to_load=name_of_checkpoint,
-                data_loader=self.dataset, model=self.model, starting_point=starting_point)
+                data_loader=self.dataset, model=self.model, starting_point=starting_point,
+                pass_complete_input=self.pass_complete_input)
             self.learning_rates = self.loaded_learning_rates
 
         self.logger = Logger(model=self.model, project_root_dir=self.dataset.project_root_dir,
@@ -397,7 +402,7 @@ def main():
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
     get_scale_center = False
-    single_sample = False
+    single_sample = True
     do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -439,6 +444,10 @@ def main():
     drop_probs = None
     after_skip_channels = [8]
 
+    # things for advanced last run
+    pass_complete_input = True
+    calculate_shift_individually = True
+    membrane_as_mask = True
 
     input_ds_mask = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     input_ss_mask = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
@@ -460,9 +469,9 @@ def main():
 
     # resume training process
     continue_training_from_checkpoint = True
-    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_01_31_10_33_first'
+    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_02_07_09_21_second'
     starting_point = 26
-    name_of_checkpoint = 'combined_modelmodel_epoch_25.pt'  # make sure that train val loss end at same place
+    name_of_checkpoint = 'combined_modelmodel_epoch_3.pt'  # make sure that train val loss end at same place
 
     # add hyper parameters for search
     #param_grid = {
@@ -515,8 +524,10 @@ def main():
                                      complex_bi_process=complex_bi_process, after_skip_channels=after_skip_channels,
                                      strides=strides, reports_folder_to_continue=reports_folder_to_continue,
                                      continue_training_from_checkpoint=continue_training_from_checkpoint,
-                                     name_of_checkpoint=name_of_checkpoint, starting_point=starting_point
-
+                                     name_of_checkpoint=name_of_checkpoint, starting_point=starting_point,
+                                     pass_complete_input=pass_complete_input,
+                                     calculate_shift_individually=calculate_shift_individually,
+                                     membrane_as_mask=membrane_as_mask
                                      )
 
         # fit the first model

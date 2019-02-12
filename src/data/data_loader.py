@@ -33,6 +33,7 @@ class ProcessData(object):
                  process_all_raw_folders=False,
                  process_raw_test=True,
                  pro_and_augm_only_image_type=False,
+                 calculate_shift_individually=False,
                  trunc_points_before_pca=(0.0001, 0.9999),
                  oa_do_scale_center_before_pca=True,
                  oa_do_pca=False,
@@ -104,6 +105,7 @@ class ProcessData(object):
         self.attention_network_dist = attention_network_dist
         self.bi_only_couplant = bi_only_couplant
         self.complex_bi_process = complex_bi_process
+        self.calculate_shift_individually = calculate_shift_individually
 
         # if self.attention_mask == 'complex':
         if self.attention_anchors is None:
@@ -189,7 +191,6 @@ class ProcessData(object):
                                                          full_names=True)
 
         if self.do_augment:
-            # TODO: check augmentations for case attention_mask='complex'
             self._augment_data()
 
         # get the original file names, split them up to validation and training and write them into self
@@ -332,7 +333,8 @@ class ProcessData(object):
                                  attention_anchors=self.attention_anchors,
                                  attention_input_dist=self.attention_input_dist,
                                  bi_only_couplant=self.bi_only_couplant,
-                                 complex_bi_process=self.complex_bi_process)
+                                 complex_bi_process=self.complex_bi_process,
+                                 calculate_shift_individually=self.calculate_shift_individually)
                 else:
                     print('This should be an empty else, to be stopped before coming here.')
 
@@ -394,7 +396,8 @@ class ProcessData(object):
                                  attention_anchors=self.attention_anchors,
                                  attention_input_dist=self.attention_input_dist,
                                  bi_only_couplant=self.bi_only_couplant,
-                                 complex_bi_process=self.complex_bi_process)
+                                 complex_bi_process=self.complex_bi_process,
+                                 calculate_shift_individually=self.calculate_shift_individually)
 
     def _train_val_split(self, original_file_names):
         # this should only be called once at the beginning to ensure the same random seed
