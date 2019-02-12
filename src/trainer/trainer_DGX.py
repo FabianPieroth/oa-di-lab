@@ -378,18 +378,18 @@ def main():
 
     image_type = 'US'
     batch_size = 1*8
-    log_period = 2
+    log_period = 1
     epochs = 140
 
     # dataset parameters
 
     data_type = 'bi'
-    train_ratio = 0.90
-    process_raw_data = False
+    train_ratio = 0.95
+    process_raw_data = True
     pro_and_augm_only_image_type = True
 
     do_heavy_augment = False
-    do_augment = False
+    do_augment = True
 
     add_augment = True
 
@@ -401,8 +401,8 @@ def main():
     do_speckle_noise = True
     trunc_points = (0, 1)
     trunc_points_before_pca = (0.0001, 0.9999)
-    get_scale_center = False
-    single_sample = True
+    get_scale_center = True
+    single_sample = False
     do_scale_center = True
     oa_do_scale_center_before_pca = False
     oa_do_pca = False
@@ -469,9 +469,9 @@ def main():
 
     # resume training process
     continue_training_from_checkpoint = True
-    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_02_07_09_21_second'
-    starting_point = 26
-    name_of_checkpoint = 'combined_modelmodel_epoch_3.pt'  # make sure that train val loss end at same place
+    reports_folder_to_continue = 'reports/bi/big_run_final_attempt_2019_02_10_12_24_fourth'
+    starting_point = 5
+    name_of_checkpoint = 'combined_modelmodel_epoch_11.pt'  # make sure that train val loss end at same place
 
     # add hyper parameters for search
     #param_grid = {
