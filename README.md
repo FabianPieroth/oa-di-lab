@@ -2,6 +2,8 @@
 
 ## Enhancement of clinical optoacoustic and ultrasound images
 
+![Could not find image file!](OA-US-overlay.png "Overlay of Ultrasound and Optoacoustic data")
+
 This Project was done in the course TUM Data Innovation Lab in a Team of four students and two supervisors from the Helmholtz Zentrum in Munich.
 
 Students:
