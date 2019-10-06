@@ -10,7 +10,7 @@ Students:
 Fabian Pieroth, Tom Wollschläger, Eva Höck, Sunita Gopal
 
 Supervisors:
-Dominik Jüstel, Jan Kukacka
+Dr. Dominik Jüstel, Jan Kukacka
 
 A detailed documentation of the project is available at:
 
